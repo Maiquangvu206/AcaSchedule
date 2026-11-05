@@ -6,6 +6,7 @@ const navItems = [
   { to: '/transcript', label: 'Bảng điểm', end: false, protected: true },
   { to: '/schedule', label: 'Thời khóa biểu', end: false, protected: true },
   { to: '/documents', label: 'Tài liệu', end: false, protected: true },
+  { to: '/ai', label: 'Tư vấn AI', end: false, protected: true },
 ];
 
 export function AppLayout() {

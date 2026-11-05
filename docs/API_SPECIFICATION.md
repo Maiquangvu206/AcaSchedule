@@ -248,15 +248,11 @@ Quy tắc tải lên tài liệu (BR-DOCS):
 
 ## AI Advisor
 
-| Method | Path | Trạng thái |
+| Method | Path | Mô tả |
 | --- | --- | --- |
-| GET | `/api/ai/status` | Implemented (proxy tới AI service) |
-| POST | `/api/ai/advice` | Implemented |
-| POST | `/api/ai/documents/summarize` | Implemented |
-| POST | `/api/ai/qa` | Implemented |
+| GET | `/api/ai/status` | Tình trạng dịch vụ AI (proxy tới AI service). |
+| POST | `/api/ai/advice` | Tư vấn học tập từ dữ liệu điểm thật của sinh viên (lấy từ bảng điểm, không tin client). |
+| POST | `/api/ai/documents/summarize` | Tóm tắt nội dung tài liệu (Gemini hoặc fallback cục bộ). |
+| POST | `/api/ai/qa` | Trả lời câu hỏi dựa trên ngữ cảnh tài liệu, kèm `sources`. |
 
-Backend proxy `/api/ai/*` tới service Python (`ai/`) qua `AI_SERVICE_URL`.
-Service này gọi Gemini khi có `GEMINI_API_KEY`, ngược lại trả kết quả fallback cục bộ
-(`used_fallback: true`) nên hệ thống vẫn chạy được khi chưa cấu hình AI.
-
-> Các endpoint `Planned` hiện trả `501 Not Implemented` kèm danh sách route dự kiến.
+Quy tắc tư vấn (BR-AI): `POST /api/ai/advice` lấy điểm thật từ bảng điểm của sinh viên đang đăng ký qua PostgreSQL; client chỉ gửi `targetCpa` và `question` tùy chọn. Dữ liệu được loại bỏ thông tin nhận dạng cá nhân trước khi gửi đến mô hình AI; log chỉ ghi siêu dữ liệu. Áp dụng quota mỗi người dùng (20 lần/giờ qua Redis); vượt hạn trả `429`. Cache câu trả lời theo hash (TTL 10 phút). Nếu `GEMINI_API_KEY` chưa cấu hình hoặc Gemini lỗi/timeout/429, trả kết quả fallback cục bộ (`used_fallback: true`), không trả `500`. Backend proxy `/api/ai/*` tới service Python (`ai/`) qua `AI_SERVICE_URL`.

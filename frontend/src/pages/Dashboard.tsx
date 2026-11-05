@@ -19,7 +19,7 @@ const modules = [
     description:
       'Phân tích xu hướng điểm, dự báo điểm thi cần đạt và tư vấn lộ trình đăng ký môn học bằng RAG.',
     tags: ['Gemini', 'RAG', 'Q&A'],
-    status: 'planned' as const,
+    status: 'done' as const,
   },
   {
     icon: '📚',

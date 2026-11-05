@@ -432,3 +432,25 @@ export async function fetchDocumentDownload(
   return apiRequest<DocumentDownload>(`/documents/${documentId}/download${query}`, { token });
 }
 
+export interface AiAdviceRequest {
+  targetCpa?: number;
+  question?: string;
+}
+
+export interface AiAdviceResponse {
+  advice: string;
+  model: string;
+  used_fallback: boolean;
+}
+
+export async function fetchAiAdvice(
+  token: string,
+  input: AiAdviceRequest,
+): Promise<AiAdviceResponse> {
+  return apiRequest<AiAdviceResponse>('/ai/advice', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+}
+

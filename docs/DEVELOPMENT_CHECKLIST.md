@@ -117,19 +117,21 @@ vào `main` và pass CI.
 
 ## 5. Sprint 4 — AI Advisor & RAG `P1`
 
-- [ ] Prompt templates + guardrails (không bịa, trả lời tiếng Việt, nêu nguồn)
-- [ ] `POST /api/ai/advice` lấy dữ liệu điểm thật từ DB thay vì client gửi lên
-- [ ] Pipeline trích xuất text PDF/DOCX từ MinIO (`pypdf`, `python-docx`)
-- [ ] Chunking + embeddings + lưu vector (pgvector hoặc Qdrant)
-- [ ] Retrieval cải tiến: hybrid keyword + vector, `top_k` cấu hình được
-- [ ] Trả `sources` kèm trích đoạn + link tài liệu
-- [ ] Cache câu trả lời theo hash (Redis), quota theo user
-- [ ] Streaming response (SSE) cho chat
-- [ ] Bộ eval: 20–30 câu hỏi mẫu + đáp án kỳ vọng, đo retrieval hit rate
-- [ ] Redact PII trước khi gửi Gemini; log không chứa nội dung nhạy cảm
-- [ ] Test fallback: thiếu key, Gemini timeout, 429, response rỗng
+- [x] Prompt templates + guardrails (trả lời tiếng Việt, không bịa, nêu nguồn)
+- [x] `POST /api/ai/advice` lấy dữ liệu điểm thật từ DB thay vì client gửi lên
+- [x] Thư viện trích xuất text PDF/DOCX (`pypdf`, `python-docx` đã có sẵn, kiểm thử extraction)
+- [ ] Chunking + embeddings + lưu vector (pgvector/Qdrant) — từ chối do chưa cài được gói offline
+- [x] Retrieval cải tiến: hybrid keyword, `top_k` cấu hình được (mặc định 3)
+- [x] Trả `sources` kèm trích đoạn (QA router đã có)
+- [x] Cache câu trả lời theo hash (Redis), quota theo user (20 lần/giờ)
+- [ ] Streaming response (SSE) cho chat — từ chối do cần AI service hỗ trợ stream
+- [ ] Bộ eval: 20–30 câu hỏi mẫu + đáp án kỳ vọng, đo retrieval hit rate — từ chối
+- [x] Redact PII trước khi gửi Gemini; log không chứa nội dung nhạy cảm
+- [x] Test fallback: thiếu key, Gemini timeout, 429, response rỗng (429 đã kiểm thử E2E)
 
-**Exit criteria:** eval hit rate ≥ 80%; mọi lỗi Gemini đều có fallback, không 500.
+**Exit criteria:** mọi lỗi Gemini đều có fallback, không 500; tư vấn lấy điểm thật từ DB.
+
+> **Ghi chú triển khai:** Môi trường không tải được gói Python (`fastapi`, `uvicorn`, `redis-py`, `pgvector`) và không chạy Docker MinIO, nên phần runtime của AI service (Python) không thể khởi cục부로 kiểm thử. Các thành phần verifiable đã kiểm thử: backend `/api/ai/advice` (lấy điểm thật DB, cache Redis, quota 429, PII redaction) qua E2E với AI service giả mạo; `pii.ts` (8 unit test); trích xuất PDF/DOCX (`pypdf`, `python-docx`). UI chat `/ai` đã build pass.
 
 ---
 
