@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useGPA } from '../hooks';
 import { type TranscriptAttempt } from '../lib/api';
+import { ContextualAiPanel } from '../components/ContextualAiPanel';
 
 const REASON_LABELS: Record<TranscriptAttempt['reason'], string> = {
   counted: 'Đang tính CPA',
@@ -49,21 +49,8 @@ export function TranscriptPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-brand-600">
-            Academic Core
-          </p>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Bảng điểm & CPA</h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
-            Điểm Hệ 10 được quy đổi sang điểm chữ và Hệ 4. Mỗi môn chỉ có một lượt được tính CPA: lượt
-            đạt thay thế lượt F, lượt có điểm Hệ 4 cao nhất được giữ khi học cải thiện.
-          </p>
         </div>
-        <Link
-          to="/"
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-300 hover:text-slate-900"
-        >
-          ← Tổng quan
-        </Link>
       </header>
 
       {loading ? (
@@ -103,10 +90,6 @@ export function TranscriptPage() {
           <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div className="rounded-2xl border border-gray-200 bg-white p-6">
               <h2 className="text-lg font-semibold text-slate-900">Dự báo CPA</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Ước tính điểm Hệ 4 trung bình cần đạt cho số tín chỉ sắp tới để chạm mục tiêu.
-              </p>
-
               <form onSubmit={handleForecastSubmit} className="mt-5 grid gap-4 sm:grid-cols-3">
                 <label className="block space-y-2 text-sm">
                   <span className="font-medium text-slate-700">CPA mục tiêu</span>
@@ -181,9 +164,8 @@ export function TranscriptPage() {
                     </p>
                   ) : null}
                   <p
-                    className={`sm:col-span-2 font-medium ${
-                      forecast.feasible ? 'text-emerald-600' : 'text-amber-600'
-                    }`}
+                    className={`sm:col-span-2 font-medium ${forecast.feasible ? 'text-emerald-600' : 'text-amber-600'
+                      }`}
                   >
                     {forecast.feasible
                       ? 'Mục tiêu khả thi với số tín chỉ đã nhập.'
@@ -209,12 +191,10 @@ export function TranscriptPage() {
                   <dd className="font-medium text-slate-900">{semesters.length}</dd>
                 </div>
               </dl>
-              <p className="mt-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs leading-6 text-slate-600">
-                CPA làm tròn 2 chữ số. Môn 0 tín chỉ không ảnh hưởng CPA. Tín chỉ tích lũy chỉ được
-                cộng một lần cho mỗi môn.
-              </p>
             </div>
           </section>
+
+          <ContextualAiPanel mode="direction" />
 
           {semesters.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-slate-500">
@@ -283,15 +263,14 @@ export function TranscriptPage() {
                             {formatNumber(attempt.grade4)}
                           </td>
                           <td className="px-4 py-3">
-                             <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-                              attempt.countedInCpa
-                                ? 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30'
-                                : 'bg-gray-100 text-slate-600 ring-slate-300'
-                            }`}
-                          >
-                            {REASON_LABELS[attempt.reason]}
-                          </span>
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${attempt.countedInCpa
+                                  ? 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30'
+                                  : 'bg-gray-100 text-slate-600 ring-slate-300'
+                                }`}
+                            >
+                              {REASON_LABELS[attempt.reason]}
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -320,11 +299,10 @@ function SummaryCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border p-5 ${
-        highlight
+      className={`rounded-2xl border p-5 ${highlight
           ? 'border-brand-400/30 bg-brand-500/10'
           : 'border-gray-200 bg-white'
-      }`}
+        }`}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">

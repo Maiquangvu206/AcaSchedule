@@ -20,6 +20,7 @@ import {
   type DocumentItem,
   type DocumentSubject,
 } from '../lib/api';
+import { ContextualAiPanel } from '../components/ContextualAiPanel';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const ACCEPT = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg';
@@ -326,11 +327,9 @@ export function DocumentsPage() {
     <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-brand-600">Sprint 3</p>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Kho tài liệu cộng đồng</h1>
           <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
-            Đề thi, slide và bài tập mẫu theo môn học. Sinh viên chỉ có thể xem và đóng góp cho các
-            môn đã đăng ký; tệp được tải trực tiếp lên MinIO bằng presigned URL.
+            Đề thi, slide và bài tập mẫu theo môn học.
           </p>
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -350,6 +349,8 @@ export function DocumentsPage() {
           {notice}
         </p>
       ) : null}
+
+      <ContextualAiPanel mode="study" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section className="space-y-4">
