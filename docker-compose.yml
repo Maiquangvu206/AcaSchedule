@@ -1,0 +1,118 @@
+name: acaschedule
+
+services:
+  # ── Data layer (internal network only) ──────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-acaschedule}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-acaschedule}
+      POSTGRES_DB: ${POSTGRES_DB:-acaschedule}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-acaschedule} -d ${POSTGRES_DB:-acaschedule}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - data
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data
+
+  # ── Application layer ──────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+      target: production
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 8000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://acaschedule:acaschedule@db:5432/acaschedule}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-documents}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - edge
+      - data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      target: production
+    restart: unless-stopped
+    networks:
+      - edge
+
+  # ── Edge / reverse proxy ───────────────────────────────────
+  webserver:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - edge
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+
+networks:
+  edge:
+  data:
+    internal: true
