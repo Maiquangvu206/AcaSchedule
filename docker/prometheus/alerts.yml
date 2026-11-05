@@ -1,0 +1,63 @@
+# Alerting rules for AcaSchedule
+groups:
+  - name: acaschedule_alerts
+    rules:
+      # Backend API down
+      - alert: BackendDown
+        expr: up{job="acaschedule-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend API is down"
+          description: "The AcaSchedule backend API has been down for more than 1 minute."
+
+      # AI service down
+      - alert: AIDown
+        expr: up{job="acaschedule-ai"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AI service is down"
+          description: "The AI service has been down for more than 1 minute."
+
+      # PostgreSQL down
+      - alert: PostgresDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute."
+
+      # Redis down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute."
+
+      # MinIO down
+      - alert: MinIO Down
+        expr: up{job="minio"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MinIO is down"
+          description: "MinIO object storage has been down for more than 1 minute."
+
+      # Nginx down
+      - alert: NginxDown
+        expr: up{job="nginx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Nginx reverse proxy is down"
+          description: "Nginx reverse proxy has been down for more than 1 minute."

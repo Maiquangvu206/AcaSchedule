@@ -1,0 +1,42 @@
+# Prometheus configuration for AcaSchedule
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'acaschedule-monitor'
+
+rule_files:
+  - 'alerts.yml'
+
+scrape_configs:
+  - job_name: 'acaschedule-backend'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'acaschedule-ai'
+    static_configs:
+      - targets: ['ai:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['db:5432']
+    scrape_interval: 30s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio:9000']
+    scrape_interval: 30s
+
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['webserver:80']
+    scrape_interval: 30s
