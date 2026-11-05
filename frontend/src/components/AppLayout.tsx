@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { LanguageToggle } from './LanguageToggle';
 
 const navItems = [
   { to: '/', label: 'Tổng quan', end: true, protected: false },
@@ -51,6 +52,7 @@ export function AppLayout() {
                 {item.label}
               </NavLink>
             ))}
+            <LanguageToggle />
           </nav>
 
           <div className="flex items-center gap-3">
@@ -80,7 +82,13 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main>
+      <main id="main-content">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-brand-500 focus:text-white focus:rounded-lg"
+        >
+          Bỏ qua nội dung lặp
+        </a>
         <Outlet />
       </main>
     </div>

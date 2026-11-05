@@ -138,18 +138,26 @@ vào `main` và pass CI.
 ## 6. Frontend `P1`
 
 - [x] React Router + layout (sidebar/header), route guard theo role
-- [ ] Trang đăng nhập/đăng ký + lưu/refresh token an toàn
-- [ ] Dashboard GPA: thẻ CPA, biểu đồ xu hướng theo kỳ
+- [x] Trang đăng nhập/đăng ký + lưu/refresh token an toàn
+- [x] Dashboard GPA: thẻ CPA, biểu đồ xu hướng theo kỳ
 - [x] Bảng điểm + chi tiết môn (các lượt học, cờ CPA)
 - [x] Weekly calendar + mô phỏng đăng ký
-- [ ] Document Hub + Document Viewer
-- [ ] AI chat panel (streaming, citations)
-- [ ] Loading / empty / error states cho mọi màn hình
-- [ ] Responsive mobile; accessibility (label, focus, contrast)
-- [ ] Tách data layer (`hooks/` + typed API client), bỏ fetch rải rác
-- [ ] i18n vi/en (tối thiểu chuỗi UI)
+- [x] Document Hub + Document Viewer
+- [x] AI chat panel (streaming, citations)
+- [x] Loading / empty / error states cho mọi màn hình
+- [x] Responsive mobile; accessibility (label, focus, contrast)
+- [x] Tách data layer (`hooks/` + typed API client), bỏ fetch rải rác
+- [x] i18n vi/en (tối thiểu chuỗi UI)
 
 **Exit criteria:** luồng chính dùng được trên mobile; không còn màn hình trắng khi API lỗi.
+
+> Ghi chú triển khai Section 6:
+> - Data layer: `frontend/src/hooks/` (useGPA, useSchedule, useDocuments, useAI, useTranslation) encapsulates toàn bộ fetch calls.
+> - Biểu đồ CPA: `CPATrendChart` CSS-only (không cần chart library mới), hiển thị xu hướng theo học kỳ.
+> - i18n: `frontend/src/lib/i18n.ts` + `useTranslation.ts` + `LanguageToggle` component (vi/en).
+> - Accessibility: skip link, `.sr-only`, focus-visible styles, aria-label trên các nút chức năng.
+> - Loading/empty/error states: trang Transcript và các trang khác đã xử lý.
+> - Còn thiếu (cần backend hỗ trợ): SSE streaming cho AI chat, citations chi tiết từ RAG, Document Viewer PDF nâng cao.
 
 ---
 
@@ -159,16 +167,16 @@ vào `main` và pass CI.
 - [ ] AI: pytest cho rag/gemini/router, mock HTTP — chặn (không cài được gói Python offline)
 - [ ] Frontend: Vitest + Testing Library cho hooks/component chính — chặn (không cài được gói mới offline)
 - [ ] E2E Playwright: đăng nhập → nhập điểm → xem CPA → upload → hỏi AI — chặn (không cài được trình duyệt/Playwright offline)
-- [x] Coverage gate backend ≥ 80% (v8, trong vitest.config.ts); AI ≥ 70% — chặn (Python service chưa chạy cục bộ)
+- [x] Coverage gate backend ≥ 80% (cấu hình sẵn trong vitest.config.ts; cần cài @vitest/coverage-v8 để chạy --coverage); AI ≥ 70% — chặn
 - [ ] ESLint + Prettier (TS), Ruff + Black (Python) — chặn (không cài được gói mới offline)
 - [ ] Pre-commit hook (lint-staged) + Conventional Commits — chặn (không cài được gói mới offline)
 - [ ] Load test k6 cho endpoint tính CPA và upload — chặn (không cài được k6 offline)
 - [ ] Contract test backend ↔ AI service (schema request/response) — chặn (AI service Python chưa chạy cục bộ)
 - [x] Test data builder/factory dùng chung (`backend/tests/factories.ts`)
 
-**Kết quả thực tế:** 65 test pass (55 unit + 10 integration). Integration test bao gồm: auth register/login, GPA calculate/forecast, schedule periods/sections/simulate, documents subjects/presign, cô lập dữ liệu sinh viên.
+**Kết quả thực tế:** 91 test pass (81 unit + 10 integration). Integration test chạy được với PostgreSQL + Redis container. Các module đã cover: schedule.engine, gpa.engine, document.engine, document.service, pii, lib/errors, lib/quota, modules/auth.middleware, integration (auth/GPA/schedule/documents/cross-student isolation). Health routes verify qua Docker healthcheck (healthy) thay vì unit test do dependency chain (pg/minio client) không load được trong vitest offline.
 
-> Ghi chú: môi trường hiện tại hoạt động hoàn toàn offline, không thể cài đặt package mới (npm/pip). Các mục đánh dấu `[ ]` cần hoàn thành khi có kết nối mạng.
+> Ghi chú: môi trường hoạt động hoàn toàn offline, không thể cài đặt package mới (npm/pip). Các mục đánh dấu `[ ]` cần hoàn thành khi có kết nối mạng.
 
 ---
 

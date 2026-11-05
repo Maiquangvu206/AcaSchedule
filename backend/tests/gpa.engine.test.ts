@@ -215,4 +215,18 @@ describe('forecastCpa', () => {
     const result = forecastCpa({ cpa: 3.5, credits: 30, targetCpa: 3.0, additionalCredits: 0 });
     expect(result.feasible).toBe(true);
   });
+
+  it('marks target already met as feasible with any grade', () => {
+    const result = forecastCpa({ cpa: 3.8, credits: 30, targetCpa: 3.5, additionalCredits: 15 });
+    expect(result.requiredAverageGrade4).toBeGreaterThan(0);
+    expect(result.requiredAverageGrade4).toBeLessThanOrEqual(4);
+    expect(result.feasible).toBe(true);
+  });
+
+  it('rounds to two decimals for boundary values', () => {
+    expect(round2(0.005)).toBe(0.01);
+    expect(round2(0.004)).toBe(0);
+    expect(round2(3.555)).toBe(3.56);
+    expect(round2(3.554)).toBe(3.55);
+  });
 });

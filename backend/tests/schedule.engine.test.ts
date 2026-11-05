@@ -152,4 +152,39 @@ describe('findConflicts', () => {
     expect(meetings).toHaveLength(20);
     expect(findConflicts(meetings)).toHaveLength(0);
   });
+
+  it('reports cancelled sections but skips them in conflicts', () => {
+    const result = simulateSchedule([
+      meeting({ id: 'a', isCancelled: true }),
+      meeting({ id: 'b', startPeriod: 1, endPeriod: 2 }),
+      meeting({ id: 'c', startPeriod: 4, endPeriod: 5 }),
+    ]);
+
+    expect(result.cancelledSectionIds).toEqual(['a']);
+    expect(result.conflicts).toHaveLength(0);
+  });
+
+  it('reports multiple conflicts on the same day between active sections only', () => {
+    const result = simulateSchedule([
+      meeting({ id: 'a', startPeriod: 1, endPeriod: 2 }),
+      meeting({ id: 'b', startPeriod: 2, endPeriod: 3 }),
+      meeting({ id: 'c', startPeriod: 3, endPeriod: 4 }),
+      meeting({ id: 'd', startPeriod: 4, endPeriod: 5 }),
+    ]);
+
+    expect(result.conflicts).toHaveLength(3);
+    expect(result.conflicts[0].overlapStartPeriod).toBe(2);
+    expect(result.conflicts[1].overlapStartPeriod).toBe(3);
+    expect(result.conflicts[2].overlapStartPeriod).toBe(4);
+  });
+
+  it('treats cancelled section as invisible even when overlapping active ones', () => {
+    const result = simulateSchedule([
+      meeting({ id: 'a', isCancelled: true, startPeriod: 1, endPeriod: 3 }),
+      meeting({ id: 'b', startPeriod: 2, endPeriod: 4 }),
+    ]);
+
+    expect(result.cancelledSectionIds).toEqual(['a']);
+    expect(result.conflicts).toHaveLength(0);
+  });
 });
