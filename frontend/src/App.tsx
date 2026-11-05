@@ -3,6 +3,7 @@ import { AuthProvider } from './auth/AuthContext';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { Dashboard } from './pages/Dashboard';
+import { DocumentsPage } from './pages/Documents';
 import { Login } from './pages/Login';
 import { SchedulePage } from './pages/Schedule';
 import { TranscriptPage } from './pages/Transcript';
@@ -18,6 +19,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="transcript" element={<TranscriptPage />} />
               <Route path="schedule" element={<SchedulePage />} />
+              <Route path="documents" element={<DocumentsPage />} />
             </Route>
           </Route>
         </Routes>

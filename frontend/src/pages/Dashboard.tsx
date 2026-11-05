@@ -27,7 +27,7 @@ const modules = [
     description:
       'Kho đề thi, slide và bài tập mẫu theo môn học, xếp hạng bằng upvote/downvote và phân quyền tải lên.',
     tags: ['BR-DOCS', 'MinIO', 'Voting'],
-    status: 'planned' as const,
+    status: 'done' as const,
   },
   {
     icon: '🗓️',

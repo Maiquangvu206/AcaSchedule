@@ -10,6 +10,19 @@ export const minioClient = new Client({
   secretKey: env.MINIO_SECRET_KEY,
 });
 
+/**
+ * Used only for presigned URLs returned to the browser. Behind Docker Compose the
+ * internal host `minio` is not resolvable from the user's machine, so URLs must be
+ * signed with the published host/port instead.
+ */
+export const minioPublicClient = new Client({
+  endPoint: env.MINIO_PUBLIC_ENDPOINT ?? env.MINIO_ENDPOINT,
+  port: env.MINIO_PUBLIC_PORT ?? env.MINIO_PORT,
+  useSSL: env.MINIO_PUBLIC_USE_SSL ?? env.MINIO_USE_SSL,
+  accessKey: env.MINIO_ACCESS_KEY,
+  secretKey: env.MINIO_SECRET_KEY,
+});
+
 const RETRY_DELAYS_MS = [500, 1_500, 3_000];
 
 /**

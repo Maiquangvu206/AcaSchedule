@@ -105,6 +105,12 @@ vào `main` và pass CI.
 
 **Exit criteria:** upload/download end-to-end qua MinIO; không lộ bucket public.
 
+> **Tiến độ (chưa merge, chưa tick):** code đã có trong working copy, chưa commit.
+> - Đã code + unit test (`backend/tests/document.engine.test.ts`, `backend/tests/document.service.test.ts`, 47/47 pass): presign upload + kiểm tra enrollment, validate MIME/extension/size/executable, xác minh object trên MinIO sau upload, lưu metadata, vote (upsert/đổi/bỏ, 404 khi không có quyền), ranking + tie-break, presigned download + kiểm tra quyền.
+> - Đã code, chưa có test: `GET /api/documents` (filter/search/sort) ở tầng SQL, UI kho tài liệu + viewer PDF (`frontend/src/pages/Documents.tsx`, build pass).
+> - Chưa kiểm chứng: end-to-end qua PostgreSQL + MinIO thật (môi trường hiện chưa chạy Docker/DB), migration `004_documents.sql` trên DB thật, không lộ bucket public.
+> - Sẽ tick các ô trên sau khi commit, CI xanh và chạy e2e thành công.
+
 ---
 
 ## 5. Sprint 4 — AI Advisor & RAG `P1`

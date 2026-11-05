@@ -72,6 +72,48 @@ export interface PeriodSlot {
   label: string;
 }
 
+export interface DocumentSubject {
+  id: string;
+  code: string;
+  name: string;
+  credits: number;
+  documentCount: number;
+}
+
+export interface DocumentItem {
+  id: string;
+  subjectId: string;
+  subjectCode: string;
+  subjectName: string;
+  title: string;
+  originalName: string | null;
+  mimeType: string;
+  sizeBytes: number;
+  upvotes: number;
+  downvotes: number;
+  score: number;
+  myVote: -1 | 0 | 1;
+  uploaderId: string;
+  uploaderName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocumentUploadTicket {
+  uploadUrl: string;
+  objectKey: string;
+  method: 'PUT';
+  expiresIn: number;
+  requiredHeaders: Record<string, string>;
+}
+
+export interface DocumentDownload {
+  url: string;
+  expiresIn: number;
+  disposition: 'inline' | 'attachment';
+  document: DocumentItem;
+}
+
 export interface CourseSection {
   id: string;
   subjectId: string;
@@ -319,3 +361,74 @@ export async function updateScheduleItem(
 export async function deleteScheduleItem(token: string, itemId: string): Promise<void> {
   await apiRequest<null>(`/schedule/items/${itemId}`, { method: 'DELETE', token });
 }
+
+export async function fetchDocumentSubjects(token: string): Promise<DocumentSubject[]> {
+  const result = await apiRequest<{ subjects: DocumentSubject[] }>('/documents/subjects', { token });
+  return result.subjects;
+}
+
+export async function fetchDocuments(
+  token: string,
+  input: { subjectId?: string; q?: string; sort?: 'rank' | 'newest' } = {},
+): Promise<DocumentItem[]> {
+  const query = new URLSearchParams();
+  if (input.subjectId) query.set('subjectId', input.subjectId);
+  if (input.q) query.set('q', input.q);
+  if (input.sort) query.set('sort', input.sort);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const result = await apiRequest<{ documents: DocumentItem[] }>(`/documents${suffix}`, { token });
+  return result.documents;
+}
+
+export async function presignDocumentUpload(
+  token: string,
+  input: { subjectId: string; fileName: string; mimeType: string; sizeBytes: number },
+): Promise<DocumentUploadTicket> {
+  return apiRequest<DocumentUploadTicket>('/documents/uploads/presign', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+}
+
+export async function createDocumentRecord(
+  token: string,
+  input: {
+    subjectId: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    objectKey: string;
+    title: string;
+  },
+): Promise<DocumentItem> {
+  const result = await apiRequest<{ document: DocumentItem }>('/documents', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+  return result.document;
+}
+
+export async function voteDocument(
+  token: string,
+  documentId: string,
+  value: -1 | 0 | 1,
+): Promise<DocumentItem> {
+  const result = await apiRequest<{ document: DocumentItem }>(`/documents/${documentId}/vote`, {
+    method: 'POST',
+    token,
+    body: { value },
+  });
+  return result.document;
+}
+
+export async function fetchDocumentDownload(
+  token: string,
+  documentId: string,
+  inline = false,
+): Promise<DocumentDownload> {
+  const query = inline ? '?inline=true' : '';
+  return apiRequest<DocumentDownload>(`/documents/${documentId}/download${query}`, { token });
+}
+
