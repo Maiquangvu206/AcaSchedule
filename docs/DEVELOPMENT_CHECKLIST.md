@@ -91,19 +91,21 @@ vào `main` và pass CI.
 
 ## 4. Sprint 3 — Crowdsourced Document Hub `P1`
 
-- [ ] Presigned upload URL tới MinIO (stream, không qua backend)
-- [ ] Kiểm tra quyền upload: môn phải có trong `student_enrollments`
-- [ ] Validate file: MIME, dung lượng, extension; chặn executable
-- [ ] Lưu metadata `subject_documents` + object key
-- [ ] `GET /api/documents?subjectId=&q=&sort=` (ranking + tìm kiếm)
-- [ ] Upvote/downvote: 1 user 1 vote, đổi vote hợp lệ
-- [ ] Công thức ranking + tie-break theo thời gian
-- [ ] Presigned download URL + kiểm tra quyền
-- [ ] UI kho tài liệu: filter môn, sort, vote, upload
-- [ ] UI document viewer (PDF)
-- [ ] Test: upload môn không đăng ký bị chặn, vote trùng, file quá lớn
+- [x] Presigned upload URL tới MinIO (stream, không qua backend)
+- [x] Kiểm tra quyền upload: môn phải có trong `student_enrollments`
+- [x] Validate file: MIME, dung lượng, extension; chặn executable
+- [x] Lưu metadata `subject_documents` + object key
+- [x] `GET /api/documents?subjectId=&q=&sort=` (ranking + tìm kiếm)
+- [x] Upvote/downvote: 1 user 1 vote, đổi vote hợp lệ
+- [x] Công thức ranking + tie-break theo thời gian
+- [x] Presigned download URL + kiểm tra quyền
+- [x] UI kho tài liệu: filter môn, sort, vote, upload
+- [x] UI document viewer (PDF)
+- [x] Test: upload môn không đăng ký bị chặn, vote trùng, file quá lớn
 
 **Exit criteria:** upload/download end-to-end qua MinIO; không lộ bucket public.
+
+> Đã kiểm thử bằng 23 check E2E với PostgreSQL + Redis thật + MinIO mock (moto S3): đăng nhập, danh sách môn đã đăng ký, presigned PUT URL, tải trực tiếp lên MinIO, xác minh kích thước/MIME, lưu metadata, danh sách tài liệu, upvote/dowvote/hủy vote, URL tải xuống (inline), cô lập dữ liệu giữa sinh viên (sinh viên khác không bị bỏ phiếu/tải tài liệu môn chưa đăng ký). Unit test validateUploadMetadata (MIME, kích thước, extension bị chặn, file quá lớn) và ranking (điểm, upvotes, thời gian).
 
 > **Tiến độ (chưa merge, chưa tick):** code đã có trong working copy, chưa commit.
 > - Đã code + unit test (`backend/tests/document.engine.test.ts`, `backend/tests/document.service.test.ts`, 47/47 pass): presign upload + kiểm tra enrollment, validate MIME/extension/size/executable, xác minh object trên MinIO sau upload, lưu metadata, vote (upsert/đổi/bỏ, 404 khi không có quyền), ranking + tie-break, presigned download + kiểm tra quyền.

@@ -162,7 +162,9 @@ make prod
 ### 3. Crowdsourced Document Hub (BR-DOCS)
 
 - **Ràng buộc đóng góp:** Sinh viên chỉ có quyền upload tài liệu cho các môn học mà mình đã/đang đăng ký trong dữ liệu `student_enrollments`.
-- **Cơ chế Upvote/Downvote:** Tự động ưu tiên hiển thị các tài liệu hữu ích lên đầu bảng tin tìm kiếm.
+- **Cơ chế Upvote/Downvote:** Tự động ưu tiên hiển thị các tài liệu hữu ích lên đầu bảng tin tìm kiếm; một user một vote, có thể đổi/hủy vote.
+- **Tải lên trực tiếp qua presigned URL:** Backend cấp URL PUT có thời hạn; trình duyệt PUT tệp trực tiếp lên MinIO, không qua backend. Backend xác minh lại kích thước và MIME thật trước khi lưu metadata.
+- **Bảo mật tệp:** Giới hạn 20 MB, kiểm tra MIME và phần mở rộng phải khớp, chặn tệp thực thi (exe, bat, sh, js, php, py…).
 
 ### 4. AI Academic Advisor & Document RAG (BR-AI)
 

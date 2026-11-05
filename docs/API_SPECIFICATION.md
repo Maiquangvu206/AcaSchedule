@@ -224,12 +224,27 @@ Body lịch cá nhân:
 
 ## Documents
 
-| Method | Path | Trạng thái |
+| Method | Path | Mô tả |
 | --- | --- | --- |
-| GET | `/api/documents?subjectId=` | Planned |
-| POST | `/api/documents` | Planned |
-| POST | `/api/documents/:id/vote` | Planned |
-| GET | `/api/documents/:id/download` | Planned |
+| GET | `/api/documents/subjects` | Các môn sinh viên đã đăng ký (để đóng góp/xem tài liệu). |
+| POST | `/api/documents/uploads/presign` | Cấp URL presigned PUT để trình duyệt tải trực tiếp lên MinIO. |
+| POST | `/api/documents` | Xác nhận upload và lưu metadata (kèm kiểm tra lại kích thước/MIME thật). |
+| GET | `/api/documents?subjectId=&q=&sort=` | Danh sách tài liệu theo môn, tìm kiếm, sắp xếp (nổi bật/mới nhất). |
+| POST | `/api/documents/:id/vote` | Bình chọn (1: upvote, -1: downvote, 0: hủy); 1 user 1 vote. |
+| GET | `/api/documents/:id/download?inline=true` | URL presigned tải xuống/xem trực tiếp tài liệu. |
+
+Quy tắc tải lên tài liệu (BR-DOCS):
+
+1. Chỉ được tải tài liệu cho môn mà sinh viên hiện tại đang có trong `student_enrollments`.
+2. Tệp thực qua presigned PUT trực tiếp tới MinIO; backend không đọc nội dung tệp.
+3. Validate trước khi ký URL và lại sau khi object đã về MinIO:
+   - Kích thước tối đa 20 MB, không rỗng.
+   - MIME type và phần mở rộng phải khớp (PDF, Office, văn bản, ảnh).
+   - Chặn các tệp thực thi (exe, bat, sh, js, php, py, ...).
+4. Object key được sinh bởi backend theo mẫu `subjects/{subjectId}/{studentId}/{uuid}.{ext}`.
+5. Metadata (`subject_documents`): tiêu đề, tên gốc, MIME, kích thước, object key, người tải lên, thời gian.
+6. Counters `upvotes`/`downvotes` được tính lại từ bảng `document_votes` (một user một vote).
+7. Xem/tải xuống yêu cầu quyền truy cập môn học; không lộ bucket public.
 
 ## AI Advisor
 

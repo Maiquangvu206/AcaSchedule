@@ -110,12 +110,29 @@ Metadata tài liệu cộng đồng; file thật nằm trên MinIO.
 | subject_id | uuid FK → subjects | |
 | uploader_id | uuid FK | |
 | title | varchar(255) | |
+| original_name | varchar(255) | Tên tệp gốc khi tải lên |
 | object_key | text | Đường dẫn trong bucket |
 | mime_type | varchar(100) | |
 | size_bytes | bigint | |
 | upvotes | integer DEFAULT 0 | |
 | downvotes | integer DEFAULT 0 | |
-| created_at | timestamptz | |
+| created_at / updated_at | timestamptz | Trigger cập nhật `updated_at` |
+### `document_votes`
+
+Một user một bình chọn cho mỗi tài liệu.
+
+| Cột | Kiểu | Ghi chú |
+| --- | --- | --- |
+| id | uuid PK | |
+| document_id | uuid FK → subject_documents | ON DELETE CASCADE |
+| user_id | uuid FK → users | ON DELETE CASCADE |
+| value | smallint | `1` upvote, `-1` downvote |
+| created_at / updated_at | timestamptz | |
+
+Ràng buộc:
+
+- `UNIQUE (document_id, user_id)`
+- `INDEX (user_id, value)`
 
 ### `period_slots`
 
