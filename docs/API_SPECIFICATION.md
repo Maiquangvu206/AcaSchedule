@@ -57,8 +57,13 @@ Base URL: `/api` (qua Nginx) · Backend nội bộ: `http://backend:8000`
 
 | Method | Path | Trạng thái |
 | --- | --- | --- |
-| POST | `/api/ai/advice` | Planned |
-| POST | `/api/ai/documents/:id/summarize` | Planned |
-| POST | `/api/ai/qa` | Planned |
+| GET | `/api/ai/status` | Implemented (proxy tới AI service) |
+| POST | `/api/ai/advice` | Implemented |
+| POST | `/api/ai/documents/summarize` | Implemented |
+| POST | `/api/ai/qa` | Implemented |
+
+Backend proxy `/api/ai/*` tới service Python (`ai/`) qua `AI_SERVICE_URL`.
+Service này gọi Gemini khi có `GEMINI_API_KEY`, ngược lại trả kết quả fallback cục bộ
+(`used_fallback: true`) nên hệ thống vẫn chạy được khi chưa cấu hình AI.
 
 > Các endpoint `Planned` hiện trả `501 Not Implemented` kèm danh sách route dự kiến.

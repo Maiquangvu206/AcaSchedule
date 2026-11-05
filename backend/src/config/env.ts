@@ -27,6 +27,7 @@ const envSchema = z.object({
   MINIO_BUCKET: z.string().default('documents'),
 
   GEMINI_API_KEY: z.string().optional().default(''),
+  AI_SERVICE_URL: z.string().url().default('http://localhost:8001'),
 });
 
 const parsed = envSchema.safeParse(process.env);

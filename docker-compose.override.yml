@@ -1,5 +1,9 @@
 # Local development overrides: hot-reload, exposed data ports, dev nginx config.
 services:
+  ai:
+    ports:
+      - "8001:8000"
+
   backend:
     build:
       target: development

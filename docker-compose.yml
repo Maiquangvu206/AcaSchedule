@@ -54,6 +54,30 @@ services:
       - data
 
   # ── Application layer ──────────────────────────────────────
+  ai:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ai
+    restart: unless-stopped
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - edge
+      - data
+
   backend:
     build:
       context: .
@@ -73,6 +97,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-documents}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_SERVICE_URL: http://ai:8000
     depends_on:
       db:
         condition: service_healthy
@@ -80,9 +105,12 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      ai:
+        condition: service_healthy
     networks:
       - edge
       - data
+
 
   frontend:
     build:

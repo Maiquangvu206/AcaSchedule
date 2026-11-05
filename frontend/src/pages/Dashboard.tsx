@@ -41,6 +41,7 @@ const services = [
   { name: 'Nginx', role: 'Reverse proxy & static assets' },
   { name: 'Frontend', role: 'React 18 + TypeScript + Tailwind' },
   { name: 'Backend', role: 'Node.js + Express + Zod' },
+  { name: 'AI Service', role: 'Python + FastAPI + Gemini RAG' },
   { name: 'PostgreSQL 16', role: 'Relational data' },
   { name: 'Redis 7', role: 'Session & quota cache' },
   { name: 'MinIO', role: 'S3-compatible file storage' },
@@ -104,7 +105,8 @@ export function Dashboard() {
             <p className="text-sm leading-relaxed text-slate-400">
               Nginx đóng vai trò reverse proxy, định tuyến <code className="text-brand-300">/api</code>{' '}
               tới backend Express và phần còn lại tới frontend React. Backend kết nối PostgreSQL,
-              Redis và MinIO trong mạng nội bộ cách ly; AI Advisor gọi Gemini qua RAG pipeline.
+              Redis và MinIO trong mạng nội bộ cách ly; các route <code className="text-brand-300">/api/ai</code>{' '}
+              được proxy sang AI service Python (Gemini + RAG).
             </p>
             <div className="rounded-xl bg-slate-950/80 p-4 font-mono text-xs leading-6 text-slate-400 ring-1 ring-inset ring-white/10">
               <p>Browser → Nginx → Frontend (SPA)</p>

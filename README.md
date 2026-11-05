@@ -75,7 +75,7 @@ Cơ sở dữ liệu được thiết kế chuẩn hóa trên **PostgreSQL**, h�
 
 ## ⚡ 5. Quick Start & Docker Deployment
 
-Hệ thống bao gồm **5 containers** khởi chạy bằng Docker Compose.
+Hệ thống bao gồm **7 containers** khởi chạy bằng Docker Compose (webserver, frontend, backend, ai, db, redis, minio).
 
 ### Yêu cầu môi trường
 
@@ -153,20 +153,29 @@ acaschedule-platform/
 │   ├── nginx/
 │   │   └── default.conf
 │   ├── Dockerfile.backend
-│   └── Dockerfile.frontend
+│   ├── Dockerfile.frontend
+│   └── Dockerfile.ai
 ├── backend/                      # Node.js/TypeScript Source Code
 │   ├── src/
-│   │   ├── modules/              # Admin, Student, GPA Engine, Schedule, Document, AI Advisor
+│   │   ├── modules/              # Admin, Student, GPA Engine, Schedule, Document, AI Proxy
 │   │   ├── database/             # Migrations & Seed Data
 │   │   └── main.ts
 │   └── package.json
+├── ai/                           # Python/FastAPI AI Service (Gemini + RAG)
+│   ├── app/
+│   │   ├── routers/              # Health, Advisor, Documents (summarize & Q&A)
+│   │   ├── services/             # Gemini client, RAG chunking/ranking
+│   │   ├── config.py
+│   │   ├── schemas.py
+│   │   └── main.py
+│   └── requirements.txt
 ├── frontend/                     # React/TypeScript UI Source Code
 │   ├── src/
 │   │   ├── components/           # Atomic UI Components & Document Viewer
 │   │   ├── hooks/                # Custom Hooks (useGPA, useConflict, useAI)
 │   │   └── pages/                # App Routing
 │   └── package.json
-├── docker-compose.yml            # Production Orchestration (5 Services)
+├── docker-compose.yml            # Production Orchestration (7 Services)
 ├── docker-compose.override.yml   # Local Dev Orchestration
 ├── Makefile                      # CLI Short-cut Commands
 └── README.md
