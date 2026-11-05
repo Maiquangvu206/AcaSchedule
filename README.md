@@ -1,5 +1,8 @@
 # 🎓 AcaSchedule - Personal Academic, Crowdsourced Hub & AI Advisor Platform
 
+[![CI/CD](https://github.com/your-username/acaschedule-platform/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/your-username/acaschedule-platform/actions/workflows/ci-cd.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## 📌 1. Executive Summary
 
 AcaSchedule là nền tảng quản trị học tập, chia sẻ tri thức cộng đồng và cố vấn AI cá nhân hóa dành cho sinh viên đại học. Hệ thống hợp nhất 4 phân hệ cốt lõi:
@@ -8,6 +11,26 @@ AcaSchedule là nền tảng quản trị học tập, chia sẻ tri thức cộ
 - **AI Academic Advisor (RAG Engine)**: Phân tích xu hướng điểm số, dự báo điểm thi cần đạt, đề xuất lộ trình đăng ký môn học và hỗ trợ Q&A/Tóm tắt thông minh trên file tài liệu bài giảng.
 - **Crowdsourced Document Hub**: Kho lưu trữ tài liệu học tập cộng đồng (Đề thi các năm, Slide, Bài tập lớn mẫu) phân loại theo môn học với cơ chế Upvote/Downvote và bảo mật phân quyền tải lên.
 - **Registration Simulator & Schedule Planner**: Giả lập xếp lịch học không trùng ca (Conflict Detection Engine) kết hợp quản lý lịch trình cá nhân theo ngày và tuần.
+
+## 🚀 3 bước chạy thử nhanh
+
+1. **Khởi chạy hệ thống:**
+   ```shell
+   git clone https://github.com/your-username/acaschedule-platform.git
+   cd acaschedule-platform
+   cp .env.example .env
+   docker compose up --build -d
+   ```
+
+2. **Truy cập ứng dụng:**
+   - Frontend: http://localhost
+   - Backend API: http://localhost/api/health
+   - Swagger UI: http://localhost/api/docs
+
+3. **Đăng nhập với tài khoản demo:**
+   - Sinh viên: `student@acaschedule.local` / `Student@123`
+   - Admin: `admin@acaschedule.local` / `Admin@123`
+
 
 ## 🏗 2. System Architecture & AI Pipeline
 

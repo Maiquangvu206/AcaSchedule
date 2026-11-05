@@ -224,6 +224,224 @@ Body lịch cá nhân:
 
 ## Documents
 
+Body presign upload:
+
+```json
+{
+  "subjectId": "uuid",
+  "fileName": "de-thi-giua-ky.pdf",
+  "mimeType": "application/pdf",
+  "sizeBytes": 1024
+}
+```
+
+Response presign upload:
+
+```json
+{
+  "uploadUrl": "http://localhost:9000/documents/subjects/bd2f958d-.../f4636ebb-.../a66bc6d2-aba5-460d-a4c1-bef1ee8c052e.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20261105%2Fus-east-1%2Fs3%2Faws4_request&...",
+  "objectKey": "subjects/bd2f958d-0aea-4b18-8782-a9fc93ec7ffa/f4636ebb-4186-46c9-aa28-022ca21d134d/a66bc6d2-aba5-460d-a4c1-bef1ee8c052e.pdf",
+  "method": "PUT",
+  "expiresIn": 600,
+  "requiredHeaders": { "Content-Type": "application/pdf" }
+}
+```
+
+Response tạo document:
+
+```json
+{
+  "document": {
+    "id": "uuid",
+    "subjectId": "bd2f958d-0aea-4b18-8782-a9fc93ec7ffa",
+    "subjectCode": "INT2204",
+    "subjectName": "Lập trình hướng đối tượng",
+    "title": "Đề thi giữa kỳ",
+    "originalName": "de-thi-giua-ky.pdf",
+    "mimeType": "application/pdf",
+    "sizeBytes": 1024,
+    "upvotes": 0,
+    "downvotes": 0,
+    "score": 0.0,
+    "myVote": 0,
+    "uploaderId": "f4636ebb-4186-46c9-aa28-022ca21d134d",
+    "uploaderName": "Sinh viên Demo",
+    "createdAt": "2026-11-05T08:13:47.000Z",
+    "updatedAt": "2026-11-05T08:13:47.000Z"
+  }
+}
+```
+
+Response vote:
+
+```json
+{
+  "document": {
+    "id": "uuid",
+    "subjectId": "bd2f958d-0aea-4b18-8782-a9fc93ec7ffa",
+    "subjectCode": "INT2204",
+    "subjectName": "Lập trình hướng đối tượng",
+    "title": "Đề thi giữa kỳ",
+    "originalName": "de-thi-giua-ky.pdf",
+    "mimeType": "application/pdf",
+    "sizeBytes": 1024,
+    "upvotes": 1,
+    "downvotes": 0,
+    "score": 0.5,
+    "myVote": 1,
+    "uploaderId": "f4636ebb-4186-46c9-aa28-022ca21d134d",
+    "uploaderName": "Sinh viên Demo",
+    "createdAt": "2026-11-05T08:13:47.000Z",
+    "updatedAt": "2026-11-05T08:13:47.000Z"
+  }
+}
+```
+
+Response download:
+
+```json
+{
+  "url": "http://localhost:9000/documents/subjects/bd2f958d-.../a66bc6d2-...pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&...",
+  "expiresIn": 600,
+  "disposition": "inline",
+  "document": { ... }
+}
+```
+
+## AI Advisor
+
+Body advice:
+
+```json
+{
+  "targetCpa": 3.5,
+  "question": "Làm sao để nâng CPA nhanh nhất?"
+}
+```
+
+Response advice:
+
+```json
+{
+  "advice": "CPA của bạn đang ổn định. Nên ưu tiên học lại môn có điểm thấp nhất.",
+  "model": "gemini",
+  "used_fallback": false
+}
+```
+
+Response advice (fallback mode):
+
+```json
+{
+  "advice": "CPA hiện tại ước tính: 2.50/4.0 trên 30 tín chỉ được tính.\n\nMôn nên ưu tiên cải thiện: Giải tích 2 (2.00/4).",
+  "model": "fallback",
+  "used_fallback": true
+}
+```
+
+Body summarize:
+
+```json
+{
+  "text": "Nội dung tài liệu cần tóm tắt...",
+  "maxSentences": 6
+}
+```
+
+Response summarize:
+
+```json
+{
+  "summary": "Tóm tắt nội dung tài liệu...",
+  "model": "gemini",
+  "used_fallback": false
+}
+```
+
+Body QA:
+
+```json
+{
+  "question": "Làm sao để chuẩn bị đề thi?",
+  "documents": [
+    { "title": "Đề thi giữa kỳ", "text": "Nội dung tài liệu..." }
+  ]
+}
+```
+
+Response QA:
+
+```json
+{
+  "answer": "Dựa trên tài liệu, bạn nên...",
+  "sources": [
+    { "title": "Đề thi giữa kỳ", "snippet": "Nội dung tài liệu..." }
+  ],
+  "model": "gemini",
+  "used_fallback": false
+}
+```
+
+## Auth
+
+Body register:
+
+```json
+{
+  "email": "student@acaschedule.local",
+  "password": "Student@123",
+  "fullName": "Sinh viên Demo"
+}
+```
+
+Response register/login:
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "student@acaschedule.local",
+    "fullName": "Sinh viên Demo",
+    "role": "student",
+    "createdAt": "2026-11-05T08:00:00.000Z"
+  },
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+Response refresh:
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "student@acaschedule.local",
+    "fullName": "Sinh viên Demo",
+    "role": "student",
+    "createdAt": "2026-11-05T08:00:00.000Z"
+  },
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+Response me:
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "student@acaschedule.local",
+    "fullName": "Sinh viên Demo",
+    "role": "student",
+    "createdAt": "2026-11-05T08:00:00.000Z"
+  }
+}
+```
+
+## Documents
+
 | Method | Path | Mô tả |
 | --- | --- | --- |
 | GET | `/api/documents/subjects` | Các môn sinh viên đã đăng ký (để đóng góp/xem tài liệu). |

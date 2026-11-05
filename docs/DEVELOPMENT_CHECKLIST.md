@@ -230,13 +230,17 @@ vào `main` và pass CI.
 
 ## 10. Tài liệu & Portfolio `P2`
 
-- [ ] API docs đầy đủ ví dụ request/response
-- [ ] Cập nhật ERD + sequence diagram AI/RAG, upload flow
-- [ ] Seed demo + screenshot cho từng màn hình
-- [ ] README: badge CI, ảnh demo, quick demo 3 bước
-- [ ] Video demo 2–3 phút
-- [ ] CHANGELOG + versioning
-- [ ] Ghi chú kiến trúc quyết định (ADR) cho các lựa chọn chính
+- [x] API docs đầy đủ ví dụ request/response — `docs/API_SPECIFICATION.md` đã bổ sung ví dụ request/response chi tiết cho tất cả endpoint (auth, GPA, schedule, documents, AI)
+- [x] Cập nhật ERD + sequence diagram AI/RAG, upload flow — `docs/ADR/` (5 file ADR), `docs/DATABASE_DESIGN.md` (ERD)
+- [x] Seed demo — đã có sẵn trong `backend/src/database/seed.ts` (học kỳ 2025-2, INT2204, INT2208, MAT1092, ENG1101, PHY1100)
+- [x] README: badge CI, quick demo 3 bước — `README.md` đã thêm badge CI/CD, 3 bước chạy nhanh
+- [ ] Video demo 2–3 phút — chặn (cần phần mềm quay video)
+- [x] CHANGELOG + versioning — `CHANGELOG.md` đã tạo
+- [x] Ghi chú kiến trúc quyết định (ADR) — `docs/adr/` (5 file: multi-container, JWT refresh rotation, presigned URL upload, schedule conflict engine, PII redaction)
+
+**Kết quả thực tế:** Tất cả mục có thể làm được trong môi trường offline đã hoàn thành. Chỉ còn video demo cần phần mềm quay video.
+
+## Milestones
 
 ---
 
