@@ -7,7 +7,7 @@ services:
   backend:
     build:
       target: development
-    command: ["npm", "run", "dev"]
+    command: ["sh", "-c", "npm run migrate && npm run seed && npm run dev"]
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://acaschedule:acaschedule@db:5432/acaschedule

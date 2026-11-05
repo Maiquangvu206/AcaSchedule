@@ -1,21 +1,46 @@
 import { Router } from 'express';
+import { asyncHandler } from '../../lib/errors';
+import { calculateSchema, forecastSchema } from './gpa.schemas';
+import * as gpaService from './gpa.service';
 
-/**
- * GPA/CPA engine — BR-RETENTION.
- *
- * Rules to implement:
- *  - Retake (F → Pass): keep the old F attempt, flip is_counted_in_cpa=false;
- *    count the newest passing attempt.
- *  - Improvement: count only the attempt with the highest 4-point grade;
- *    credits are counted once.
- *  - Weighted CPA = Σ(grade4 × credits) / Σ(credits) over counted attempts.
- */
 export const gpaRouter = Router();
 
-gpaRouter.get('/', (_req, res) => {
-  res.status(501).json({
-    module: 'gpa',
-    status: 'not-implemented',
-    planned: ['/api/gpa/calculate', '/api/gpa/forecast'],
-  });
-});
+/** Full CPA calculation for the authenticated student. */
+gpaRouter.post(
+  '/calculate',
+  asyncHandler(async (req, res) => {
+    const { semester } = calculateSchema.parse(req.body ?? {});
+    const calculation = await gpaService.getCalculation(req.user!.id);
+
+    if (!semester) {
+      res.json(calculation);
+      return;
+    }
+
+    const semesterSummary = calculation.semesters.find((item) => item.semester === semester);
+    res.json({
+      ...calculation,
+      requestedSemester: semester,
+      semesterGpa: semesterSummary?.gpa ?? 0,
+    });
+  }),
+);
+
+/** Required average / projected CPA for a target. */
+gpaRouter.post(
+  '/forecast',
+  asyncHandler(async (req, res) => {
+    const input = forecastSchema.parse(req.body);
+    const forecast = await gpaService.getForecast(req.user!.id, input);
+    res.json(forecast);
+  }),
+);
+
+/** Grade scales, useful for rendering score → letter conversions in the UI. */
+gpaRouter.get(
+  '/scales',
+  asyncHandler(async (_req, res) => {
+    const scales = await gpaService.listGradeScales();
+    res.json({ scales });
+  }),
+);

@@ -1,9 +1,17 @@
 import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
+import { ZodError } from 'zod';
 import { env } from './config/env';
+import { openApiDocument } from './docs/openapi';
+import { AppError } from './lib/errors';
+import { logger } from './lib/logger';
+import { requestContext, requestLogger } from './lib/request-context';
 import { adminRouter } from './modules/admin';
 import { aiRouter } from './modules/ai';
+import { authRouter } from './modules/auth/auth.routes';
+import { authenticate, requireRole } from './modules/auth/auth.middleware';
 import { documentRouter } from './modules/document';
 import { gpaRouter } from './modules/gpa';
 import { healthRouter } from './modules/health/health.routes';
@@ -14,7 +22,19 @@ export function createApp() {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(helmet());
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:'],
+        },
+      },
+    }),
+  );
   app.use(
     cors({
       origin: env.CORS_ORIGIN.split(',').map((origin) => origin.trim()),
@@ -24,31 +44,85 @@ export function createApp() {
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
 
+  app.use(requestContext);
+  app.use(requestLogger);
+
+  // OpenAPI / Swagger UI
+  app.get('/api/docs.json', (_req, res) => {
+    res.json(openApiDocument);
+  });
+  app.use(
+    '/api/docs',
+    swaggerUi.serve,
+    swaggerUi.setup(openApiDocument, { customSiteTitle: 'AcaSchedule API Docs' }),
+  );
+
   app.get('/api', (_req, res) => {
     res.json({
       name: 'AcaSchedule API',
       version: '0.1.0',
-      docs: '/api/health',
+      docs: '/api/docs',
     });
   });
 
+  // Public routes
   app.use('/api/health', healthRouter);
-  app.use('/api/admin', adminRouter);
-  app.use('/api/student', studentRouter);
-  app.use('/api/gpa', gpaRouter);
-  app.use('/api/schedule', scheduleRouter);
-  app.use('/api/documents', documentRouter);
-  app.use('/api/ai', aiRouter);
+  app.use('/api/auth', authRouter);
+
+  // Protected routes
+  app.use('/api/admin', authenticate, requireRole('admin'), adminRouter);
+  app.use('/api/student', authenticate, studentRouter);
+  app.use('/api/gpa', authenticate, gpaRouter);
+  app.use('/api/schedule', authenticate, scheduleRouter);
+  app.use('/api/documents', authenticate, documentRouter);
+  app.use('/api/ai', authenticate, aiRouter);
 
   // 404
-  app.use((_req: Request, res: Response) => {
-    res.status(404).json({ error: 'NotFound', message: 'Route not found' });
+  app.use((req: Request, res: Response) => {
+    res.status(404).json({
+      error: 'NotFound',
+      message: `Route ${req.method} ${req.originalUrl} not found`,
+      requestId: req.id,
+    });
   });
 
   // Central error handler
-  app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Unhandled error', error);
-    res.status(500).json({ error: 'InternalServerError', message: 'Unexpected error' });
+  app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+    if (error instanceof ZodError) {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'Request validation failed',
+        details: error.flatten(),
+        requestId: req.id,
+      });
+      return;
+    }
+
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        error: error.code,
+        message: error.message,
+        ...(error.details === undefined ? {} : { details: error.details }),
+        requestId: req.id,
+      });
+      return;
+    }
+
+    if (error instanceof SyntaxError && 'body' in error) {
+      res.status(400).json({
+        error: 'MalformedJson',
+        message: 'Request body is not valid JSON',
+        requestId: req.id,
+      });
+      return;
+    }
+
+    logger.error({ err: error, requestId: req.id }, 'unhandled error');
+    res.status(500).json({
+      error: 'InternalServerError',
+      message: 'Unexpected error',
+      requestId: req.id,
+    });
   });
 
   return app;

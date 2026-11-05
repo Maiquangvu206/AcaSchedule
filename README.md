@@ -119,8 +119,20 @@ make prod
 
 - Web Application: http://localhost
 - Backend API Health Check: http://localhost/api/health
+- Swagger UI: http://localhost/api/docs
 - MinIO Object Storage Console: http://localhost:9001 (User: `minioadmin` / Pass: `minioadmin`)
 - PostgreSQL (Dev mode): `localhost:5432`
+- AI Service (Dev mode): http://localhost:8001/docs
+
+**5. Tài khoản demo (seed tự động):**
+
+| Role | Email | Mật khẩu |
+| --- | --- | --- |
+| Admin | `admin@acaschedule.local` | `Admin@123` |
+| Student | `student@acaschedule.local` | `Student@123` |
+
+> Migration và seed chạy tự động khi container backend khởi động (dev và prod).
+> Có thể chạy thủ công: `make migrate` / `make seed`.
 
 ## 📑 6. Technical Highlights & Business Logic
 

@@ -1,4 +1,4 @@
-.PHONY: help dev prod down logs ps build clean
+.PHONY: help dev prod down logs ps build clean migrate seed
 
 COMPOSE = docker compose
 DEV_COMPOSE = $(COMPOSE) -f docker-compose.yml -f docker-compose.override.yml
@@ -20,6 +20,12 @@ logs: ## Tail logs from all services
 
 ps: ## Show running services
 	$(COMPOSE) ps
+
+migrate: ## Apply database migrations (dev container)
+	$(DEV_COMPOSE) exec backend npm run migrate
+
+seed: ## Seed grade scales, subjects and demo accounts (dev container)
+	$(DEV_COMPOSE) exec backend npm run seed
 
 build: ## Build all images without starting
 	$(COMPOSE) build

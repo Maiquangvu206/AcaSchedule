@@ -1,0 +1,51 @@
+import { Client } from 'minio';
+import { env } from '../config/env';
+import { logger } from './logger';
+
+export const minioClient = new Client({
+  endPoint: env.MINIO_ENDPOINT,
+  port: env.MINIO_PORT,
+  useSSL: env.MINIO_USE_SSL,
+  accessKey: env.MINIO_ACCESS_KEY,
+  secretKey: env.MINIO_SECRET_KEY,
+});
+
+const RETRY_DELAYS_MS = [500, 1_500, 3_000];
+
+/**
+ * Ensure the documents bucket exists. Idempotent and safe to call on every boot.
+ * Throws only when all retries fail (caller decides whether to abort).
+ */
+export async function ensureBucket(): Promise<void> {
+  const bucket = env.MINIO_BUCKET;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      const exists = await minioClient.bucketExists(bucket);
+      if (!exists) {
+        await minioClient.makeBucket(bucket);
+        logger.info({ bucket }, 'MinIO bucket created');
+      } else {
+        logger.info({ bucket }, 'MinIO bucket ready');
+      }
+      return;
+    } catch (error) {
+      if (attempt === RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+      logger.warn(
+        { err: error, bucket, attempt: attempt + 1 },
+        'MinIO not ready — retrying',
+      );
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+}
+
+export async function isBucketReady(): Promise<boolean> {
+  try {
+    return await minioClient.bucketExists(env.MINIO_BUCKET);
+  } catch {
+    return false;
+  }
+}

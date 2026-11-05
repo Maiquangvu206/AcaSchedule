@@ -24,5 +24,7 @@ ENV NODE_ENV=production
 COPY backend/package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
+COPY docker/entrypoint.backend.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 EXPOSE 8000
-CMD ["node", "dist/main.js"]
+CMD ["/app/entrypoint.sh"]

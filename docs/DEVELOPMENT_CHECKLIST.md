@@ -27,18 +27,21 @@ vào `main` và pass CI.
 
 ## 1. Sprint 0 — Nền tảng & hạ tầng `P0`
 
-- [ ] Viết migration runner (`backend/src/database/migrate.ts`) + lệnh `npm run migrate`
-- [ ] Migration `001`: `grade_scales`, `subjects`, `student_enrollments`, `subject_documents`, `schedule_items`
-- [ ] Seed data: thang điểm Hệ 10 → chữ → Hệ 4, vài môn demo, 1 sinh viên demo
-- [ ] Auth: đăng ký/đăng nhập JWT (access + refresh), middleware xác thực
-- [ ] RBAC: role `student` / `admin`, guard theo route
-- [ ] Chuẩn hoá response lỗi + request logging + `X-Request-Id`
-- [ ] Swagger/OpenAPI cho backend (`/api/docs`)
-- [ ] Khởi tạo bucket MinIO khi boot (idempotent)
-- [ ] Redis client + helper session/quota
-- [ ] `.env` validation cho mọi biến mới, cập nhật `.env.example`
+- [x] Viết migration runner (`backend/src/database/migrate.ts`) + lệnh `npm run migrate`
+- [x] Migration `001`: `users`, `grade_scales`, `subjects`, `student_enrollments`, `subject_documents`, `schedule_items`, `refresh_tokens`
+- [x] Seed data: thang điểm Hệ 10 → chữ → Hệ 4, môn demo, admin + sinh viên demo
+- [x] Auth: đăng ký/đăng nhập JWT (access + refresh rotation), middleware xác thực
+- [x] RBAC: role `student` / `admin`, guard theo route
+- [x] Chuẩn hoá response lỗi + request logging + `X-Request-Id`
+- [x] Swagger/OpenAPI cho backend (`/api/docs`)
+- [x] Khởi tạo bucket MinIO khi boot (idempotent, có retry)
+- [x] Redis client + helper session/quota
+- [x] `.env` validation cho mọi biến mới, cập nhật `.env.example`
 
 **Exit criteria:** `make dev` lên đủ 7 service; đăng nhập được; migration + seed chạy tự động; Swagger truy cập được.
+
+> Đã kiểm thử với PostgreSQL + Redis thật: migrate/seed idempotent, login, `/me`, refresh rotation,
+> logout, RBAC 403, validation 400, Swagger 200, request-id echo.
 
 ---
 

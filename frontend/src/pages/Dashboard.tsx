@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { ModuleCard } from '../components/ModuleCard';
 import { ServiceStatus } from '../components/ServiceStatus';
 import { useHealth } from '../hooks/useHealth';
@@ -9,7 +11,7 @@ const modules = [
     description:
       'Tính điểm chính xác với quy tắc Học lại và Học cải thiện: loại bỏ cờ CPA của lượt F cũ, giữ điểm hệ 4 cao nhất.',
     tags: ['BR-RETENTION', 'Grade scales', 'Transcript'],
-    status: 'planned' as const,
+    status: 'done' as const,
   },
   {
     icon: '🤖',
@@ -49,6 +51,7 @@ const services = [
 
 export function Dashboard() {
   const { loading, data, error, refresh } = useHealth();
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.18),_transparent_60%)]">
@@ -65,12 +68,20 @@ export function Dashboard() {
               </div>
             </div>
 
-            <ServiceStatus
-              loading={loading}
-              data={data}
-              error={error}
-              onRefresh={() => void refresh()}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to={user ? '/transcript' : '/login'}
+                className="rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-400"
+              >
+                {user ? 'Xem bảng điểm' : 'Đăng nhập'}
+              </Link>
+              <ServiceStatus
+                loading={loading}
+                data={data}
+                error={error}
+                onRefresh={() => void refresh()}
+              />
+            </div>
           </div>
 
           <div className="max-w-3xl space-y-5">

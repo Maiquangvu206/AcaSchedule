@@ -9,6 +9,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(8000),
   CORS_ORIGIN: z.string().default('http://localhost'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
   DATABASE_URL: z
     .string()
@@ -28,6 +29,16 @@ const envSchema = z.object({
 
   GEMINI_API_KEY: z.string().optional().default(''),
   AI_SERVICE_URL: z.string().url().default('http://localhost:8001'),
+
+  JWT_ACCESS_SECRET: z.string().min(16).default('dev-access-secret-change-me'),
+  JWT_REFRESH_SECRET: z.string().min(16).default('dev-refresh-secret-change-me'),
+  JWT_ACCESS_TTL: z.string().default('15m'),
+  JWT_REFRESH_TTL: z.string().default('7d'),
+
+  SEED_ADMIN_EMAIL: z.string().email().default('admin@acaschedule.local'),
+  SEED_ADMIN_PASSWORD: z.string().min(8).default('Admin@123'),
+  SEED_STUDENT_EMAIL: z.string().email().default('student@acaschedule.local'),
+  SEED_STUDENT_PASSWORD: z.string().min(8).default('Student@123'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -40,3 +51,9 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 export type Env = typeof env;
+
+if (env.NODE_ENV === 'production') {
+  if (env.JWT_ACCESS_SECRET.startsWith('dev-') || env.JWT_REFRESH_SECRET.startsWith('dev-')) {
+    console.warn('⚠️  Using development JWT secrets in production. Set JWT_ACCESS_SECRET/JWT_REFRESH_SECRET.');
+  }
+}
