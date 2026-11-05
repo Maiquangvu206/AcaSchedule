@@ -21,6 +21,7 @@ export const aiRouter = Router();
 
 const upstreamBase = () => env.AI_SERVICE_URL.replace(/\/+$/, '');
 const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
+const CACHE_VERSION = 'v3';
 const QUOTA_LIMIT = 20;            // requests per window
 const QUOTA_TTL_SECONDS = 60 * 60; // 1 hour
 
@@ -114,7 +115,7 @@ aiRouter.post(
     const safeQuestion = question ? redactPii(question) : undefined;
 
     const cacheKey = `ai:advice:${sha256(
-      `${studentId}|${stableGradesKey(grades)}|${targetCpa ?? ''}|${safeQuestion ?? ''}`,
+      `${CACHE_VERSION}|${studentId}|${stableGradesKey(grades)}|${targetCpa ?? ''}|${safeQuestion ?? ''}`,
     )}`;
 
     const cached = await getCached<{ advice: string; model: string; used_fallback: boolean }>(
@@ -153,7 +154,9 @@ aiRouter.post(
       used_fallback: parsed.used_fallback ?? true,
     };
 
-    await setCached(cacheKey, result);
+    if (!result.used_fallback) {
+      await setCached(cacheKey, result);
+    }
 
     res.status(upstream.status).type('application/json').json(result);
   }),

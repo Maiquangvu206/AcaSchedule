@@ -3,11 +3,13 @@ import { asyncHandler } from '../../lib/errors';
 import { authenticate } from './auth.middleware';
 import { loginSchema, logoutSchema, refreshSchema, registerSchema } from './auth.schemas';
 import * as authService from './auth.service';
+import { authRateLimit } from '../../lib/rate-limit';
 
 export const authRouter = Router();
 
 authRouter.post(
   '/register',
+  authRateLimit,
   asyncHandler(async (req, res) => {
     const input = registerSchema.parse(req.body);
     const result = await authService.register(input);
@@ -17,6 +19,7 @@ authRouter.post(
 
 authRouter.post(
   '/login',
+  authRateLimit,
   asyncHandler(async (req, res) => {
     const input = loginSchema.parse(req.body);
     const result = await authService.login(input);

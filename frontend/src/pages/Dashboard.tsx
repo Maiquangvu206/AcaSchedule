@@ -63,12 +63,12 @@ function CPATrendChart({ semesters }: { semesters: { semester: string; gpa: numb
   const barWidth = Math.max(60, 480 / Math.max(data.length, 1));
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+    <section className="rounded-2xl border border-gray-200 bg-white p-6">
       <div className="flex items-center justify-between gap-3 mb-5">
-        <h2 className="text-lg font-semibold text-white">Xu hướng CPA theo học kỳ</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Xu hướng CPA theo học kỳ</h2>
         <p className="text-xs text-slate-500">
           {data.length} học kỳ ·{' '}
-          <span className="font-medium text-slate-300">
+          <span className="font-medium text-slate-700">
             {'Mới nhất: ' + formatNumber(data[data.length - 1]?.gpa)}
           </span>
         </p>
@@ -84,19 +84,19 @@ function CPATrendChart({ semesters }: { semesters: { semester: string; gpa: numb
               style={{ width: barWidth }}
             >
               <div
-                className={`w-full rounded-t-md transition-all duration-500 ${isLast ? 'bg-brand-500 shadow-[0_0_12px_rgba(59,130,246,0.4)]' : 'bg-white/10'}`}
+                className={`w-full rounded-t-md transition-all duration-500 ${isLast ? 'bg-brand-500 shadow-[0_0_12px_rgba(59,130,246,0.4)]' : 'bg-gray-100'}`}
                 style={{ height: `${height}%` }}
                 title={`${semester.semester}: ${formatNumber(semester.gpa)}`}
               />
-              <span className="text-xs text-slate-400 leading-none">{semester.semester}</span>
-              <span className={`text-[10px] font-bold ${isLast ? 'text-brand-400' : 'text-slate-500'}`}>
+              <span className="text-xs text-slate-600 leading-none">{semester.semester}</span>
+              <span className={`text-[10px] font-bold ${isLast ? 'text-brand-500' : 'text-slate-600'}`}>
                 {formatNumber(semester.gpa)}
               </span>
             </div>
           );
         })}
       </div>
-      <p className="mt-3 text-[11px] text-slate-500">
+      <p className="mt-3 text-[11px] text-slate-600">
         Mỗi cột là GPA của một học kỳ. Cột亮 màu xanh là học kỳ gần nhất.
       </p>
     </section>
@@ -111,7 +111,7 @@ export function Dashboard() {
   const semesters = transcript?.semesters ?? [];
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.18),_transparent_60%)]">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.10),_transparent_60%)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-14 px-6 py-14">
         <header className="flex flex-col gap-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -120,7 +120,7 @@ export function Dashboard() {
                 🎓
               </span>
               <div>
-                <p className="text-lg font-semibold tracking-tight text-white">AcaSchedule</p>
+                <p className="text-lg font-semibold tracking-tight text-slate-900">AcaSchedule</p>
                 <p className="text-xs text-slate-500">Personal Academic Hub & AI Advisor</p>
               </div>
             </div>
@@ -135,7 +135,7 @@ export function Dashboard() {
               {user ? (
                 <Link
                   to="/schedule"
-                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/20 hover:text-white"
+                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-gray-300 hover:text-slate-900"
                 >
                   Thời khóa biểu
                 </Link>
@@ -150,13 +150,13 @@ export function Dashboard() {
           </div>
 
           <div className="max-w-3xl space-y-5">
-            <span className="inline-flex rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-300">
+            <span className="inline-flex rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-600">
               Multi-container · Microservices-ready · RAG Pipeline
             </span>
-            <h1 className="text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl">
               Quản trị học tập, chia sẻ tri thức và cố vấn AI trong một nền tảng.
             </h1>
-            <p className="text-base leading-relaxed text-slate-400">
+            <p className="text-base leading-relaxed text-slate-600">
               Dành cho sinh viên đại học: tính GPA/CPA theo đúng nghiệp vụ, giả lập xếp lịch không
               trùng ca, chia sẻ tài liệu cộng đồng và nhận tư vấn học tập cá nhân hóa.
             </p>
@@ -174,7 +174,7 @@ export function Dashboard() {
 
         <section className="space-y-6">
           <div className="flex items-end justify-between gap-4">
-            <h2 className="text-xl font-semibold text-white">Phân hệ cốt lõi</h2>
+            <h2 className="text-xl font-semibold text-slate-900">Phân hệ cốt lõi</h2>
             <span className="text-xs text-slate-500">Skeleton — nghiệp vụ sẽ được triển khai dần</span>
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
@@ -184,16 +184,16 @@ export function Dashboard() {
           </div>
         </section>
 
-        <section className="grid gap-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 lg:grid-cols-[1.1fr_1fr]">
+        <section className="grid gap-6 rounded-2xl border border-gray-200 bg-white p-6 lg:grid-cols-[1.1fr_1fr]">
           <div className="space-y-3">
-            <h2 className="text-xl font-semibold text-white">Kiến trúc hệ thống</h2>
-            <p className="text-sm leading-relaxed text-slate-400">
-              Nginx đóng vai trò reverse proxy, định tuyến <code className="text-brand-300">/api</code>{' '}
+            <h2 className="text-xl font-semibold text-slate-900">Kiến trúc hệ thống</h2>
+            <p className="text-sm leading-relaxed text-slate-600">
+              Nginx đóng vai trò reverse proxy, định tuyến <code className="text-brand-600">/api</code>{' '}
               tới backend Express và phần còn lại tới frontend React. Backend kết nối PostgreSQL,
-              Redis và MinIO trong mạng nội bộ cách ly; các route <code className="text-brand-300">/api/ai</code>{' '}
+              Redis và MinIO trong mạng nội bộ cách ly; các route <code className="text-brand-600">/api/ai</code>{' '}
               được proxy sang AI service Python (Gemini + RAG).
             </p>
-            <div className="rounded-xl bg-slate-950/80 p-4 font-mono text-xs leading-6 text-slate-400 ring-1 ring-inset ring-white/10">
+            <div className="rounded-xl bg-gray-100/80 p-4 font-mono text-xs leading-6 text-slate-600 ring-1 ring-inset ring-gray-200">
               <p>Browser → Nginx → Frontend (SPA)</p>
               <p className="text-slate-600">└────────→ /api → Backend → PostgreSQL</p>
               <p className="text-slate-600">────────────────────→ Redis / MinIO</p>
@@ -204,13 +204,13 @@ export function Dashboard() {
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
               Services
             </h3>
-            <ul className="divide-y divide-white/5 rounded-xl border border-white/10">
+            <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200">
               {services.map((service) => (
                 <li
                   key={service.name}
                   className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
                 >
-                  <span className="font-medium text-slate-200">{service.name}</span>
+                  <span className="font-medium text-slate-900">{service.name}</span>
                   <span className="text-xs text-slate-500">{service.role}</span>
                 </li>
               ))}
@@ -222,7 +222,7 @@ export function Dashboard() {
           <CPATrendChart semesters={semesters} />
         )}
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-6 text-xs text-slate-500">
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-6 text-xs text-slate-500">
           <span>AcaSchedule · Showcase Project</span>
           <span>Built with ❤ for Software Engineering Portfolio</span>
         </footer>
@@ -247,11 +247,11 @@ function SummaryCard({
       className={`rounded-2xl border p-5 ${
         highlight
           ? 'border-brand-400/30 bg-brand-500/10'
-          : 'border-white/10 bg-white/[0.03]'
+          : 'border-gray-200 bg-white'
       }`}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-bold tracking-tight text-white">
+      <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
         {value}
         {suffix ? <span className="ml-1 text-sm font-medium text-slate-500">{suffix}</span> : null}
       </p>

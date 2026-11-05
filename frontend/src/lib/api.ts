@@ -239,7 +239,20 @@ export const authStorage = {
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
-  const body = text ? (JSON.parse(text) as T | ApiErrorBody) : null;
+  let body: T | ApiErrorBody | null = null;
+  if (text) {
+    try {
+      body = JSON.parse(text) as T | ApiErrorBody;
+    } catch {
+      if (!response.ok) {
+        throw new ApiError(
+          response.status,
+          `Máy chủ không khả dụng (HTTP ${response.status}). Vui lòng thử lại sau.`,
+        );
+      }
+      throw new ApiError(response.status, 'Phản hồi từ máy chủ không hợp lệ.');
+    }
+  }
 
   if (!response.ok) {
     const errorBody = (body ?? {}) as ApiErrorBody;
@@ -453,4 +466,3 @@ export async function fetchAiAdvice(
     body: input,
   });
 }
-

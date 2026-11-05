@@ -20,15 +20,15 @@ export function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.18),_transparent_60%)]">
-      <header className="border-b border-white/10 bg-slate-950/70 backdrop-blur">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.10),_transparent_60%)]">
+      <header className="border-b border-gray-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <Link to="/" className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-500/20 text-xl ring-1 ring-inset ring-brand-400/30">
               🎓
             </span>
             <div>
-              <p className="text-base font-semibold tracking-tight text-white">AcaSchedule</p>
+              <p className="text-base font-semibold tracking-tight text-slate-900">AcaSchedule</p>
               <p className="text-[11px] text-slate-500">Personal Academic Hub</p>
             </div>
           </Link>
@@ -37,21 +37,21 @@ export function AppLayout() {
             {navItems
               .filter((item) => !item.protected || Boolean(user))
               .map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    isActive
-                      ? 'bg-brand-500/15 text-brand-200'
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `rounded-lg px-3 py-2 text-sm font-medium transition ${
+                      isActive
+                        ? 'bg-brand-500/15 text-brand-600'
+                        : 'text-slate-600 hover:bg-gray-100 hover:text-slate-900'
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
             <LanguageToggle />
           </nav>
 
@@ -59,13 +59,13 @@ export function AppLayout() {
             {user ? (
               <>
                 <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium text-slate-200">{user.fullName}</p>
+                  <p className="text-sm font-medium text-slate-900">{user.fullName}</p>
                   <p className="text-[11px] uppercase tracking-wide text-slate-500">{user.role}</p>
                 </div>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-lg border border-white/10 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
+                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-300 hover:text-slate-900"
                 >
                   Đăng xuất
                 </button>

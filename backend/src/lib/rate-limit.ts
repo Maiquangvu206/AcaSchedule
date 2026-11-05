@@ -12,7 +12,9 @@ export function rateLimit(
   ttlSeconds: number,
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
+    // Ưu tiên userId (đã xác thực), sau đó là IP.
     const identifier =
+      (req as any).user?.id ??
       req.ip ??
       (req.headers['x-forwarded-for'] as string) ??
       'unknown';
@@ -34,3 +36,6 @@ export function rateLimit(
     next();
   };
 }
+
+export const authRateLimit = rateLimit('auth', 10, 15 * 60);
+export const documentRateLimit = rateLimit('documents', 60, 60 * 60);

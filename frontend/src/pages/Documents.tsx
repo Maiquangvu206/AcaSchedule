@@ -326,9 +326,9 @@ export function DocumentsPage() {
     <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-brand-300">Sprint 3</p>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Kho tài liệu cộng đồng</h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
+          <p className="text-xs font-medium uppercase tracking-widest text-brand-600">Sprint 3</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Kho tài liệu cộng đồng</h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
             Đề thi, slide và bài tập mẫu theo môn học. Sinh viên chỉ có thể xem và đóng góp cho các
             môn đã đăng ký; tệp được tải trực tiếp lên MinIO bằng presigned URL.
           </p>
@@ -341,25 +341,25 @@ export function DocumentsPage() {
       </header>
 
       {error ? (
-        <p role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <p role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
           {error}
         </p>
       ) : null}
       {notice ? (
-        <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
           {notice}
         </p>
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section className="space-y-4">
-          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <label className="block min-w-44 flex-1 space-y-1 text-xs font-medium text-slate-400">
+          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white p-4">
+            <label className="block min-w-44 flex-1 space-y-1 text-xs font-medium text-slate-600">
               Môn học
               <select
                 value={selectedSubject}
                 onChange={(event) => setSelectedSubject(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-brand-400/60"
+                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
               >
                 <option value="">Tất cả môn đã đăng ký</option>
                 {subjects.map((subject) => (
@@ -369,21 +369,21 @@ export function DocumentsPage() {
                 ))}
               </select>
             </label>
-            <label className="block min-w-48 flex-[1.4] space-y-1 text-xs font-medium text-slate-400">
+            <label className="block min-w-48 flex-[1.4] space-y-1 text-xs font-medium text-slate-600">
               Tìm kiếm
               <input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Tên tài liệu, mã môn, người đăng…"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-brand-400/60"
+                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400/60"
               />
             </label>
-            <label className="block space-y-1 text-xs font-medium text-slate-400">
+            <label className="block space-y-1 text-xs font-medium text-slate-600">
               Sắp xếp
               <select
                 value={sort}
                 onChange={(event) => setSort(event.target.value === 'newest' ? 'newest' : 'rank')}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-brand-400/60"
+                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
               >
                 <option value="rank">Nổi bật</option>
                 <option value="newest">Mới nhất</option>
@@ -392,12 +392,12 @@ export function DocumentsPage() {
           </div>
 
           {loading ? (
-            <p className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center text-sm text-slate-400">
+            <p className="rounded-2xl border border-gray-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
               Đang tải kho tài liệu…
             </p>
           ) : documents.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-14 text-center">
-              <p className="text-lg font-semibold text-slate-200">Chưa có tài liệu phù hợp</p>
+            <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-14 text-center">
+              <p className="text-lg font-semibold text-slate-900">Chưa có tài liệu phù hợp</p>
               <p className="mt-2 text-sm text-slate-500">
                 Thử đổi bộ lọc hoặc là người đầu tiên chia sẻ tài liệu cho môn này.
               </p>
@@ -407,20 +407,20 @@ export function DocumentsPage() {
               {documents.map((document) => (
                 <article
                   key={document.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/15"
+                  className="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-gray-300/50"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold text-brand-200">
+                        <span className="rounded-full border border-brand-400/30 bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold text-brand-600">
                           {document.subjectCode}
                         </span>
-                        <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[11px] font-medium text-slate-400">
+                        <span className="rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
                           {fileLabel(document.mimeType, document.originalName)}
                         </span>
                         <span className="text-[11px] text-slate-500">{formatBytes(document.sizeBytes)}</span>
                       </div>
-                      <h2 className="mt-2 truncate text-lg font-semibold text-white">{document.title}</h2>
+                      <h2 className="mt-2 truncate text-lg font-semibold text-slate-900">{document.title}</h2>
                       <p className="mt-1 text-xs text-slate-500">
                         {document.subjectName} · {document.uploaderName} · {formatDate(document.createdAt)}
                       </p>
@@ -444,16 +444,16 @@ export function DocumentsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-3">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-3">
                     <p className="text-[11px] text-slate-500">
-                      Điểm xếp hạng <span className="font-semibold text-slate-300">{document.score.toFixed(2)}</span>
+                      Điểm xếp hạng <span className="font-semibold text-slate-700">{document.score.toFixed(2)}</span>
                     </p>
                     <div className="flex items-center gap-2">
                       {isPdf(document) ? (
                         <button
                           type="button"
                           onClick={() => void handleView(document)}
-                          className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/20 hover:text-white"
+                          className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-gray-300 hover:text-slate-900"
                         >
                           Xem PDF
                         </button>
@@ -475,20 +475,20 @@ export function DocumentsPage() {
         </section>
 
         <aside className="space-y-4">
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <h2 className="text-lg font-semibold text-white">Chia sẻ tài liệu</h2>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
+          <section className="rounded-2xl border border-gray-200 bg-white p-5">
+            <h2 className="text-lg font-semibold text-slate-900">Chia sẻ tài liệu</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-600">
               Tối đa 20 MB. Hỗ trợ PDF, Office, văn bản và ảnh. Tệp thực thi bị chặn.
             </p>
 
             <form onSubmit={handleUpload} className="mt-4 space-y-3">
-              <label className="block space-y-1 text-xs font-medium text-slate-400">
+              <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Môn học
                 <select
                   required
                   value={uploadSubject}
                   onChange={(event) => setUploadSubject(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-brand-400/60"
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
                 >
                   {subjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
@@ -498,36 +498,36 @@ export function DocumentsPage() {
                 </select>
               </label>
 
-              <label className="block space-y-1 text-xs font-medium text-slate-400">
+              <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Tiêu đề
                 <input
                   required
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   placeholder="VD: Đề thi giữa kỳ 2024"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-brand-400/60"
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400/60"
                 />
               </label>
 
-              <label className="block space-y-1 text-xs font-medium text-slate-400">
+              <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Tệp đính kèm
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept={ACCEPT}
                   onChange={handleFileChange}
-                  className="mt-1 w-full cursor-pointer rounded-xl border border-dashed border-white/15 bg-slate-950/50 px-3 py-3 text-xs text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-500/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-200 hover:border-white/25"
+                  className="mt-1 w-full cursor-pointer rounded-xl border border-dashed border-gray-200/50 bg-gray-50 px-3 py-3 text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-500/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-600 hover:border-gray-300/50"
                 />
               </label>
 
               {file ? (
-                <p className="rounded-xl border border-white/5 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-400">
+                <p className="rounded-xl border border-gray-200/50 bg-gray-50 px-3 py-2 text-[11px] text-slate-500">
                   {file.name} · {formatBytes(file.size)} · {inferMime(file) || 'không rõ MIME'}
                 </p>
               ) : null}
 
-              {uploadError ? <p className="text-xs text-rose-300">{uploadError}</p> : null}
-              {uploadStep ? <p className="text-xs text-brand-200">{uploadStep}</p> : null}
+              {uploadError ? <p className="text-xs text-rose-600">{uploadError}</p> : null}
+              {uploadStep ? <p className="text-xs text-brand-600">{uploadStep}</p> : null}
 
               <button
                 type="submit"
@@ -539,13 +539,13 @@ export function DocumentsPage() {
             </form>
 
             {subjects.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              <p className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-600">
                 Bạn chưa có môn học nào trong bảng điểm nên chưa thể đóng góp tài liệu.
               </p>
             ) : null}
           </section>
 
-          <section className="rounded-xl border border-white/5 bg-slate-950/50 p-4 text-xs leading-5 text-slate-500">
+          <section className="rounded-xl border border-gray-200/50 bg-gray-50 p-4 text-xs leading-5 text-slate-500">
             Luồng tải lên: backend cấp presigned PUT URL sau khi kiểm tra quyền môn học → trình duyệt
             PUT trực tiếp lên MinIO → backend xác minh kích thước/MIME thật rồi mới lưu metadata.
           </section>
@@ -554,37 +554,37 @@ export function DocumentsPage() {
 
       {viewer ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/85 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-label={viewer.document.title}
           onClick={() => setViewer(null)}
         >
           <div
-            className="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900"
+            className="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+            <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{viewer.document.title}</p>
+                <p className="truncate text-sm font-semibold text-slate-900">{viewer.document.title}</p>
                 <p className="text-[11px] text-slate-500">{viewer.document.subjectCode}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setViewer(null)}
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
               >
                 Đóng
               </button>
             </div>
             {viewerError ? (
-              <p className="m-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+              <p className="m-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
                 {viewerError}
               </p>
             ) : viewer.url ? (
               <iframe src={viewer.url} title={viewer.document.title} className="h-full w-full bg-white" />
             ) : (
-              <p className="p-6 text-sm text-slate-400">Đang tạo liên kết xem tài liệu…</p>
+              <p className="p-6 text-sm text-slate-500">Đang tạo liên kết xem tài liệu…</p>
             )}
           </div>
         </div>
@@ -595,9 +595,9 @@ export function DocumentsPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-right">
+    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-right">
       <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
     </div>
   );
 }
@@ -625,9 +625,9 @@ function VoteButton({
       className={`flex min-w-14 items-center justify-center gap-1 rounded-xl border px-2.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
         active
           ? direction === 'up'
-            ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
-            : 'border-rose-400/40 bg-rose-500/15 text-rose-200'
-          : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
+            ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-700'
+            : 'border-rose-400/40 bg-rose-500/15 text-rose-700'
+          : 'border-gray-200 bg-gray-100 text-slate-500 hover:border-gray-300 hover:text-slate-900'
       }`}
     >
       <span aria-hidden>{direction === 'up' ? '▲' : '▼'}</span>

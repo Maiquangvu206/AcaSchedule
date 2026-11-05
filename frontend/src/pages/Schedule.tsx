@@ -28,12 +28,12 @@ const DAYS = [
 ];
 
 const SUBJECT_COLORS = [
-  'border-sky-400/40 bg-sky-500/15 text-sky-100',
-  'border-emerald-400/40 bg-emerald-500/15 text-emerald-100',
-  'border-violet-400/40 bg-violet-500/15 text-violet-100',
-  'border-rose-400/40 bg-rose-500/15 text-rose-100',
-  'border-cyan-400/40 bg-cyan-500/15 text-cyan-100',
-  'border-lime-400/40 bg-lime-500/15 text-lime-100',
+  'border-sky-400/40 bg-sky-500/15 text-sky-700',
+  'border-emerald-400/40 bg-emerald-500/15 text-emerald-700',
+  'border-violet-400/40 bg-violet-500/15 text-violet-700',
+  'border-rose-400/40 bg-rose-500/15 text-rose-700',
+  'border-cyan-400/40 bg-cyan-500/15 text-cyan-700',
+  'border-lime-400/40 bg-lime-500/15 text-lime-700',
 ];
 
 function dayLabel(day: number): string {
@@ -358,28 +358,28 @@ export function SchedulePage() {
     <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-brand-300">Sprint 2</p>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Thời khóa biểu</h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
+          <p className="text-xs font-medium uppercase tracking-widest text-brand-600">Sprint 2</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Thời khóa biểu</h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
             Chọn lớp học phần để mô phỏng đăng ký. Hệ thống phát hiện trùng thứ và giao tiết, đồng thời
             so sánh với lịch cá nhân đã lưu.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="block space-y-1 text-xs font-medium text-slate-400">
+          <label className="block space-y-1 text-xs font-medium text-slate-600">
             Học kỳ
             <input
               value={semester}
               onChange={(event) => setSemester(event.target.value.trim())}
-              className="mt-1 w-32 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
+              className="mt-1 w-32 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
+          <label className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={includeCancelled}
               onChange={(event) => setIncludeCancelled(event.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-slate-900 accent-brand-500"
+              className="h-4 w-4 rounded border-gray-300 bg-white accent-brand-500"
             />
             Hiện lớp đã huỷ
           </label>
@@ -387,12 +387,12 @@ export function SchedulePage() {
       </header>
 
       {error ? (
-        <p role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <p role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
           {error}
         </p>
       ) : null}
       {notice ? (
-        <p className="rounded-2xl border border-brand-400/30 bg-brand-500/10 px-4 py-3 text-sm text-brand-100">
+        <p className="rounded-2xl border border-brand-400/30 bg-brand-500/10 px-4 py-3 text-sm text-brand-700">
           {notice}
         </p>
       ) : null}
@@ -431,16 +431,16 @@ export function SchedulePage() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[330px_1fr]">
-        <aside className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <aside className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-white">Lớp học phần</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Lớp học phần</h2>
             <span className="text-xs text-slate-500">{sections.length} lớp</span>
           </div>
 
           {loading ? (
-            <p className="py-8 text-center text-sm text-slate-400">Đang tải lớp học phần…</p>
+            <p className="py-8 text-center text-sm text-slate-500">Đang tải lớp học phần…</p>
           ) : groups.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-400">
+            <p className="py-8 text-center text-sm text-slate-500">
               Không có lớp cho học kỳ {semester}.
             </p>
           ) : (
@@ -449,7 +449,7 @@ export function SchedulePage() {
                 <div key={group.code} className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-semibold text-slate-200">{group.name}</p>
+                      <p className="text-sm font-semibold text-slate-900">{group.name}</p>
                       <p className="text-[11px] text-slate-500">
                         {group.code} · {group.credits} tín chỉ
                       </p>
@@ -463,24 +463,24 @@ export function SchedulePage() {
                           key={section.id}
                           className={`flex cursor-pointer items-start gap-2 rounded-xl border p-2.5 text-xs transition ${
                             section.isCancelled
-                              ? 'cursor-not-allowed border-white/5 bg-slate-900/40 text-slate-600'
+                              ? 'cursor-not-allowed border-gray-200/50 bg-gray-100/40 text-slate-600'
                               : checked
-                                ? 'border-brand-400/40 bg-brand-500/10 text-slate-200'
-                                : 'border-white/5 bg-slate-950/40 text-slate-400 hover:border-white/15'
+                                ? 'border-brand-400/40 bg-brand-500/10 text-slate-900'
+                                : 'border-gray-200/50 bg-gray-100/40 text-slate-600 hover:border-gray-300/50'
                           }`}
                         >
                           <input
                             type="checkbox"
-                            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-slate-900 accent-brand-500"
+                            className="mt-0.5 h-4 w-4 rounded border-gray-300 bg-white accent-brand-500"
                             checked={checked}
                             disabled={section.isCancelled}
                             onChange={() => toggleSection(section.id)}
                           />
                           <span className="min-w-0 flex-1">
-                            <span className="flex flex-wrap items-center gap-1.5 font-medium text-slate-200">
+                            <span className="flex flex-wrap items-center gap-1.5 font-medium text-slate-900">
                               {section.sectionCode}
                               {section.isCancelled ? (
-                                <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-300 ring-1 ring-inset ring-rose-500/30">
+                                <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-600 ring-1 ring-inset ring-rose-500/30">
                                   Đã huỷ
                                 </span>
                               ) : null}
@@ -504,7 +504,7 @@ export function SchedulePage() {
 
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-white">Lịch tuần</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Lịch tuần</h2>
             <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
               <span className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-sm bg-brand-400" /> Lớp học phần
@@ -518,7 +518,7 @@ export function SchedulePage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-slate-950/30 p-1">
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1">
             <div
               ref={gridRef}
               className="grid min-w-[820px]"
@@ -530,7 +530,7 @@ export function SchedulePage() {
               onDrop={(event) => void handleDrop(event)}
             >
               <div
-                className="flex items-center justify-center border-b border-white/5 text-[10px] uppercase tracking-wide text-slate-600"
+                className="flex items-center justify-center border-b border-gray-200 text-[10px] uppercase tracking-wide text-slate-600"
                 style={{ gridColumn: '1', gridRow: '1' }}
               >
                 Tiết
@@ -538,7 +538,7 @@ export function SchedulePage() {
               {DAYS.map((day, index) => (
                 <div
                   key={day.value}
-                  className="flex items-center justify-center border-b border-l border-white/5 text-xs font-medium text-slate-300"
+                  className="flex items-center justify-center border-b border-l border-gray-200 text-xs font-medium text-slate-600"
                   style={{ gridColumn: `${index + 2}`, gridRow: '1' }}
                 >
                   {day.label}
@@ -548,16 +548,16 @@ export function SchedulePage() {
               {periodOptions.map((slot, index) => (
                 <Fragment key={slot.period}>
                   <div
-                    className="flex flex-col items-center justify-center border-b border-white/5 text-[10px] text-slate-500"
+                    className="flex flex-col items-center justify-center border-b border-gray-200 text-[10px] text-slate-500"
                     style={{ gridColumn: '1', gridRow: `${index + 2}` }}
                   >
-                    <span className="font-semibold text-slate-400">Tiết {slot.period}</span>
+                    <span className="font-semibold text-slate-600">Tiết {slot.period}</span>
                     <span>{slot.startTime}</span>
                   </div>
                   {DAYS.map((day, dayIndex) => (
                     <div
                       key={`${slot.period}-${day.value}`}
-                      className="border-b border-l border-white/5"
+                      className="border-b border-l border-gray-200"
                       style={{
                         gridColumn: `${dayIndex + 2}`,
                         gridRow: `${index + 2}`,
@@ -586,9 +586,9 @@ export function SchedulePage() {
                       if (event.kind !== 'item') return;
                       dragEvent.dataTransfer.setData('text/plain', event.id);
                     }}
-                    className={`pointer-events-auto relative m-0.5 flex min-h-0 cursor-default flex-col overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] shadow-lg shadow-slate-950/30 ${
+                    className={`pointer-events-auto relative m-0.5 flex min-h-0 cursor-default flex-col overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] shadow-lg shadow-gray-200/30 ${
                       event.kind === 'item'
-                        ? 'cursor-move border-amber-400/50 bg-amber-500/15 text-amber-100'
+                        ? 'cursor-move border-amber-400/50 bg-amber-500/15 text-amber-700'
                         : subjectColor(event.code)
                     } ${event.conflict ? 'ring-2 ring-rose-400/80' : ''}`}
                     style={{
@@ -609,7 +609,7 @@ export function SchedulePage() {
                       <button
                         type="button"
                         onClick={() => void handleDeleteItem(event.id)}
-                        className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded bg-slate-950/60 text-[10px] text-slate-300 hover:text-white"
+                        className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded bg-gray-200 text-[10px] text-slate-600 hover:text-slate-900"
                         aria-label={`Xóa ${event.title}`}
                       >
                         ×
@@ -628,14 +628,14 @@ export function SchedulePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <h2 className="text-lg font-semibold text-white">Xung đột phát hiện</h2>
+        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
+          <h2 className="text-lg font-semibold text-slate-900">Xung đột phát hiện</h2>
           {selectedIds.length === 0 ? (
-            <p className="text-sm text-slate-400">Chọn ít nhất một lớp để chạy mô phỏng.</p>
+            <p className="text-sm text-slate-600">Chọn ít nhất một lớp để chạy mô phỏng.</p>
           ) : simulating ? (
-            <p className="text-sm text-slate-400">Đang kiểm tra xung đột…</p>
+            <p className="text-sm text-slate-600">Đang kiểm tra xung đột…</p>
           ) : conflicts.length === 0 ? (
-            <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+            <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
               Không có xung đột. Thời khóa biểu khả thi.
             </p>
           ) : (
@@ -646,32 +646,32 @@ export function SchedulePage() {
             </ul>
           )}
           {simulation && simulation.cancelledSectionIds.length > 0 ? (
-            <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+            <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-700">
               {simulation.cancelledSectionIds.length} lớp đã huỷ bị bỏ qua khi mô phỏng.
             </p>
           ) : null}
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <h2 className="text-lg font-semibold text-white">Thêm lịch cá nhân</h2>
+        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
+          <h2 className="text-lg font-semibold text-slate-900">Thêm lịch cá nhân</h2>
           <form onSubmit={handleCreateItem} className="space-y-3">
-            <label className="block space-y-1 text-xs font-medium text-slate-400">
+            <label className="block space-y-1 text-xs font-medium text-slate-600">
               Tên hoạt động
               <input
                 required
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="VD: Học nhóm môn Giải tích"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
+                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
               />
             </label>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <label className="block space-y-1 text-xs font-medium text-slate-400">
+              <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Thứ
                 <select
                   value={dayOfWeek}
                   onChange={(event) => setDayOfWeek(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-2 py-2 text-sm text-slate-100 outline-none focus:border-brand-400/60"
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
                 >
                   {DAYS.map((day) => (
                     <option key={day.value} value={day.value}>
@@ -680,12 +680,12 @@ export function SchedulePage() {
                   ))}
                 </select>
               </label>
-              <label className="block space-y-1 text-xs font-medium text-slate-400">
+              <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Từ tiết
                 <select
                   value={startPeriod}
                   onChange={(event) => setStartPeriod(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-2 py-2 text-sm text-slate-100 outline-none focus:border-brand-400/60"
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
                 >
                   {periodOptions.map((slot) => (
                     <option key={slot.period} value={slot.period}>
@@ -694,12 +694,12 @@ export function SchedulePage() {
                   ))}
                 </select>
               </label>
-              <label className="block space-y-1 text-xs font-medium text-slate-400">
+              <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Đến tiết
                 <select
                   value={endPeriod}
                   onChange={(event) => setEndPeriod(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-2 py-2 text-sm text-slate-100 outline-none focus:border-brand-400/60"
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
                 >
                   {periodOptions.map((slot) => (
                     <option key={slot.period} value={slot.period}>
@@ -708,13 +708,13 @@ export function SchedulePage() {
                   ))}
                 </select>
               </label>
-              <label className="block space-y-1 text-xs font-medium text-slate-400">
+              <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Phòng
                 <input
                   value={room}
                   onChange={(event) => setRoom(event.target.value)}
                   placeholder="A101"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-2 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-brand-400/60"
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400/60"
                 />
               </label>
             </div>
@@ -726,7 +726,7 @@ export function SchedulePage() {
               {saving ? 'Đang thêm…' : 'Thêm lịch'}
             </button>
           </form>
-          <p className="rounded-xl border border-white/5 bg-slate-950/50 px-4 py-3 text-xs leading-5 text-slate-500">
+          <p className="rounded-xl border border-gray-200/50 bg-gray-50 px-4 py-3 text-xs leading-5 text-slate-600">
             Lịch cá nhân được lưu theo tài khoản và có thể kéo-thả trên lịch tuần. Xung đột với lớp học
             phần đang chọn sẽ được cảnh báo.
           </p>
@@ -756,11 +756,11 @@ function SummaryCard({
           ? 'border-rose-400/30 bg-rose-500/10'
           : success
             ? 'border-emerald-400/30 bg-emerald-500/10'
-            : 'border-white/10 bg-white/[0.03]'
+            : 'border-gray-200 bg-white'
       }`}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-white">
+      <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
         {value}
         {suffix ? <span className="ml-1 text-sm font-medium text-slate-500">{suffix}</span> : null}
       </p>
@@ -770,11 +770,11 @@ function SummaryCard({
 
 function ConflictRow({ conflict }: { conflict: ScheduleConflict }) {
   return (
-    <li className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+    <li className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
       <p className="font-medium">
         {dayLabel(conflict.dayOfWeek)} · tiết {conflict.overlapStartPeriod}–{conflict.overlapEndPeriod}
       </p>
-      <p className="mt-1 text-xs text-rose-200/90">
+      <p className="mt-1 text-xs text-rose-600/90">
         {conflict.first.title} ({conflict.first.code}) ↔ {conflict.second.title} ({conflict.second.code})
       </p>
     </li>

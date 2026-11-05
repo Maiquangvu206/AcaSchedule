@@ -26,7 +26,7 @@ async def generate(prompt: str) -> str:
     url = f"{GEMINI_ENDPOINT}/{settings.gemini_model}:generateContent"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024},
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1536},
     }
 
     try:

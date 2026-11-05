@@ -8,6 +8,7 @@ import {
   voteDocumentSchema,
 } from './document.schemas';
 import * as documentService from './document.service';
+import { documentRateLimit } from '../../lib/rate-limit';
 
 export const documentRouter = Router();
 
@@ -23,6 +24,7 @@ documentRouter.get(
 /** Get a short-lived URL for a direct browser → MinIO upload. */
 documentRouter.post(
   '/uploads/presign',
+  documentRateLimit,
   asyncHandler(async (req, res) => {
     const input = presignUploadSchema.parse(req.body);
     const ticket = await documentService.presignUpload(req.user!.id, input);

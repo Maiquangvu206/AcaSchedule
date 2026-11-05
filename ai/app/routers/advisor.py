@@ -79,7 +79,10 @@ def _prompt(payload: AdviceRequest, cpa: float, credits: int) -> str:
 
     return (
         "Bạn là cố vấn học tập cho sinh viên đại học Việt Nam. "
-        "Trả lời bằng tiếng Việt, ngắn gọn, có gạch đầu dòng và hành động cụ thể.\n\n"
+        "Trả lời bằng tiếng Việt, ngắn gọn, thực tế và có hành động cụ thể. "
+        "Chỉ dùng văn bản thuần: không dùng Markdown, không dùng dấu **, không dùng tiêu đề dạng #. "
+        "Mỗi ý chính viết thành một dòng bắt đầu bằng dấu -; tối đa 5 ý, trả lời đầy đủ "
+        "và luôn kết thúc ở cuối một câu.\n\n"
         f"Sinh viên: {payload.student_name or 'ẩn danh'}\n"
         f"CPA hiện tại: {cpa:.2f}/4.0 trên {credits} tín chỉ\n"
         f"Mục tiêu CPA: {target}\n"

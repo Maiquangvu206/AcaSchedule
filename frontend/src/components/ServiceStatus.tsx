@@ -19,12 +19,12 @@ export function ServiceStatus({ loading, data, error, onRefresh }: ServiceStatus
   const label = loading ? 'Đang kiểm tra...' : online ? 'Hệ thống ổn định' : 'API gián đoạn';
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2.5 text-sm backdrop-blur">
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm backdrop-blur">
       <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} aria-hidden="true" />
-      <span className="font-medium text-slate-200">{label}</span>
+      <span className="font-medium text-slate-900">{label}</span>
 
       {data && (
-        <span className="text-slate-500">
+        <span className="text-slate-600">
           v{data.version} · uptime {formatUptime(data.uptime)}
         </span>
       )}
@@ -35,20 +35,19 @@ export function ServiceStatus({ loading, data, error, onRefresh }: ServiceStatus
             key={name}
             className={`rounded-md px-2 py-0.5 text-xs ring-1 ring-inset ${
               value === 'up'
-                ? 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30'
-                : 'bg-rose-500/10 text-rose-300 ring-rose-500/30'
+                ? 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30'
+                : 'bg-rose-500/10 text-rose-600 ring-rose-500/30'
             }`}
           >
             {name}: {value}
           </span>
         ))}
-
-      {error && <span className="text-xs text-rose-300">{error}</span>}
+      {error && <span className="text-xs text-rose-600">{error}</span>}
 
       <button
         type="button"
         onClick={onRefresh}
-        className="ml-auto rounded-lg border border-white/10 px-3 py-1 text-xs font-medium text-slate-300 transition hover:border-brand-400/40 hover:text-white"
+        className="ml-auto rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-brand-400/40 hover:text-slate-900"
       >
         Làm mới
       </button>
