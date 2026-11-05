@@ -4,6 +4,7 @@ export interface ApiUser {
   fullName: string;
   role: 'student' | 'admin';
   createdAt: string;
+  mustChangePassword: boolean;
 }
 
 export interface AuthResponse {
@@ -147,6 +148,8 @@ export interface ScheduleItem {
   dayOfWeek: number;
   startPeriod: number;
   endPeriod: number;
+  startTime: string;
+  endTime: string;
   room: string | null;
   note: string | null;
   createdAt: string;
@@ -188,9 +191,12 @@ export interface ScheduleSimulation {
 export interface ScheduleItemInput {
   title: string;
   semester: string | null;
+  weekStart: string;
   dayOfWeek: number;
   startPeriod: number;
   endPeriod: number;
+  startTime?: string;
+  endTime?: string;
   room?: string | null;
   note?: string | null;
   sectionId?: string | null;
@@ -368,6 +374,20 @@ export async function requestPasswordReset(email: string): Promise<void> {
   await apiRequest('/auth/forgot-password', { method: 'POST', body: { email } });
 }
 
+export async function changePassword(
+  token: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<ApiUser> {
+  const result = await apiRequest<{ user: ApiUser }>('/auth/change-password', {
+    method: 'POST',
+    token,
+    body: { currentPassword, newPassword },
+  });
+  authStorage.saveUser(result.user);
+  return result.user;
+}
+
 export async function fetchTranscript(token: string): Promise<Transcript> {
   return apiRequest<Transcript>('/student/transcript', { token });
 }
@@ -388,14 +408,30 @@ export async function fetchSchedulePeriods(token: string): Promise<PeriodSlot[]>
   return result.periods;
 }
 
+export async function fetchScheduleSemesters(token: string): Promise<string[]> {
+  const result = await apiRequest<{ semesters: string[] }>('/schedule/semesters', { token });
+  return result.semesters;
+}
+
+export async function fetchAdminPeriods(token: string): Promise<PeriodSlot[]> {
+  const result = await apiRequest<{ periods: PeriodSlot[] }>('/admin/schedule/periods', { token });
+  return result.periods;
+}
+
+export async function updateAdminPeriod(token: string, period: number, input: { startTime: string; endTime: string; label: string }): Promise<PeriodSlot> {
+  const result = await apiRequest<{ period: PeriodSlot }>(`/admin/schedule/periods/${period}`, { method: 'PATCH', token, body: input });
+  return result.period;
+}
+
 export async function fetchCourseSections(
   token: string,
   input: { semester: string; includeCancelled?: boolean },
 ): Promise<CourseSection[]> {
-  const query = new URLSearchParams({ semester: input.semester });
+  const query = new URLSearchParams();
+  if (input.semester) query.set('semester', input.semester);
   if (input.includeCancelled) query.set('includeCancelled', 'true');
   const result = await apiRequest<{ sections: CourseSection[] }>(
-    `/schedule/sections?${query.toString()}`,
+    `/schedule/sections${query.toString() ? `?${query.toString()}` : ''}`,
     { token },
   );
   return result.sections;
@@ -404,10 +440,13 @@ export async function fetchCourseSections(
 export async function fetchScheduleItems(
   token: string,
   semester: string,
+  weekStart: string,
 ): Promise<ScheduleItem[]> {
-  const query = new URLSearchParams({ semester });
+  const query = new URLSearchParams();
+  if (semester) query.set('semester', semester);
+  query.set('weekStart', weekStart);
   const result = await apiRequest<{ items: ScheduleItem[] }>(
-    `/schedule/items?${query.toString()}`,
+    `/schedule/items${query.toString() ? `?${query.toString()}` : ''}`,
     { token },
   );
   return result.items;
@@ -415,7 +454,7 @@ export async function fetchScheduleItems(
 
 export async function runScheduleSimulation(
   token: string,
-  input: { semester: string; sectionIds: string[]; includeSavedItems?: boolean },
+  input: { semester: string; sectionIds: string[]; includeSavedItems?: boolean; weekStart?: string },
 ): Promise<ScheduleSimulation> {
   return apiRequest<ScheduleSimulation>('/schedule/simulate', {
     method: 'POST',

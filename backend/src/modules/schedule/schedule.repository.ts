@@ -41,9 +41,12 @@ interface ScheduleItemRow {
   section_id: string | null;
   title: string;
   semester: string | null;
+  week_start: string;
   day_of_week: number;
   start_period: number;
   end_period: number;
+  start_time: string;
+  end_time: string;
   room: string | null;
   note: string | null;
   created_at: Date;
@@ -95,9 +98,12 @@ function mapItem(row: ScheduleItemRow): ScheduleItem {
     sectionId: row.section_id,
     title: row.title,
     semester: row.semester,
+    weekStart: row.week_start,
     dayOfWeek: row.day_of_week,
     startPeriod: row.start_period,
     endPeriod: row.end_period,
+    startTime: row.start_time.slice(0, 5),
+    endTime: row.end_time.slice(0, 5),
     room: row.room,
     note: row.note,
     createdAt: row.created_at.toISOString(),
@@ -109,6 +115,16 @@ export async function listPeriodSlots(db: Queryable = pool): Promise<PeriodSlot[
     'SELECT period, start_time, end_time, label FROM period_slots ORDER BY period',
   );
   return result.rows.map(mapPeriod);
+}
+
+export async function listSemesters(db: Queryable = pool): Promise<string[]> {
+  const result = await db.query<{ semester: string }>(
+    `SELECT semester FROM course_sections
+     UNION
+     SELECT semester FROM tuition_fees
+     ORDER BY semester DESC`,
+  );
+  return result.rows.map((row) => row.semester);
 }
 
 const SECTION_SELECT = `
@@ -194,7 +210,9 @@ export async function findCourseSectionById(
 }
 
 const ITEM_SELECT = `
-  SELECT id, section_id, title, semester, day_of_week, start_period, end_period,
+  SELECT id, section_id, title, semester, week_start, day_of_week, start_period, end_period,
+         to_char(start_time, 'HH24:MI') AS start_time,
+         to_char(end_time, 'HH24:MI') AS end_time,
          room, note, created_at
     FROM schedule_items
 `;
@@ -202,6 +220,7 @@ const ITEM_SELECT = `
 export async function listScheduleItems(
   studentId: string,
   semester?: string,
+  weekStart?: string,
   db: Queryable = pool,
 ): Promise<ScheduleItem[]> {
   const values: unknown[] = [studentId];
@@ -210,6 +229,10 @@ export async function listScheduleItems(
   if (semester) {
     values.push(semester);
     semesterFilter = 'AND (semester = $2 OR semester IS NULL)';
+  }
+  if (weekStart) {
+    values.push(weekStart);
+    semesterFilter += ` AND week_start = $${values.length}`;
   }
 
   const result = await db.query<ScheduleItemRow>(
@@ -237,10 +260,13 @@ export async function findScheduleItem(
 export interface ScheduleItemInput {
   title: string;
   semester: string | null;
+  weekStart: string;
   sectionId: string | null;
   dayOfWeek: number;
   startPeriod: number;
   endPeriod: number;
+  startTime: string;
+  endTime: string;
   room: string | null;
   note: string | null;
 }
@@ -252,18 +278,22 @@ export async function insertScheduleItem(
 ): Promise<ScheduleItem> {
   const result = await db.query<ScheduleItemRow>(
     `INSERT INTO schedule_items
-       (student_id, section_id, title, semester, day_of_week, start_period, end_period, room, note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     RETURNING id, section_id, title, semester, day_of_week, start_period, end_period,
-               room, note, created_at`,
+       (student_id, section_id, title, semester, week_start, day_of_week, start_period, end_period, start_time, end_time, room, note)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     RETURNING id, section_id, title, semester, week_start, day_of_week, start_period, end_period,
+               to_char(start_time, 'HH24:MI') AS start_time,
+               to_char(end_time, 'HH24:MI') AS end_time, room, note, created_at`,
     [
       studentId,
       input.sectionId,
       input.title,
       input.semester,
+      input.weekStart,
       input.dayOfWeek,
       input.startPeriod,
       input.endPeriod,
+      input.startTime,
+      input.endTime,
       input.room,
       input.note,
     ],
@@ -284,23 +314,30 @@ export async function updateScheduleItem(
         SET section_id = $3,
             title = $4,
             semester = $5,
-            day_of_week = $6,
-            start_period = $7,
-            end_period = $8,
-            room = $9,
-            note = $10
+            week_start = $6,
+            day_of_week = $7,
+            start_period = $8,
+            end_period = $9,
+            start_time = $10,
+            end_time = $11,
+            room = $12,
+            note = $13
       WHERE id = $1 AND student_id = $2
-      RETURNING id, section_id, title, semester, day_of_week, start_period, end_period,
-                room, note, created_at`,
+      RETURNING id, section_id, title, semester, week_start, day_of_week, start_period, end_period,
+                to_char(start_time, 'HH24:MI') AS start_time,
+                to_char(end_time, 'HH24:MI') AS end_time, room, note, created_at`,
     [
       itemId,
       studentId,
       input.sectionId,
       input.title,
       input.semester,
+      input.weekStart,
       input.dayOfWeek,
       input.startPeriod,
       input.endPeriod,
+      input.startTime,
+      input.endTime,
       input.room,
       input.note,
     ],

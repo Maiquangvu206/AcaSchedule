@@ -35,9 +35,12 @@ export interface ScheduleItem {
   sectionId: string | null;
   title: string;
   semester: string | null;
+  weekStart: string;
   dayOfWeek: number;
   startPeriod: number;
   endPeriod: number;
+  startTime: string;
+  endTime: string;
   room: string | null;
   note: string | null;
   createdAt: string;

@@ -8,23 +8,23 @@ import {
   fetchCourseSections,
   fetchScheduleItems,
   fetchSchedulePeriods,
+  fetchScheduleSemesters,
   runScheduleSimulation,
   updateScheduleItem,
   type CourseSection,
   type PeriodSlot,
-  type ScheduleConflict,
   type ScheduleItem,
   type ScheduleSimulation,
 } from '../lib/api';
 
 const DAYS = [
-  { value: 1, label: 'Thứ 2' },
-  { value: 2, label: 'Thứ 3' },
-  { value: 3, label: 'Thứ 4' },
-  { value: 4, label: 'Thứ 5' },
-  { value: 5, label: 'Thứ 6' },
-  { value: 6, label: 'Thứ 7' },
-  { value: 7, label: 'CN' },
+  { value: 2, label: 'Thứ 2' },
+  { value: 3, label: 'Thứ 3' },
+  { value: 4, label: 'Thứ 4' },
+  { value: 5, label: 'Thứ 5' },
+  { value: 6, label: 'Thứ 6' },
+  { value: 7, label: 'Thứ 7' },
+  { value: 8, label: 'Chủ nhật' },
 ];
 
 const SUBJECT_COLORS = [
@@ -35,6 +35,21 @@ const SUBJECT_COLORS = [
   'border-cyan-400/40 bg-cyan-500/15 text-cyan-700',
   'border-lime-400/40 bg-lime-500/15 text-lime-700',
 ];
+
+const DEFAULT_PERIOD_TIMES = [
+  ['07:00', '07:50'],
+  ['07:55', '08:45'],
+  ['08:50', '09:40'],
+  ['09:45', '10:35'],
+  ['10:40', '11:30'],
+  ['13:00', '13:50'],
+  ['13:55', '14:45'],
+  ['14:50', '15:40'],
+  ['15:45', '16:35'],
+  ['16:40', '17:30'],
+  ['17:35', '18:25'],
+  ['18:30', '19:20'],
+] as const;
 
 function dayLabel(day: number): string {
   return DAYS.find((item) => item.value === day)?.label ?? `Ngày ${day}`;
@@ -50,6 +65,23 @@ function formatTimeRange(periods: PeriodSlot[], start: number, end: number): str
   const endSlot = periods.find((slot) => slot.period === end);
   if (!startSlot || !endSlot) return `Tiết ${start}–${end}`;
   return `${startSlot.startTime}–${endSlot.endTime}`;
+}
+
+function startOfWeek(date: Date): Date {
+  const result = new Date(date);
+  const day = result.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  result.setDate(result.getDate() + offset);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' }).format(date);
+}
+
+function dateValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 interface CalendarEvent {
@@ -72,7 +104,8 @@ export function SchedulePage() {
   const navigate = useNavigate();
   const gridRef = useRef<HTMLDivElement | null>(null);
 
-  const [semester, setSemester] = useState('2025-2');
+  const [semester, setSemester] = useState('');
+  const [semesters, setSemesters] = useState<string[]>([]);
   const [includeCancelled, setIncludeCancelled] = useState(false);
   const [sections, setSections] = useState<CourseSection[]>([]);
   const [periods, setPeriods] = useState<PeriodSlot[]>([]);
@@ -84,11 +117,12 @@ export function SchedulePage() {
   const [simulating, setSimulating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
 
   const [title, setTitle] = useState('');
-  const [dayOfWeek, setDayOfWeek] = useState('1');
-  const [startPeriod, setStartPeriod] = useState('1');
-  const [endPeriod, setEndPeriod] = useState('2');
+  const [dayOfWeek, setDayOfWeek] = useState('2');
+  const [startTime, setStartTime] = useState('07:00');
+  const [endTime, setEndTime] = useState('08:00');
   const [room, setRoom] = useState('');
   const [saving, setSaving] = useState(false);
   const [itemsVersion, setItemsVersion] = useState(0);
@@ -120,7 +154,7 @@ export function SchedulePage() {
     Promise.all([
       fetchCourseSections(token, { semester, includeCancelled }),
       fetchSchedulePeriods(token),
-      fetchScheduleItems(token, semester),
+      fetchScheduleItems(token, semester, dateValue(weekStart)),
     ])
       .then(([nextSections, nextPeriods, nextItems]) => {
         if (cancelled) return;
@@ -138,7 +172,17 @@ export function SchedulePage() {
     return () => {
       cancelled = true;
     };
-  }, [token, semester, includeCancelled, handleAuthError, navigate]);
+  }, [token, semester, includeCancelled, weekStart, handleAuthError, navigate]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetchScheduleSemesters(token)
+      .then((options) => {
+        setSemesters(options);
+        if (!semester && options[0]) setSemester(options[0]);
+      })
+      .catch((loadError) => handleAuthError(loadError, 'Không tải được danh sách học kỳ'));
+  }, [token, semester, handleAuthError]);
 
   const selectedKey = selected.join(',');
   const selectedIds = useMemo(
@@ -156,7 +200,7 @@ export function SchedulePage() {
     let cancelled = false;
     setSimulating(true);
 
-    runScheduleSimulation(token, { semester, sectionIds: selectedIds })
+    runScheduleSimulation(token, { semester, sectionIds: selectedIds, weekStart: dateValue(weekStart) })
       .then((result) => {
         if (!cancelled) setSimulation(result);
       })
@@ -172,7 +216,7 @@ export function SchedulePage() {
     return () => {
       cancelled = true;
     };
-  }, [token, semester, selectedIds, itemsVersion, handleAuthError]);
+  }, [token, semester, selectedIds, itemsVersion, weekStart, handleAuthError]);
 
   const groups = useMemo(() => {
     const map = new Map<
@@ -273,9 +317,12 @@ export function SchedulePage() {
       const result = await createScheduleItem(token, {
         title: title.trim(),
         semester,
+        weekStart: dateValue(weekStart),
         dayOfWeek: Number(dayOfWeek),
-        startPeriod: Number(startPeriod),
-        endPeriod: Number(endPeriod),
+        startPeriod: 1,
+        endPeriod: 1,
+        startTime,
+        endTime,
         room: room.trim() || null,
       });
       setItems((current) => [...current, result.item]);
@@ -321,7 +368,7 @@ export function SchedulePage() {
     const timeColumn = 76;
     const headerHeight = 40;
     const rowHeight = 52;
-    const columnWidth = (rect.width - timeColumn) / 7;
+    const columnWidth = (rect.width - timeColumn) / DAYS.length;
     const x = event.clientX - rect.left - timeColumn;
     const y = event.clientY - rect.top - headerHeight;
 
@@ -334,7 +381,7 @@ export function SchedulePage() {
     setError(null);
     try {
       const result = await updateScheduleItem(token, itemId, {
-        dayOfWeek: dayIndex + 1,
+        dayOfWeek: dayIndex + 2,
         startPeriod: start,
         endPeriod: end,
       });
@@ -347,18 +394,19 @@ export function SchedulePage() {
     }
   };
 
-  const periodOptions = periods.length > 0 ? periods : Array.from({ length: 12 }, (_, index) => ({
-    period: index + 1,
-    startTime: '',
-    endTime: '',
-    label: `Tiết ${index + 1}`,
-  }));
+  const periodOptions = periods.length > 0
+    ? periods
+    : DEFAULT_PERIOD_TIMES.map(([startTime, endTime], index) => ({
+        period: index + 1,
+        startTime,
+        endTime,
+        label: `Tiết ${index + 1}`,
+      }));
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-brand-600">Sprint 2</p>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Thời khóa biểu</h1>
           <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
             Chọn lớp học phần để mô phỏng đăng ký. Hệ thống phát hiện trùng thứ và giao tiết, đồng thời
@@ -366,22 +414,26 @@ export function SchedulePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="block space-y-1 text-xs font-medium text-slate-600">
-            Học kỳ
-            <input
+          <label className="block min-w-[190px] space-y-1.5 text-xs font-semibold tracking-wide text-slate-600">
+            <span className="ml-1">Học kỳ</span>
+            <select
               value={semester}
-              onChange={(event) => setSemester(event.target.value.trim())}
-              className="mt-1 w-32 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
-            />
+              onChange={(event) => setSemester(event.target.value)}
+              disabled={semesters.length === 0}
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-medium tracking-normal text-slate-900 shadow-sm outline-none transition hover:border-slate-300 focus:border-brand-400/60 focus:ring-4 focus:ring-brand-500/10 disabled:cursor-not-allowed disabled:bg-slate-100"
+            >
+              {semesters.length === 0 ? <option value="">Chưa có học kỳ</option> : null}
+              {semesters.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm text-slate-700">
+          <label className="flex h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">
             <input
               type="checkbox"
               checked={includeCancelled}
               onChange={(event) => setIncludeCancelled(event.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 bg-white accent-brand-500"
+              className="h-4 w-4 rounded border-slate-300 bg-white accent-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
-            Hiện lớp đã huỷ
+            <span className="whitespace-nowrap">Hiện lớp đã huỷ</span>
           </label>
         </div>
       </header>
@@ -504,7 +556,17 @@ export function SchedulePage() {
 
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-slate-900">Lịch tuần</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-semibold text-slate-900">Lịch tuần</h2>
+              <span className="text-xs text-slate-500">
+                {formatDate(weekStart)} – {formatDate(new Date(weekStart.getTime() + 6 * 86400000))}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setWeekStart((date) => new Date(date.getTime() - 7 * 86400000))} className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">‹</button>
+              <button type="button" onClick={() => setWeekStart(startOfWeek(new Date()))} className="rounded-lg bg-brand-500 px-3 py-1 text-xs font-medium text-white hover:bg-brand-400">Tuần này</button>
+              <button type="button" onClick={() => setWeekStart((date) => new Date(date.getTime() + 7 * 86400000))} className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">›</button>
+            </div>
             <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
               <span className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-sm bg-brand-400" /> Lớp học phần
@@ -538,10 +600,13 @@ export function SchedulePage() {
               {DAYS.map((day, index) => (
                 <div
                   key={day.value}
-                  className="flex items-center justify-center border-b border-l border-gray-200 text-xs font-medium text-slate-600"
+                  className="flex flex-col items-center justify-center gap-0.5 border-b border-l border-gray-200 text-xs font-medium text-slate-600"
                   style={{ gridColumn: `${index + 2}`, gridRow: '1' }}
                 >
-                  {day.label}
+                  <span>{day.label}</span>
+                  <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-400">
+                    {formatDate(new Date(weekStart.getTime() + index * 86400000))}
+                  </span>
                 </div>
               ))}
 
@@ -552,7 +617,7 @@ export function SchedulePage() {
                     style={{ gridColumn: '1', gridRow: `${index + 2}` }}
                   >
                     <span className="font-semibold text-slate-600">Tiết {slot.period}</span>
-                    <span>{slot.startTime}</span>
+                    <span>{slot.startTime} – {slot.endTime}</span>
                   </div>
                   {DAYS.map((day, dayIndex) => (
                     <div
@@ -592,7 +657,7 @@ export function SchedulePage() {
                         : subjectColor(event.code)
                     } ${event.conflict ? 'ring-2 ring-rose-400/80' : ''}`}
                     style={{
-                      gridColumn: `${event.day + 1}`,
+                      gridColumn: `${event.day}`,
                       gridRow: `${event.start + 1} / span ${Math.max(1, event.end - event.start + 1)}`,
                       marginLeft: offset,
                       zIndex: 10 + index,
@@ -602,7 +667,7 @@ export function SchedulePage() {
                     <p className="truncate font-semibold leading-4">{event.title}</p>
                     <p className="truncate text-[10px] opacity-80">{event.code}</p>
                     <p className="truncate text-[10px] opacity-70">
-                      {formatTimeRange(periods, event.start, event.end)}
+                      {event.item ? `${event.item.startTime}–${event.item.endTime}` : formatTimeRange(periods, event.start, event.end)}
                       {event.room ? ` · ${event.room}` : ''}
                     </p>
                     {event.kind === 'item' && event.item ? (
@@ -628,29 +693,6 @@ export function SchedulePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-slate-900">Xung đột phát hiện</h2>
-          {selectedIds.length === 0 ? (
-            <p className="text-sm text-slate-600">Chọn ít nhất một lớp để chạy mô phỏng.</p>
-          ) : simulating ? (
-            <p className="text-sm text-slate-600">Đang kiểm tra xung đột…</p>
-          ) : conflicts.length === 0 ? (
-            <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
-              Không có xung đột. Thời khóa biểu khả thi.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {conflicts.map((conflict, index) => (
-                <ConflictRow key={`${conflict.first.id}-${conflict.second.id}-${index}`} conflict={conflict} />
-              ))}
-            </ul>
-          )}
-          {simulation && simulation.cancelledSectionIds.length > 0 ? (
-            <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-700">
-              {simulation.cancelledSectionIds.length} lớp đã huỷ bị bỏ qua khi mô phỏng.
-            </p>
-          ) : null}
-        </section>
 
         <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
           <h2 className="text-lg font-semibold text-slate-900">Thêm lịch cá nhân</h2>
@@ -681,32 +723,12 @@ export function SchedulePage() {
                 </select>
               </label>
               <label className="block space-y-1 text-xs font-medium text-slate-600">
-                Từ tiết
-                <select
-                  value={startPeriod}
-                  onChange={(event) => setStartPeriod(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
-                >
-                  {periodOptions.map((slot) => (
-                    <option key={slot.period} value={slot.period}>
-                      {slot.period}
-                    </option>
-                  ))}
-                </select>
+                Từ giờ
+                <input type="time" required value={startTime} onChange={(event) => setStartTime(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60" />
               </label>
               <label className="block space-y-1 text-xs font-medium text-slate-600">
-                Đến tiết
-                <select
-                  value={endPeriod}
-                  onChange={(event) => setEndPeriod(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
-                >
-                  {periodOptions.map((slot) => (
-                    <option key={slot.period} value={slot.period}>
-                      {slot.period}
-                    </option>
-                  ))}
-                </select>
+                Đến giờ
+                <input type="time" required value={endTime} onChange={(event) => setEndTime(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60" />
               </label>
               <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Phòng
@@ -726,10 +748,6 @@ export function SchedulePage() {
               {saving ? 'Đang thêm…' : 'Thêm lịch'}
             </button>
           </form>
-          <p className="rounded-xl border border-gray-200/50 bg-gray-50 px-4 py-3 text-xs leading-5 text-slate-600">
-            Lịch cá nhân được lưu theo tài khoản và có thể kéo-thả trên lịch tuần. Xung đột với lớp học
-            phần đang chọn sẽ được cảnh báo.
-          </p>
         </section>
       </div>
     </div>
@@ -765,18 +783,5 @@ function SummaryCard({
         {suffix ? <span className="ml-1 text-sm font-medium text-slate-500">{suffix}</span> : null}
       </p>
     </div>
-  );
-}
-
-function ConflictRow({ conflict }: { conflict: ScheduleConflict }) {
-  return (
-    <li className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-      <p className="font-medium">
-        {dayLabel(conflict.dayOfWeek)} · tiết {conflict.overlapStartPeriod}–{conflict.overlapEndPeriod}
-      </p>
-      <p className="mt-1 text-xs text-rose-600/90">
-        {conflict.first.title} ({conflict.first.code}) ↔ {conflict.second.title} ({conflict.second.code})
-      </p>
-    </li>
   );
 }

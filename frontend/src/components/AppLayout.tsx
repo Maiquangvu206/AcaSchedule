@@ -16,6 +16,7 @@ const ADMIN_NAV_ITEMS = [
   { to: '/admin/subjects', label: 'Môn học', end: false, protected: true },
   { to: '/admin/tuition', label: 'Học phí', end: false, protected: true },
   { to: '/admin/schedule', label: 'Lịch học', end: false, protected: true },
+  { to: '/admin/periods', label: 'Cấu hình tiết', end: false, protected: true },
   { to: '/admin/documents', label: 'Tài liệu', end: false, protected: true },
   { to: '/admin/activity', label: 'Hoạt động', end: false, protected: true },
 ];
@@ -30,27 +31,28 @@ export function AppLayout() {
   };
 
   const items = user?.role === 'admin' ? ADMIN_NAV_ITEMS : PUBLIC_NAV_ITEMS;
+  const isAdmin = user?.role === 'admin';
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.10),_transparent_60%)]">
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <Link to="/" className="flex items-center gap-3">
+        <div className={`mx-auto flex max-w-7xl flex-wrap items-center px-4 ${isAdmin ? 'justify-between gap-2 py-2' : 'gap-4 py-3 sm:px-6 lg:grid lg:grid-cols-[auto_1fr_auto] lg:gap-6'}`}>
+          <Link to="/" className={`flex shrink-0 items-center ${isAdmin ? 'gap-2' : 'gap-3'}`}>
             <BrandLogo size="sm" />
             <div>
-              <p className="text-base font-semibold tracking-tight text-slate-900">AcaSchedule</p>
+              <p className={`${isAdmin ? 'text-sm' : 'text-base'} font-semibold tracking-tight text-slate-900`}>AcaSchedule</p>
               <p className="text-[11px] text-slate-500">Personal Academic Hub</p>
             </div>
           </Link>
 
-          <nav className="flex items-center gap-1" aria-label="Điều hướng chính">
+          <nav className={`order-3 flex min-w-0 items-center overflow-x-auto ${isAdmin ? 'w-full gap-0 border-t border-slate-100 pt-1 lg:order-none lg:w-auto lg:border-0 lg:pt-0' : 'w-full gap-1 lg:order-none lg:justify-center'}`} aria-label="Điều hướng chính">
             {items.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  `shrink-0 rounded-lg font-medium transition ${isAdmin ? 'px-2 py-1.5 text-xs' : 'px-3 py-2 text-sm'} ${
                     isActive
                       ? 'bg-brand-500/15 text-brand-600'
                       : 'text-slate-600 hover:bg-gray-100 hover:text-slate-900'
@@ -62,17 +64,17 @@ export function AppLayout() {
               ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center ${isAdmin ? 'gap-2' : 'gap-3 lg:justify-self-end'}`}>
             {user ? (
               <>
                 <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium text-slate-900">{user.fullName}</p>
+                  <p className={`${isAdmin ? 'text-xs' : 'text-sm'} font-medium text-slate-900`}>{user.fullName}</p>
                   <p className="text-[11px] uppercase tracking-wide text-slate-500">{user.role}</p>
                 </div>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-300 hover:text-slate-900"
+                  className={`rounded-lg border border-gray-200 font-medium text-slate-700 transition hover:border-gray-300 hover:text-slate-900 ${isAdmin ? 'px-2 py-1.5 text-xs' : 'px-3 py-2 text-sm'}`}
                 >
                   Đăng xuất
                 </button>

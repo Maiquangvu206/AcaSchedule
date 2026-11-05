@@ -75,8 +75,8 @@ usersRouter.post(
     const password = generateTemporaryPassword();
     try {
       const result = await pool.query(
-        `INSERT INTO users (email, password_hash, full_name, phone, student_code, role)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO users (email, password_hash, full_name, phone, student_code, role, must_change_password)
+         VALUES ($1, $2, $3, $4, $5, $6, true)
          RETURNING id, email, full_name, phone, student_code, role, is_active, created_at`,
         [input.email, await hashPassword(password), input.fullName, input.phone || null, input.studentCode || null, input.role],
       );
@@ -146,7 +146,7 @@ usersRouter.post(
     try {
       await client.query('BEGIN');
       const result = await client.query(
-        'UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2 RETURNING email, full_name',
+        'UPDATE users SET password_hash = $1, must_change_password = true, updated_at = now() WHERE id = $2 RETURNING email, full_name',
         [await hashPassword(password), req.params.userId],
       );
       if (!result.rowCount) throw AppError.notFound('Không tìm thấy tài khoản');

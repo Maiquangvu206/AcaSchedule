@@ -8,6 +8,7 @@ export interface UserRecord {
   password_hash: string;
   role: UserRole;
   is_active: boolean;
+  must_change_password: boolean;
   created_at: Date;
 }
 
@@ -21,7 +22,7 @@ export interface RefreshTokenRecord {
 
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const result = await pool.query<UserRecord>(
-    `SELECT id, email, full_name, password_hash, role, is_active, created_at
+    `SELECT id, email, full_name, password_hash, role, is_active, must_change_password, created_at
        FROM users
       WHERE email = $1`,
     [email],
@@ -31,7 +32,7 @@ export async function findUserByEmail(email: string): Promise<UserRecord | null>
 
 export async function findUserById(id: string): Promise<UserRecord | null> {
   const result = await pool.query<UserRecord>(
-    `SELECT id, email, full_name, password_hash, role, is_active, created_at
+    `SELECT id, email, full_name, password_hash, role, is_active, must_change_password, created_at
        FROM users
       WHERE id = $1`,
     [id],
@@ -48,7 +49,7 @@ export async function createUser(input: {
   const result = await pool.query<UserRecord>(
     `INSERT INTO users (email, password_hash, full_name, role)
      VALUES ($1, $2, $3, $4)
-     RETURNING id, email, full_name, password_hash, role, is_active, created_at`,
+     RETURNING id, email, full_name, password_hash, role, is_active, must_change_password, created_at`,
     [input.email, input.passwordHash, input.fullName, input.role],
   );
 

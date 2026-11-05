@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import {
   createAdminScheduleSection, deleteAdminScheduleSection, fetchAdminScheduleSections,
-  fetchAdminSubjects, updateAdminScheduleSection, type AdminCourseSection, type AdminCourseSectionInput, type AdminSubject,
+  fetchAdminSubjects, updateAdminScheduleSection,
+  fetchScheduleSemesters,
+  type AdminCourseSection, type AdminCourseSectionInput, type AdminSubject,
 } from '../lib/api';
 import { AdminListPage } from './AdminUsers';
 
@@ -20,6 +22,7 @@ export function AdminSchedulePage() {
   const [sections, setSections] = useState<AdminCourseSection[]>([]);
   const [subjects, setSubjects] = useState<AdminSubject[]>([]);
   const [semester, setSemester] = useState('');
+  const [semesters, setSemesters] = useState<string[]>([]);
   const [form, setForm] = useState<AdminCourseSectionInput>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [hasPractical, setHasPractical] = useState(false);
@@ -38,6 +41,17 @@ export function AdminSchedulePage() {
     if (!token) return;
     fetchAdminSubjects(token).then(setSubjects).catch(() => setError('Không tải được môn học.'));
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetchScheduleSemesters(token).then((options) => {
+      setSemesters(options);
+      if (!semester && options[0]) {
+        setSemester(options[0]);
+        setForm((current) => ({ ...current, semester: options[0] }));
+      }
+    }).catch(() => setError('Không tải được danh sách học kỳ.'));
+  }, [token, semester]);
 
   useEffect(load, [token, semester]);
 
@@ -106,7 +120,7 @@ export function AdminSchedulePage() {
       {error ? <p role="alert" className="m-5 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
       {message ? <p className="m-5 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</p> : null}
       <form onSubmit={submit} className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-5 md:grid-cols-4">
-        <label className="text-sm font-medium text-slate-700">Học kỳ<input value={form.semester} onChange={(e) => setField('semester', e.target.value)} placeholder="HK1 2026-2027" required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
+        <label className="text-sm font-medium text-slate-700">Học kỳ<select value={form.semester} onChange={(e) => { setField('semester', e.target.value); setSemester(e.target.value); }} required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">Chọn học kỳ</option>{semesters.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
         <label className="text-sm font-medium text-slate-700">Môn học<select value={form.subjectId} onChange={(e) => setField('subjectId', e.target.value)} required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">Chọn môn</option>{subjects.map((s) => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}</select></label>
         <label className="text-sm font-medium text-slate-700">Mã lớp<input value={form.sectionCode} onChange={(e) => setField('sectionCode', e.target.value)} placeholder="INT2208-01" required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Số buổi / tuần<select value={form.meetingCount} onChange={(e) => { const count = Number(e.target.value); setField('meetingCount', count); if (count === 2) setField('secondDayOfWeek', pairedDay[form.dayOfWeek] ?? 5); }} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value={1}>1 buổi</option><option value={2}>2 buổi</option></select></label>

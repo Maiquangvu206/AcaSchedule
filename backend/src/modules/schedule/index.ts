@@ -18,6 +18,14 @@ scheduleRouter.get(
   }),
 );
 
+scheduleRouter.get(
+  '/semesters',
+  asyncHandler(async (_req, res) => {
+    const semesters = await scheduleService.listSemesters();
+    res.json({ semesters });
+  }),
+);
+
 /** Course sections for a semester, optionally filtered by subject. */
 scheduleRouter.get(
   '/sections',
@@ -43,7 +51,8 @@ scheduleRouter.get(
   '/items',
   asyncHandler(async (req, res) => {
     const semester = typeof req.query.semester === 'string' ? req.query.semester : undefined;
-    const items = await scheduleService.listItems(req.user!.id, semester);
+    const weekStart = typeof req.query.weekStart === 'string' ? req.query.weekStart : undefined;
+    const items = await scheduleService.listItems(req.user!.id, semester, weekStart);
     res.json({ items });
   }),
 );

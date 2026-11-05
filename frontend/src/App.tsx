@@ -17,6 +17,8 @@ import { AdminTuitionPage } from './pages/AdminTuition';
 import { AdminDocumentsPage } from './pages/AdminDocuments';
 import { AdminSchedulePage } from './pages/AdminSchedule';
 import { AdminMajorsPage } from './pages/AdminMajors';
+import { AdminPeriodsPage } from './pages/AdminPeriods';
+import { ChangePasswordPage } from './pages/ChangePassword';
 
 export default function App() {
   return (
@@ -24,9 +26,12 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="login" element={<Login />} />
+          <Route path="change-password" element={<ProtectedRoute />} >
+            <Route index element={<ChangePasswordPage />} />
+          </Route>
           <Route element={<AppLayout />}>
-            <Route index element={<DashboardPage />} />
             <Route element={<ProtectedRoute />}>
+              <Route index element={<DashboardPage />} />
               <Route path="transcript" element={<TranscriptPage />} />
               <Route path="schedule" element={<SchedulePage />} />
               <Route path="documents" element={<DocumentsPage />} />
@@ -38,6 +43,7 @@ export default function App() {
                 <Route path="admin/subjects" element={<AdminSubjectsPage />} />
                 <Route path="admin/tuition" element={<AdminTuitionPage />} />
                 <Route path="admin/schedule" element={<AdminSchedulePage />} />
+                <Route path="admin/periods" element={<AdminPeriodsPage />} />
                 <Route path="admin/documents" element={<AdminDocumentsPage />} />
                 <Route path="admin/activity" element={<AdminActivityPage />} />
               </Route>

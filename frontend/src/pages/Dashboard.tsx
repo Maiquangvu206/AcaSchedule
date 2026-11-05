@@ -13,29 +13,31 @@ function CPATrendChart({ semesters }: { semesters: { semester: string; gpa: numb
   if (data.length === 0) return null;
 
   const maxGPA = Math.max(4, ...data.map((d) => d.gpa));
-  const width = 480;
-  const height = 200;
-  const padding = 40;
-  const chartWidth = width - padding * 2;
-  const chartHeight = height - padding * 2;
+  const width = 720;
+  const height = 280;
+  const leftPadding = 52;
+  const rightPadding = 20;
+  const topPadding = 24;
+  const bottomPadding = 48;
+  const chartWidth = width - leftPadding - rightPadding;
+  const chartHeight = height - topPadding - bottomPadding;
 
   // X positions evenly spaced
   const xStep = data.length === 1 ? chartWidth : chartWidth / (data.length - 1);
 
   // Build SVG path for line
   const points = data.map((d, i) => {
-    const x = padding + i * xStep;
-    const y = padding + chartHeight - (d.gpa / maxGPA) * chartHeight;
+    const x = leftPadding + i * xStep;
+    const y = topPadding + chartHeight - (d.gpa / maxGPA) * chartHeight;
     return `${i === 0 ? 'M' : 'L'}${x},${y}`;
   }).join(' ');
 
-  const maxY = Math.max(4, ...data.map(d => d.gpa));
-  const yTicks = [0, 1, 2, 3, 4].filter(v => v <= maxY + 1);
+  const yTicks = [0, 1, 2, 3, 4];
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6">
       <div className="flex items-center justify-between gap-3 mb-5">
-        <h2 className="text-lg font-semibold text-slate-900">Sơ điểm GPA theo học kỳ</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Xu hướng GPA theo học kỳ</h2>
         <p className="text-xs text-slate-500">
           {data.length} học kỳ ·{' '}
           <span className="font-medium text-slate-700">
@@ -43,23 +45,29 @@ function CPATrendChart({ semesters }: { semesters: { semester: string; gpa: numb
           </span>
         </p>
       </div>
-      <div className="relative h-[200px] w-full">
-        <svg className="w-full h-[180px]" viewBox={`0 0 ${width} ${height}`}>
+      <div className="relative w-full">
+        <svg className="h-auto w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Biểu đồ GPA theo học kỳ">
           {/* Y axis grid lines */}
           {yTicks.map(y => {
-            const yPos = padding + chartHeight - (y / maxGPA) * chartHeight;
+            const yPos = topPadding + chartHeight - (y / maxGPA) * chartHeight;
             return (
-              <line
-                key={y}
-                x1={padding}
+              <g key={y}>
+                <line
+                x1={leftPadding}
                 y1={yPos}
-                x2={padding + chartWidth}
+                x2={leftPadding + chartWidth}
                 y2={yPos}
-                stroke="#e5e7eb"
+                stroke="#e2e8f0"
                 strokeWidth={1}
-              />
+                />
+                <text x={leftPadding - 12} y={yPos + 4} textAnchor="end" fontSize="11" fill="#64748b">
+                  {y.toFixed(1)}
+                </text>
+              </g>
             );
           })}
+          <line x1={leftPadding} y1={topPadding} x2={leftPadding} y2={topPadding + chartHeight} stroke="#cbd5e1" />
+          <line x1={leftPadding} y1={topPadding + chartHeight} x2={leftPadding + chartWidth} y2={topPadding + chartHeight} stroke="#cbd5e1" />
           {/* Line path */}
           <path
             d={points}
@@ -71,13 +79,12 @@ function CPATrendChart({ semesters }: { semesters: { semester: string; gpa: numb
           />
           {/* Dots */}
           {data.map((d, i) => {
-            const x = padding + i * xStep;
-            const y = padding + chartHeight - (d.gpa / maxGPA) * chartHeight;
+            const x = leftPadding + i * xStep;
+            const y = topPadding + chartHeight - (d.gpa / maxGPA) * chartHeight;
             const isLast = i === data.length - 1;
             return (
-              <>
+              <g key={`point-${i}`}>
                 <circle
-                  key={`dot-${i}`}
                   cx={x}
                   cy={y}
                   r={6}
@@ -86,7 +93,6 @@ function CPATrendChart({ semesters }: { semesters: { semester: string; gpa: numb
                   strokeWidth={3}
                 />
                 <text
-                  key={`label-${i}`}
                   x={x}
                   y={y - 10}
                   textAnchor="middle"
@@ -96,20 +102,16 @@ function CPATrendChart({ semesters }: { semesters: { semester: string; gpa: numb
                 >
                   {formatNumber(d.gpa)}
                 </text>
-              </>
+                <text x={x} y={height - 16} textAnchor="middle" fontSize="11" fill="#475569">
+                  {d.semester}
+                </text>
+              </g>
             );
           })}
         </svg>
-        <div className="flex items-end gap-1 mt-2 w-full">
-          {data.map((semester) => (
-            <div key={semester.semester} className="flex flex-col items-center gap-1" style={{ width: xStep }}>
-              <span className="text-[10px] text-slate-600 leading-none">{semester.semester}</span>
-            </div>
-          ))}
-        </div>
       </div>
       <p className="mt-3 text-[11px] text-slate-500">
-        Mỗi đường là GPA của từng học kỳ. Điểm sáng màu xanh là học kỳ gần nhất.
+        Điểm GPA được nối theo thứ tự học kỳ; điểm màu xanh đậm là học kỳ gần nhất.
       </p>
     </section>
   );

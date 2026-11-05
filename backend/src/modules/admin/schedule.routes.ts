@@ -65,6 +65,38 @@ adminScheduleRouter.get('/sections', asyncHandler(async (req, res) => {
   res.json({ sections: result.rows });
 }));
 
+adminScheduleRouter.get('/periods', asyncHandler(async (_req, res) => {
+  const result = await pool.query(
+    `SELECT period, to_char(start_time, 'HH24:MI') AS "startTime",
+            to_char(end_time, 'HH24:MI') AS "endTime", label
+       FROM period_slots
+      ORDER BY period`,
+  );
+  res.json({ periods: result.rows });
+}));
+
+adminScheduleRouter.patch('/periods/:period', asyncHandler(async (req, res) => {
+  const period = z.coerce.number().int().min(1).max(16).parse(req.params.period);
+  const input = z.object({
+    startTime: z.string().regex(/^\d{2}:\d{2}$/),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/),
+    label: z.string().trim().min(1).max(30),
+  }).refine((value) => value.endTime > value.startTime, {
+    message: 'Giờ kết thúc phải sau giờ bắt đầu',
+    path: ['endTime'],
+  }).parse(req.body);
+  const result = await pool.query(
+    `UPDATE period_slots
+        SET start_time = $1, end_time = $2, label = $3
+      WHERE period = $4
+      RETURNING period, to_char(start_time, 'HH24:MI') AS "startTime",
+                to_char(end_time, 'HH24:MI') AS "endTime", label`,
+    [input.startTime, input.endTime, input.label, period],
+  );
+  if (!result.rowCount) throw AppError.notFound('Không tìm thấy tiết học');
+  res.json({ period: result.rows[0] });
+}));
+
 adminScheduleRouter.post('/sections', asyncHandler(async (req, res) => {
   const input = sectionSchema.parse(req.body);
   try {

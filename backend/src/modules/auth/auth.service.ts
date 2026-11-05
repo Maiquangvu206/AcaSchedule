@@ -25,6 +25,7 @@ export interface PublicUser {
   fullName: string;
   role: UserRole;
   createdAt: string;
+  mustChangePassword: boolean;
 }
 
 export interface AuthResult {
@@ -40,6 +41,7 @@ function toPublicUser(user: UserRecord): PublicUser {
     fullName: user.full_name,
     role: user.role,
     createdAt: user.created_at.toISOString(),
+    mustChangePassword: user.must_change_password,
   };
 }
 

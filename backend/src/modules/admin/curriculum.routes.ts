@@ -139,6 +139,13 @@ curriculumRouter.post('/majors/:majorId/students', asyncHandler(async (req, res)
     userId: z.string().uuid(),
     isPrimary: z.boolean().default(false),
   }).parse(req.body);
+  const count = await pool.query<{ count: string }>(
+    'SELECT count(*)::text AS count FROM user_majors WHERE user_id = $1 AND major_id <> $2',
+    [input.userId, req.params.majorId],
+  );
+  if (Number(count.rows[0]?.count ?? 0) >= 2) {
+    throw AppError.conflict('Mỗi sinh viên chỉ được gán tối đa hai ngành');
+  }
   if (input.isPrimary) {
     await pool.query('UPDATE user_majors SET is_primary = false WHERE user_id = $1', [input.userId]);
   }

@@ -32,6 +32,7 @@ export interface UseScheduleState {
   createItem: (input: {
     title: string;
     semester: string | null;
+    weekStart: string;
     dayOfWeek: number;
     startPeriod: number;
     endPeriod: number;
@@ -68,6 +69,10 @@ export function useSchedule(initialSemester = '2025-2'): UseScheduleState {
   const [simulating, setSimulating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const weekStart = new Date();
+  const day = weekStart.getDay();
+  weekStart.setDate(weekStart.getDate() + (day === 0 ? -6 : 1 - day));
+  const weekStartValue = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -77,7 +82,7 @@ export function useSchedule(initialSemester = '2025-2'): UseScheduleState {
       const [nextPeriods, nextSections, nextItems] = await Promise.all([
         fetchSchedulePeriods(token),
         fetchCourseSections(token, { semester, includeCancelled }),
-        fetchScheduleItems(token, semester),
+        fetchScheduleItems(token, semester, weekStartValue),
       ]);
       setPeriods(nextPeriods);
       setSections(nextSections);
@@ -87,7 +92,7 @@ export function useSchedule(initialSemester = '2025-2'): UseScheduleState {
     } finally {
       setLoading(false);
     }
-  }, [token, semester, includeCancelled]);
+  }, [token, semester, includeCancelled, weekStartValue]);
 
   useEffect(() => {
     load();
@@ -138,6 +143,7 @@ export function useSchedule(initialSemester = '2025-2'): UseScheduleState {
     async (input: {
       title: string;
       semester: string | null;
+      weekStart: string;
       dayOfWeek: number;
       startPeriod: number;
       endPeriod: number;

@@ -5,6 +5,7 @@ interface AuthContextValue {
   user: ApiUser | null;
   token: string | null;
   login: (email: string, password: string) => Promise<AuthResponse>;
+  updateUser: (user: ApiUser) => void;
   logout: () => void;
 }
 
@@ -27,6 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
   }, []);
 
+  const updateUser = useCallback((nextUser: ApiUser) => {
+    authStorage.saveUser(nextUser);
+    setUser(nextUser);
+  }, []);
+
   // Đăng ký callback để nhận token mới khi refresh thành công
   useEffect(() => {
     setRefreshTokenCallback((newToken) => {
@@ -40,8 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, token, login, logout }),
-    [user, token, login, logout],
+    () => ({ user, token, login, updateUser, logout }),
+    [user, token, login, updateUser, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

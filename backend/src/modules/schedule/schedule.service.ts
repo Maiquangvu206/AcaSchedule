@@ -13,6 +13,10 @@ export async function listPeriods() {
   return repository.listPeriodSlots();
 }
 
+export async function listSemesters() {
+  return repository.listSemesters();
+}
+
 export async function listSections(filters: {
   semester?: string;
   subjectId?: string;
@@ -74,7 +78,7 @@ function itemToMeeting(item: ScheduleItem): ScheduleMeeting {
  */
 export async function simulate(
   studentId: string,
-  input: { semester: string; sectionIds: string[]; includeSavedItems?: boolean },
+  input: { semester: string; sectionIds: string[]; includeSavedItems?: boolean; weekStart?: string },
 ) {
   const sectionIds = [...new Set(input.sectionIds)];
   const [sections, periods] = await Promise.all([
@@ -94,7 +98,7 @@ export async function simulate(
   const savedItems =
     input.includeSavedItems === false
       ? []
-      : await repository.listScheduleItems(studentId, input.semester);
+      : await repository.listScheduleItems(studentId, input.semester, input.weekStart);
 
   const meetings = [
     ...sections.flatMap(sectionToMeetings),
@@ -126,8 +130,8 @@ export async function simulate(
   };
 }
 
-async function itemConflicts(studentId: string, semester: string | null): Promise<ScheduleConflict[]> {
-  const items = await repository.listScheduleItems(studentId, semester ?? undefined);
+async function itemConflicts(studentId: string, semester: string | null, weekStart: string): Promise<ScheduleConflict[]> {
+  const items = await repository.listScheduleItems(studentId, semester ?? undefined, weekStart);
   return simulateSchedule(items.map(itemToMeeting)).conflicts;
 }
 
@@ -137,8 +141,8 @@ function conflictsFor(itemId: string, conflicts: ScheduleConflict[]): ScheduleCo
   );
 }
 
-export async function listItems(studentId: string, semester?: string) {
-  return repository.listScheduleItems(studentId, semester);
+export async function listItems(studentId: string, semester?: string, weekStart?: string) {
+  return repository.listScheduleItems(studentId, semester, weekStart);
 }
 
 export async function createItem(studentId: string, input: CreateScheduleItemInput) {
@@ -150,15 +154,18 @@ export async function createItem(studentId: string, input: CreateScheduleItemInp
   const item = await repository.insertScheduleItem(studentId, {
     title: input.title,
     semester: input.semester ?? null,
+    weekStart: input.weekStart,
     sectionId: input.sectionId ?? null,
     dayOfWeek: input.dayOfWeek,
-    startPeriod: input.startPeriod,
-    endPeriod: input.endPeriod,
+    startPeriod: 1,
+    endPeriod: 1,
+    startTime: input.startTime,
+    endTime: input.endTime,
     room: input.room ?? null,
     note: input.note ?? null,
   });
 
-  const conflicts = await itemConflicts(studentId, item.semester);
+  const conflicts = await itemConflicts(studentId, item.semester, item.weekStart);
   return { item, conflicts: conflictsFor(item.id, conflicts) };
 }
 
@@ -173,17 +180,16 @@ export async function updateItem(
   const next = {
     title: input.title ?? existing.title,
     semester: input.semester === undefined ? existing.semester : input.semester,
+    weekStart: input.weekStart ?? existing.weekStart,
     sectionId: input.sectionId === undefined ? existing.sectionId : input.sectionId,
     dayOfWeek: input.dayOfWeek ?? existing.dayOfWeek,
-    startPeriod: input.startPeriod ?? existing.startPeriod,
-    endPeriod: input.endPeriod ?? existing.endPeriod,
+    startPeriod: existing.startPeriod,
+    endPeriod: existing.endPeriod,
+    startTime: input.startTime ?? existing.startTime,
+    endTime: input.endTime ?? existing.endTime,
     room: input.room === undefined ? existing.room : input.room,
     note: input.note === undefined ? existing.note : input.note,
   };
-
-  if (next.endPeriod < next.startPeriod) {
-    throw AppError.badRequest('endPeriod must be greater than or equal to startPeriod');
-  }
 
   if (next.sectionId) {
     const section = await repository.findCourseSectionById(next.sectionId);
@@ -193,7 +199,7 @@ export async function updateItem(
   const item = await repository.updateScheduleItem(studentId, itemId, next);
   if (!item) throw AppError.notFound('Schedule item not found');
 
-  const conflicts = await itemConflicts(studentId, item.semester);
+  const conflicts = await itemConflicts(studentId, item.semester, item.weekStart);
   return { item, conflicts: conflictsFor(item.id, conflicts) };
 }
 

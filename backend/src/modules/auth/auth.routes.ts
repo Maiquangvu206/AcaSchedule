@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { asyncHandler } from '../../lib/errors';
+import { AppError, asyncHandler } from '../../lib/errors';
 import { authenticate } from './auth.middleware';
-import { forgotPasswordSchema, loginSchema, logoutSchema, refreshSchema, registerSchema } from './auth.schemas';
+import { changePasswordSchema, forgotPasswordSchema, loginSchema, logoutSchema, refreshSchema, registerSchema } from './auth.schemas';
 import { pool } from '../../database/pool';
-import { hashPassword } from '../../lib/password';
+import { hashPassword, verifyPassword } from '../../lib/password';
 import { sendTemporaryPasswordEmail } from '../../lib/mail';
 import { randomBytes } from 'node:crypto';
 import * as authService from './auth.service';
@@ -30,7 +30,7 @@ authRouter.post('/forgot-password', authRateLimit, asyncHandler(async (req, res)
   );
   if (result.rows[0]) {
     const password = randomBytes(12).toString('base64url');
-    await pool.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [
+    await pool.query('UPDATE users SET password_hash = $1, must_change_password = true, updated_at = now() WHERE id = $2', [
       await hashPassword(password),
       result.rows[0].id,
     ]);
@@ -52,6 +52,27 @@ authRouter.post(
     const result = await authService.login(input);
     req.user = result.user;
     res.json(result);
+  }),
+);
+
+authRouter.post(
+  '/change-password',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const input = changePasswordSchema.parse(req.body);
+    const result = await pool.query<{ password_hash: string }>(
+      'SELECT password_hash FROM users WHERE id = $1 AND is_active = true',
+      [req.user!.id],
+    );
+    const user = result.rows[0];
+    if (!user || !(await verifyPassword(input.currentPassword, user.password_hash))) {
+      throw AppError.unauthorized('Mật khẩu hiện tại không đúng');
+    }
+    await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = false, updated_at = now() WHERE id = $2',
+      [await hashPassword(input.newPassword), req.user!.id],
+    );
+    res.json({ user: await authService.getCurrentUser(req.user!.id) });
   }),
 );
 
