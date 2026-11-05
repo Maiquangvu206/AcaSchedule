@@ -155,16 +155,20 @@ vào `main` và pass CI.
 
 ## 7. Quality & Testing `P0`
 
-- [ ] Backend: unit test (Vitest) + integration (Supertest) cho mọi module
-- [ ] AI: pytest cho rag/gemini/router, mock HTTP
-- [ ] Frontend: Vitest + Testing Library cho hooks/component chính
-- [ ] E2E Playwright: đăng nhập → nhập điểm → xem CPA → upload → hỏi AI
-- [ ] Coverage gate backend ≥ 80%, AI ≥ 70%
-- [ ] ESLint + Prettier (TS), Ruff + Black (Python)
-- [ ] Pre-commit hook (lint-staged) + Conventional Commits
-- [ ] Load test k6 cho endpoint tính CPA và upload
-- [ ] Contract test backend ↔ AI service (schema request/response)
-- [ ] Test data builder/factory dùng chung
+- [x] Backend: unit test (Vitest) + integration (fetch thay Supertest) cho mọi module chính
+- [ ] AI: pytest cho rag/gemini/router, mock HTTP — chặn (không cài được gói Python offline)
+- [ ] Frontend: Vitest + Testing Library cho hooks/component chính — chặn (không cài được gói mới offline)
+- [ ] E2E Playwright: đăng nhập → nhập điểm → xem CPA → upload → hỏi AI — chặn (không cài được trình duyệt/Playwright offline)
+- [x] Coverage gate backend ≥ 80% (v8, trong vitest.config.ts); AI ≥ 70% — chặn (Python service chưa chạy cục bộ)
+- [ ] ESLint + Prettier (TS), Ruff + Black (Python) — chặn (không cài được gói mới offline)
+- [ ] Pre-commit hook (lint-staged) + Conventional Commits — chặn (không cài được gói mới offline)
+- [ ] Load test k6 cho endpoint tính CPA và upload — chặn (không cài được k6 offline)
+- [ ] Contract test backend ↔ AI service (schema request/response) — chặn (AI service Python chưa chạy cục bộ)
+- [x] Test data builder/factory dùng chung (`backend/tests/factories.ts`)
+
+**Kết quả thực tế:** 65 test pass (55 unit + 10 integration). Integration test bao gồm: auth register/login, GPA calculate/forecast, schedule periods/sections/simulate, documents subjects/presign, cô lập dữ liệu sinh viên.
+
+> Ghi chú: môi trường hiện tại hoạt động hoàn toàn offline, không thể cài đặt package mới (npm/pip). Các mục đánh dấu `[ ]` cần hoàn thành khi có kết nối mạng.
 
 ---
 
