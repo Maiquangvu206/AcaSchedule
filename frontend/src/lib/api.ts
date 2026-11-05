@@ -502,6 +502,10 @@ export async function runScheduleSimulation(
   });
 }
 
+export async function registerScheduleSections(token: string, input: { semester: string; sectionIds: string[] }): Promise<{ enrollmentIds: string[] }> {
+  return apiRequest<{ enrollmentIds: string[] }>('/student/enrollments/register-sections', { method: 'POST', token, body: input });
+}
+
 export async function createScheduleItem(
   token: string,
   input: ScheduleItemInput,

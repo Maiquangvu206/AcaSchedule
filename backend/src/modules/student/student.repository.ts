@@ -143,10 +143,10 @@ export async function insertEnrollment(
     studentId: string;
     subjectId: string;
     semester: string;
-    processScore: number;
-    finalScore: number;
-    letterGrade: string;
-    grade4: number;
+    processScore: number | null;
+    finalScore: number | null;
+    letterGrade: string | null;
+    grade4: number | null;
     attemptNo: number;
   },
   db: Queryable = pool,

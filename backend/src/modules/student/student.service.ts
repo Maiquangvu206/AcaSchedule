@@ -136,6 +136,31 @@ export async function createEnrollment(studentId: string, input: CreateEnrollmen
   });
 }
 
+/** Create pending transcript rows for sections selected during registration. */
+export async function registerSections(studentId: string, semester: string, sectionIds: string[]) {
+  return withTransaction(async (client) => {
+    const sections = await client.query<{ subject_id: string; semester: string }>(
+      `SELECT subject_id, semester FROM course_sections WHERE id = ANY($1::uuid[]) AND is_cancelled = false`, [sectionIds],
+    );
+    if (sections.rows.length !== new Set(sectionIds).size || sections.rows.some((row) => row.semester !== semester)) {
+      throw AppError.badRequest('Lớp học phần không hợp lệ hoặc khác học kỳ');
+    }
+    const createdIds: string[] = [];
+    for (const section of sections.rows) {
+      const existing = (await listStudentAttempts(studentId, client)).find(
+        (attempt) => attempt.subjectId === section.subject_id && attempt.semester === semester && attempt.processScore === null,
+      );
+      if (existing) { createdIds.push(existing.id); continue; }
+      const attemptNo = await nextAttemptNo(studentId, section.subject_id, client);
+      createdIds.push(await insertEnrollment({
+        studentId, subjectId: section.subject_id, semester, processScore: null, finalScore: null,
+        letterGrade: null, grade4: null, attemptNo,
+      }, client));
+    }
+    return { enrollmentIds: createdIds };
+  });
+}
+
 export async function updateEnrollmentById(
   studentId: string,
   enrollmentId: string,

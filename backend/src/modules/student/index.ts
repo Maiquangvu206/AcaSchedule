@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../lib/errors';
-import { createEnrollmentSchema, updateEnrollmentSchema } from './student.schemas';
+import { createEnrollmentSchema, registerSectionsSchema, updateEnrollmentSchema } from './student.schemas';
 import * as studentService from './student.service';
 
 export const studentRouter = Router();
@@ -21,6 +21,12 @@ studentRouter.post(
     res.status(201).json(result);
   }),
 );
+
+studentRouter.post('/enrollments/register-sections', asyncHandler(async (req, res) => {
+  const input = registerSectionsSchema.parse(req.body);
+  const result = await studentService.registerSections(req.user!.id, input.semester, input.sectionIds);
+  res.status(201).json(result);
+}));
 
 studentRouter.patch(
   '/enrollments/:id',

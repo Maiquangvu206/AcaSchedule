@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   ApiError,
-  createScheduleItem,
+  createScheduleItem, registerScheduleSections,
   deleteScheduleItem,
   fetchCourseSections,
   fetchScheduleItems,
@@ -112,6 +112,7 @@ export function SchedulePage() {
   const [periods, setPeriods] = useState<PeriodSlot[]>([]);
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [registering, setRegistering] = useState(false);
   const [simulation, setSimulation] = useState<ScheduleSimulation | null>(null);
   const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
 
@@ -309,6 +310,17 @@ export function SchedulePage() {
     );
   };
 
+  const registerSelected = async () => {
+    if (!token || !simulation?.summary.feasible || selectedIds.length === 0) return;
+    setRegistering(true);
+    try {
+      await registerScheduleSections(token, { semester, sectionIds: selectedIds });
+      setNotice('Đã đăng ký lớp học phần. Bảng điểm đã được cập nhật với trạng thái Chờ điểm.');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Không thể đăng ký lớp học phần.');
+    } finally { setRegistering(false); }
+  };
+
   const handleCreateItem = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token || !title.trim()) return;
@@ -492,6 +504,13 @@ export function SchedulePage() {
           success={Boolean(simulation?.summary.feasible)}
         />
       </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4">
+        <p className="text-sm text-slate-700">Đăng ký lớp hợp lệ sẽ tự tạo môn trong bảng điểm ở trạng thái <span className="font-semibold">Chờ điểm</span>.</p>
+        <button type="button" onClick={registerSelected} disabled={registering || !simulation?.summary.feasible || selectedIds.length === 0} className="rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+          {registering ? 'Đang đăng ký…' : 'Đăng ký lớp đã chọn'}
+        </button>
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[330px_1fr]">
         <aside className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">

@@ -25,5 +25,10 @@ export const updateEnrollmentSchema = z
     message: 'At least one field must be provided',
   });
 
+export const registerSectionsSchema = z.object({
+  semester: semesterSchema,
+  sectionIds: z.array(z.string().uuid()).min(1).max(30),
+});
+
 export type CreateEnrollmentInput = z.infer<typeof createEnrollmentSchema>;
 export type UpdateEnrollmentInput = z.infer<typeof updateEnrollmentSchema>;
