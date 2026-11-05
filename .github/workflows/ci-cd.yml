@@ -11,9 +11,6 @@ env:
   REGISTRY: ghcr.io
   REGISTRY_USER: ${{ github.actor }}
   REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-  BACKEND_IMAGE: ${{ github.repository }}/backend
-  FRONTEND_IMAGE: ${{ github.repository }}/frontend
-  AI_IMAGE: ${{ github.repository }}/ai
 
 jobs:
   backend:
@@ -83,6 +80,9 @@ jobs:
     needs: [backend, frontend, ai]
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
+      backend_image: ${{ steps.images.outputs.backend }}
+      frontend_image: ${{ steps.images.outputs.frontend }}
+      ai_image: ${{ steps.images.outputs.ai }}
     steps:
       - uses: actions/checkout@v4
       - name: Get tag
@@ -93,6 +93,13 @@ jobs:
           else
             echo "tag=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
           fi
+      - name: Normalize GHCR image names
+        id: images
+        run: |
+          namespace="$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "backend=ghcr.io/${namespace}/backend" >> "$GITHUB_OUTPUT"
+          echo "frontend=ghcr.io/${namespace}/frontend" >> "$GITHUB_OUTPUT"
+          echo "ai=ghcr.io/${namespace}/ai" >> "$GITHUB_OUTPUT"
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -107,7 +114,7 @@ jobs:
           file: docker/Dockerfile.backend
           target: production
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.tag.outputs.tag }}
+          tags: ${{ steps.images.outputs.backend }}:${{ steps.tag.outputs.tag }}
       - name: Build and push frontend
         uses: docker/build-push-action@v6
         with:
@@ -115,14 +122,14 @@ jobs:
           file: docker/Dockerfile.frontend
           target: production
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.tag }}
+          tags: ${{ steps.images.outputs.frontend }}:${{ steps.tag.outputs.tag }}
       - name: Build and push AI
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile.ai
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.AI_IMAGE }}:${{ steps.tag.outputs.tag }}
+          tags: ${{ steps.images.outputs.ai }}:${{ steps.tag.outputs.tag }}
 
   deploy-staging:
     name: Deploy to staging
@@ -134,7 +141,7 @@ jobs:
       - name: Deploy to staging
         run: |
           echo "Deploying backend:${{ needs.docker.outputs.tag }} to staging"
-          echo "IMAGE=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.docker.outputs.tag }}" >> $GITHUB_ENV
+          echo "IMAGE=${{ needs.docker.outputs.backend_image }}:${{ needs.docker.outputs.tag }}" >> $GITHUB_ENV
 
   deploy-production:
     name: Deploy to production
@@ -146,4 +153,4 @@ jobs:
       - name: Deploy to production
         run: |
           echo "Deploying backend:${{ needs.docker.outputs.tag }} to production"
-          echo "IMAGE=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.docker.outputs.tag }}" >> $GITHUB_ENV
+          echo "IMAGE=${{ needs.docker.outputs.backend_image }}:${{ needs.docker.outputs.tag }}" >> $GITHUB_ENV
