@@ -70,17 +70,22 @@ vào `main` và pass CI.
 
 ## 3. Sprint 2 — Schedule Planner `P1`
 
-- [ ] Model `course_sections` (môn, mã lớp, thứ, tiết bắt đầu/kết thúc, phòng)
-- [ ] API danh sách lớp học phần theo học kỳ
-- [ ] Conflict Detection Engine: trùng thứ + giao tiết
-- [ ] `POST /api/schedule/simulate`: nhận danh sách lớp, trả lịch + danh sách xung đột
-- [ ] CRUD `schedule_items` cá nhân
-- [ ] UI weekly calendar (drag-and-drop, hiển thị xung đột)
-- [ ] UI chọn lớp + mô phỏng trước khi đăng ký
-- [ ] Test: kề tiết (không xung đột), giao 1 tiết, cùng thứ khác ca, lớp đã huỷ
-- [ ] Cấu hình tiết → giờ (tránh hard-code)
+- [x] Model `course_sections` (môn, mã lớp, thứ, tiết bắt đầu/kết thúc, phòng)
+- [x] API danh sách lớp học phần theo học kỳ
+- [x] Conflict Detection Engine: trùng thứ + giao tiết
+- [x] `POST /api/schedule/simulate`: nhận danh sách lớp, trả lịch + danh sách xung đột
+- [x] CRUD `schedule_items` cá nhân
+- [x] UI weekly calendar (drag-and-drop, hiển thị xung đột)
+- [x] UI chọn lớp + mô phỏng trước khi đăng ký
+- [x] Test: kề tiết (không xung đột), giao 1 tiết, cùng thứ khác ca, lớp đã huỷ
+- [x] Cấu hình tiết → giờ (tránh hard-code)
 
 **Exit criteria:** mô phỏng 20 lớp không trùng trả lịch hợp lệ; mọi case biên có test.
+
+> Đã kiểm thử engine bằng 12 unit test và E2E với PostgreSQL + Redis thật (31 check): danh sách lớp,
+> cấu hình tiết, kề tiết/giao 1 tiết/khác ca, lớp đã huỷ, sai học kỳ, CRUD lịch cá nhân và cô lập dữ
+> liệu giữa sinh viên; có test riêng cho 20 lớp không trùng. UI đã được kiểm thử thủ công: chọn lớp,
+> hiển thị xung đột, thêm/kéo-thả/xoá lịch cá nhân.
 
 ---
 
@@ -126,7 +131,7 @@ vào `main` và pass CI.
 - [ ] Trang đăng nhập/đăng ký + lưu/refresh token an toàn
 - [ ] Dashboard GPA: thẻ CPA, biểu đồ xu hướng theo kỳ
 - [x] Bảng điểm + chi tiết môn (các lượt học, cờ CPA)
-- [ ] Weekly calendar + mô phỏng đăng ký
+- [x] Weekly calendar + mô phỏng đăng ký
 - [ ] Document Hub + Document Viewer
 - [ ] AI chat panel (streaming, citations)
 - [ ] Loading / empty / error states cho mọi màn hình

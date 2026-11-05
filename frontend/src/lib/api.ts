@@ -65,6 +65,87 @@ export interface ForecastResult {
   countedSubjects: number;
 }
 
+export interface PeriodSlot {
+  period: number;
+  startTime: string;
+  endTime: string;
+  label: string;
+}
+
+export interface CourseSection {
+  id: string;
+  subjectId: string;
+  subjectCode: string;
+  subjectName: string;
+  credits: number;
+  semester: string;
+  sectionCode: string;
+  dayOfWeek: number;
+  startPeriod: number;
+  endPeriod: number;
+  room: string | null;
+  lecturer: string | null;
+  capacity: number | null;
+  isCancelled: boolean;
+}
+
+export interface ScheduleItem {
+  id: string;
+  sectionId: string | null;
+  title: string;
+  semester: string | null;
+  dayOfWeek: number;
+  startPeriod: number;
+  endPeriod: number;
+  room: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface ConflictParty {
+  id: string;
+  kind: 'section' | 'item';
+  code: string;
+  title: string;
+  room: string | null;
+}
+
+export interface ScheduleConflict {
+  type: 'section-section' | 'section-item';
+  dayOfWeek: number;
+  overlapStartPeriod: number;
+  overlapEndPeriod: number;
+  first: ConflictParty;
+  second: ConflictParty;
+}
+
+export interface ScheduleSimulation {
+  semester: string;
+  sections: CourseSection[];
+  items: ScheduleItem[];
+  periods: PeriodSlot[];
+  conflicts: ScheduleConflict[];
+  cancelledSectionIds: string[];
+  summary: {
+    sectionCount: number;
+    selectedCount: number;
+    credits: number;
+    conflictCount: number;
+    feasible: boolean;
+  };
+}
+
+export interface ScheduleItemInput {
+  title: string;
+  semester: string | null;
+  dayOfWeek: number;
+  startPeriod: number;
+  endPeriod: number;
+  room?: string | null;
+  note?: string | null;
+  sectionId?: string | null;
+}
+
 export interface ApiErrorBody {
   error?: string;
   message?: string;
@@ -170,4 +251,71 @@ export async function fetchForecast(
     token,
     body: input,
   });
+}
+
+export async function fetchSchedulePeriods(token: string): Promise<PeriodSlot[]> {
+  const result = await apiRequest<{ periods: PeriodSlot[] }>('/schedule/periods', { token });
+  return result.periods;
+}
+
+export async function fetchCourseSections(
+  token: string,
+  input: { semester: string; includeCancelled?: boolean },
+): Promise<CourseSection[]> {
+  const query = new URLSearchParams({ semester: input.semester });
+  if (input.includeCancelled) query.set('includeCancelled', 'true');
+  const result = await apiRequest<{ sections: CourseSection[] }>(
+    `/schedule/sections?${query.toString()}`,
+    { token },
+  );
+  return result.sections;
+}
+
+export async function fetchScheduleItems(
+  token: string,
+  semester: string,
+): Promise<ScheduleItem[]> {
+  const query = new URLSearchParams({ semester });
+  const result = await apiRequest<{ items: ScheduleItem[] }>(
+    `/schedule/items?${query.toString()}`,
+    { token },
+  );
+  return result.items;
+}
+
+export async function runScheduleSimulation(
+  token: string,
+  input: { semester: string; sectionIds: string[]; includeSavedItems?: boolean },
+): Promise<ScheduleSimulation> {
+  return apiRequest<ScheduleSimulation>('/schedule/simulate', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+}
+
+export async function createScheduleItem(
+  token: string,
+  input: ScheduleItemInput,
+): Promise<{ item: ScheduleItem; conflicts: ScheduleConflict[] }> {
+  return apiRequest<{ item: ScheduleItem; conflicts: ScheduleConflict[] }>('/schedule/items', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+}
+
+export async function updateScheduleItem(
+  token: string,
+  itemId: string,
+  input: Partial<ScheduleItemInput>,
+): Promise<{ item: ScheduleItem; conflicts: ScheduleConflict[] }> {
+  return apiRequest<{ item: ScheduleItem; conflicts: ScheduleConflict[] }>(
+    `/schedule/items/${itemId}`,
+    { method: 'PATCH', token, body: input },
+  );
+}
+
+export async function deleteScheduleItem(token: string, itemId: string): Promise<void> {
+  await apiRequest<null>(`/schedule/items/${itemId}`, { method: 'DELETE', token });
 }

@@ -4,6 +4,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
+import { SchedulePage } from './pages/Schedule';
 import { TranscriptPage } from './pages/Transcript';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
             <Route path="login" element={<Login />} />
             <Route element={<ProtectedRoute />}>
               <Route path="transcript" element={<TranscriptPage />} />
+              <Route path="schedule" element={<SchedulePage />} />
             </Route>
           </Route>
         </Routes>

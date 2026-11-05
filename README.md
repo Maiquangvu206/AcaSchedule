@@ -131,9 +131,12 @@ make prod
 | Admin | `admin@acaschedule.local` | `Admin@123` |
 | Student | `student@acaschedule.local` | `Student@123` |
 
+> Seed có sẵn lớp học phần demo cho học kỳ `2025-2` (INT2204, INT2208, MAT1092, ENG1101,
+> PHY1100), gồm một lớp đã huỷ và các cặp lớp kề tiết/giao tiết để thử mô phỏng.
+
 > Migration và seed chạy tự động khi container backend khởi động (dev và prod).
 > Có thể chạy thủ công: `make migrate` / `make seed`.
-> Chạy unit test GPA engine: `cd backend && npm test` (17 test, gồm property test CPA ∈ `[0, 4]`).
+> Chạy unit test: `cd backend && npm test` (29 test: 17 GPA + 12 schedule engine).
 
 ## 📑 6. Technical Highlights & Business Logic
 
@@ -144,12 +147,24 @@ make prod
 - **Điểm tổng kết môn:** `processScore × processWeight + finalScore × finalWeight` (mặc định 40/60, cấu hình theo môn), sau đó quy đổi sang điểm chữ và Hệ 4 qua `grade_scales`.
 - **Dự báo CPA:** API trả điểm Hệ 4 trung bình cần đạt cho số tín chỉ sắp tới để chạm mục tiêu, kèm CPA dự kiến khi nhập điểm mong muốn.
 
-### 2. Crowdsourced Document Hub (BR-DOCS)
+### 2. Registration Simulator & Schedule Planner (BR-SCHEDULE)
+
+- **Cấu hình tiết → giờ:** bảng `period_slots` (12 tiết mặc định) được seed sẵn và trả qua API, UI
+  không hard-code giờ học.
+- **Conflict Detection Engine:** chỉ so sánh các buổi cùng thứ; khoảng tiết inclusive. Kề tiết
+  (1–3 và 4–6) không xung đột, giao đúng một tiết (1–3 và 3–5) bị phát hiện. Lớp đã huỷ bị loại
+  khỏi so sánh và không tính tín chỉ.
+- **Mô phỏng đăng ký:** `POST /api/schedule/simulate` trả lịch tuần, tín chỉ dự kiến, danh sách
+  xung đột và các lớp bị huỷ; mặc định so cả lịch cá nhân đã lưu.
+- **Weekly calendar UI:** chọn lớp học phần, xem xung đột trực quan, thêm/xoá và kéo-thả lịch cá
+  nhân giữa các ngày/tiết.
+
+### 3. Crowdsourced Document Hub (BR-DOCS)
 
 - **Ràng buộc đóng góp:** Sinh viên chỉ có quyền upload tài liệu cho các môn học mà mình đã/đang đăng ký trong dữ liệu `student_enrollments`.
 - **Cơ chế Upvote/Downvote:** Tự động ưu tiên hiển thị các tài liệu hữu ích lên đầu bảng tin tìm kiếm.
 
-### 3. AI Academic Advisor & Document RAG (BR-AI)
+### 4. AI Academic Advisor & Document RAG (BR-AI)
 
 - **Phân tích bảng điểm:** Quét toàn bộ điểm thành phần theo từng khối kiến thức để đưa ra gợi ý mục tiêu điểm thi cần đạt.
 - **File RAG System:** Trích xuất nội dung văn bản từ các tài liệu PDF/DOCX lưu trữ trên MinIO để tạo tóm tắt đề cương và trả lời thắc mắc ôn thi của sinh viên.
@@ -189,7 +204,8 @@ acaschedule-platform/
 │   ├── src/
 │   │   ├── components/           # Atomic UI Components & Document Viewer
 │   │   ├── hooks/                # Custom Hooks (useGPA, useConflict, useAI)
-│   │   └── pages/                # App Routing
+│   │   ├── lib/                  # Typed API client (GPA, schedule, auth)
+│   │   └── pages/                # App Routing (Dashboard, Transcript, Schedule)
 │   └── package.json
 ├── docker-compose.yml            # Production Orchestration (7 Services)
 ├── docker-compose.override.yml   # Local Dev Orchestration

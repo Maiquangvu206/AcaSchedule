@@ -2,8 +2,9 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
 const navItems = [
-  { to: '/', label: 'Tổng quan', end: true },
-  { to: '/transcript', label: 'Bảng điểm', end: false },
+  { to: '/', label: 'Tổng quan', end: true, protected: false },
+  { to: '/transcript', label: 'Bảng điểm', end: false, protected: true },
+  { to: '/schedule', label: 'Thời khóa biểu', end: false, protected: true },
 ];
 
 export function AppLayout() {
@@ -31,7 +32,7 @@ export function AppLayout() {
 
           <nav className="flex items-center gap-1" aria-label="Điều hướng chính">
             {navItems
-              .filter((item) => item.to !== '/transcript' || Boolean(user))
+              .filter((item) => !item.protected || Boolean(user))
               .map((item) => (
               <NavLink
                 key={item.to}

@@ -35,7 +35,7 @@ const modules = [
     description:
       'Giả lập đăng ký tín chỉ, phát hiện trùng lịch và quản lý thời khóa biểu theo ngày/tuần.',
     tags: ['Conflict engine', 'Simulator', 'Calendar'],
-    status: 'planned' as const,
+    status: 'done' as const,
   },
 ];
 
@@ -75,6 +75,14 @@ export function Dashboard() {
               >
                 {user ? 'Xem bảng điểm' : 'Đăng nhập'}
               </Link>
+              {user ? (
+                <Link
+                  to="/schedule"
+                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/20 hover:text-white"
+                >
+                  Thời khóa biểu
+                </Link>
+              ) : null}
               <ServiceStatus
                 loading={loading}
                 data={data}

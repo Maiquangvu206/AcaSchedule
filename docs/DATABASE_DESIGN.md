@@ -7,10 +7,15 @@ PostgreSQL 16. Thiết kế chuẩn hóa, lưu vết lịch sử học tập và
 ```
 grade_scales (độc lập)
 
+period_slots (độc lập — cấu hình tiết → giờ)
+
 subjects 1 ─── N student_enrollments
     │ 1                    │ 1
     │ N                    │ N
 subject_documents     schedule_items
+    │ 1
+    │ N
+course_sections 1 ─── N schedule_items (section_id, nullable)
 ```
 
 ## Bảng chính
@@ -112,20 +117,64 @@ Metadata tài liệu cộng đồng; file thật nằm trên MinIO.
 | downvotes | integer DEFAULT 0 | |
 | created_at | timestamptz | |
 
+### `period_slots`
+
+Cấu hình tiết → giờ, dùng chung cho API và UI (không hard-code trong frontend). Mỗi dòng là một tiết.
+
+| Cột | Kiểu | Ghi chú |
+| --- | --- | --- |
+| period | smallint PK | 1–16 |
+| start_time | time | Giờ bắt đầu |
+| end_time | time | Giờ kết thúc, phải sau `start_time` |
+| label | varchar(30) | Nhãn hiển thị, VD `Tiết 1` |
+
+Seed mặc định 12 tiết, bắt đầu `07:00–07:50`.
+
+### `course_sections`
+
+Một dòng = một buổi học của lớp học phần (một lớp có thể có nhiều buổi trong tuần).
+
+| Cột | Kiểu | Ghi chú |
+| --- | --- | --- |
+| id | uuid PK | |
+| subject_id | uuid FK → subjects | ON DELETE RESTRICT |
+| semester | varchar(20) | Học kỳ mở lớp |
+| section_code | varchar(30) | Mã lớp, VD `INT2204-01` |
+| day_of_week | smallint | 1 = Thứ 2 ... 7 = CN |
+| start_period / end_period | smallint | Khoảng tiết, `end_period >= start_period` |
+| room | varchar(50) | |
+| lecturer | varchar(120) | |
+| capacity | smallint | NULL hoặc > 0 |
+| is_cancelled | boolean | Lớp đã huỷ, mặc định `false` |
+| created_at / updated_at | timestamptz | Trigger cập nhật `updated_at` |
+
+Ràng buộc/index:
+
+- `UNIQUE (semester, section_code)`
+- `INDEX (semester, is_cancelled, day_of_week, start_period)`
+- `INDEX (subject_id)`
+
 ### `schedule_items`
 
-Lịch cố định từ lớp học phần và lịch cá nhân.
+Lịch cá nhân của sinh viên; có thể gắn với một lớp học phần đã chọn.
 
 | Cột | Kiểu | Ghi chú |
 | --- | --- | --- |
 | id | uuid PK | |
 | student_id | uuid FK | |
-| enrollment_id | uuid FK NULL | NULL nếu là lịch cá nhân |
+| section_id | uuid FK NULL → course_sections | ON DELETE SET NULL; NULL nếu là lịch cá nhân thuần |
+| title | varchar(255) | Tên hoạt động |
+| semester | varchar(20) NULL | NULL = áp dụng mọi học kỳ |
 | day_of_week | smallint | 1 = Thứ 2 ... 7 = CN |
 | start_period | smallint | Tiết bắt đầu |
 | end_period | smallint | Tiết kết thúc |
 | room | varchar(50) | |
 | note | text | |
+
+Ràng buộc/index:
+
+- `INDEX (student_id, semester, day_of_week)`
+- Xung đột được tính động bằng engine (không lưu cột `conflict`).
 
 ## Migration
 

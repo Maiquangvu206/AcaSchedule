@@ -134,10 +134,93 @@ Quy tắc chọn lượt tính CPA (**BR-RETENTION**):
 
 ## Schedule
 
-| Method | Path | Trạng thái |
+| Method | Path | Mô tả |
 | --- | --- | --- |
-| GET | `/api/schedule/items` | Planned |
-| POST | `/api/schedule/simulate` | Planned |
+| GET | `/api/schedule/periods` | Cấu hình tiết → giờ (`period_slots`), dùng chung cho backend và UI. |
+| GET | `/api/schedule/sections?semester=2025-2&subjectId=&includeCancelled=true` | Danh sách lớp học phần theo học kỳ; mặc định ẩn lớp đã huỷ. |
+| POST | `/api/schedule/simulate` | Mô phỏng đăng ký, trả lịch tuần và danh sách xung đột. |
+| GET | `/api/schedule/items?semester=2025-2` | Lịch cá nhân của sinh viên hiện tại (kèm mục không gắn học kỳ). |
+| POST | `/api/schedule/items` | Thêm lịch cá nhân. |
+| PATCH | `/api/schedule/items/:id` | Sửa/kéo-thả lịch cá nhân. |
+| DELETE | `/api/schedule/items/:id` | Xoá lịch cá nhân. |
+
+Body mô phỏng:
+
+```json
+{
+  "semester": "2025-2",
+  "sectionIds": ["uuid-int2204-01", "uuid-mat1092-01"],
+  "includeSavedItems": true
+}
+```
+
+Response rút gọn:
+
+```json
+{
+  "semester": "2025-2",
+  "sections": [
+    {
+      "id": "uuid",
+      "subjectCode": "INT2204",
+      "sectionCode": "INT2204-01",
+      "dayOfWeek": 2,
+      "startPeriod": 1,
+      "endPeriod": 3,
+      "room": "A101",
+      "isCancelled": false
+    }
+  ],
+  "periods": [{ "period": 1, "startTime": "07:00", "endTime": "07:50", "label": "Tiết 1" }],
+  "conflicts": [
+    {
+      "type": "section-section",
+      "dayOfWeek": 3,
+      "overlapStartPeriod": 3,
+      "overlapEndPeriod": 3,
+      "first": { "id": "uuid-a", "kind": "section", "code": "INT2204-01", "title": "..." },
+      "second": { "id": "uuid-b", "kind": "section", "code": "INT2208-04", "title": "..." }
+    }
+  ],
+  "cancelledSectionIds": ["uuid"],
+  "summary": {
+    "sectionCount": 2,
+    "selectedCount": 2,
+    "credits": 7,
+    "conflictCount": 0,
+    "feasible": true
+  }
+}
+```
+
+Quy tắc phát hiện xung đột:
+
+1. Chỉ so sánh các buổi học **cùng thứ**; khoảng tiết là inclusive `[startPeriod, endPeriod]`.
+2. Kề tiết (1–3 và 4–6) **không** xung đột; giao đúng 1 tiết (1–3 và 3–5) **có** xung đột.
+3. Lớp đã huỷ được trả trong `cancelledSectionIds`, không tạo xung đột và không tính tín chỉ.
+4. `includeSavedItems` mặc định `true`: lịch cá nhân đã lưu được đưa vào mô phỏng để cảnh báo
+   xung đột với lớp đang chọn.
+5. Lịch cá nhân gắn `sectionId` của chính lớp đang chọn không bị so với chính nó.
+6. Tín chỉ trong `summary.credits` chỉ tính một lần cho mỗi môn.
+7. Mọi `sectionIds` phải tồn tại và thuộc đúng `semester`, nếu không trả `400`.
+
+Body lịch cá nhân:
+
+```json
+{
+  "title": "Học nhóm Giải tích",
+  "semester": "2025-2",
+  "dayOfWeek": 3,
+  "startPeriod": 2,
+  "endPeriod": 3,
+  "room": "Thư viện",
+  "note": "Mang laptop",
+  "sectionId": null
+}
+```
+
+`PATCH` nhận một phần các trường trên. `POST/PATCH` trả thêm `conflicts` liên quan trực tiếp
+đến mục vừa thao tác. Mọi thao tác lịch cá nhân chỉ áp dụng cho chính sinh viên đang đăng nhập.
 
 ## Documents
 
