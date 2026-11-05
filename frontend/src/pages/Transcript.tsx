@@ -239,7 +239,7 @@ export function TranscriptPage() {
 
           {semesters.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-slate-500">
-              Chưa có dữ liệu điểm. Hãy thêm lượt học qua API hoặc seed dữ liệu demo.
+              Chưa có dữ liệu bảng điểm. Hãy đăng ký lớp học phần ở trang Thời khóa biểu để bắt đầu theo dõi môn học.
             </div>
           ) : (
             semesters.map((semester) => (
