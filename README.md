@@ -148,7 +148,8 @@ acaschedule-platform/
 ├── docs/                         # Comprehensive Architecture Documents
 │   ├── SRS_BUSINESS_ANALYSIS.md
 │   ├── API_SPECIFICATION.md
-│   └── DATABASE_DESIGN.md
+│   ├── DATABASE_DESIGN.md
+│   └── DEVELOPMENT_CHECKLIST.md
 ├── docker/                       # Container Configuration Files
 │   ├── nginx/
 │   │   └── default.conf
@@ -180,6 +181,8 @@ acaschedule-platform/
 ├── Makefile                      # CLI Short-cut Commands
 └── README.md
 ```
+
+> Theo dõi tiến độ và thứ tự triển khai tại [Development Checklist](docs/DEVELOPMENT_CHECKLIST.md).
 
 ## 📬 Author & Contact
 
