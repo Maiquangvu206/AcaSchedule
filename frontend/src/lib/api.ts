@@ -392,6 +392,18 @@ export async function fetchTranscript(token: string): Promise<Transcript> {
   return apiRequest<Transcript>('/student/transcript', { token });
 }
 
+export async function updateEnrollment(
+  token: string,
+  enrollmentId: string,
+  input: { processScore: number; finalScore: number },
+): Promise<void> {
+  await apiRequest(`/student/enrollments/${enrollmentId}`, {
+    method: 'PATCH',
+    token,
+    body: input,
+  });
+}
+
 export async function fetchForecast(
   token: string,
   input: { targetCpa: number; additionalCredits: number; plannedGrade4?: number },

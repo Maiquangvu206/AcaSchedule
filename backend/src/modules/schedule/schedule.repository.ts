@@ -127,6 +127,82 @@ export async function listSemesters(db: Queryable = pool): Promise<string[]> {
   return result.rows.map((row) => row.semester);
 }
 
+export async function listRegistrationConfigs(
+  semester?: string,
+  db: Queryable = pool,
+): Promise<RegistrationConfig[]> {
+  const values: unknown[] = [];
+  let where = '';
+
+  if (semester) {
+    values.push(semester);
+    where = `WHERE semester = $${values.length}`;
+  }
+
+  const result = await db.query<{ id: string; semester: string; is_open: boolean; opened_at: string | null; closed_at: string | null }>(
+    `SELECT id, semester, is_open, opened_at, closed_at FROM registration_configs ${where}
+     ORDER BY semester`,
+    values,
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    semester: row.semester,
+    isOpen: row.is_open,
+    openedAt: row.opened_at,
+    closedAt: row.closed_at,
+  }));
+}
+
+export async function findRegistrationConfig(
+  semester: string,
+  db: Queryable = pool,
+): Promise<RegistrationConfig | null> {
+  const result = await db.query<{ id: string; semester: string; is_open: boolean; opened_at: string | null; closed_at: string | null }>(
+    `SELECT id, semester, is_open, opened_at, closed_at FROM registration_configs WHERE semester = $1`,
+    [semester],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    semester: row.semester,
+    isOpen: row.is_open,
+    openedAt: row.opened_at,
+    closedAt: row.closed_at,
+  };
+}
+
+export async function upsertRegistrationConfig(
+  semester: string,
+  isOpen: boolean,
+  openedAt: string | null,
+  closedAt: string | null,
+  db: Queryable = pool,
+): Promise<RegistrationConfig> {
+  const result = await db.query<{
+    id: string;
+    semester: string;
+    is_open: boolean;
+    opened_at: string | null;
+    closed_at: string | null;
+  }>(
+    `INSERT INTO registration_configs (semester, is_open, opened_at, closed_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (semester) DO UPDATE
+     SET is_open = EXCLUDED.is_open, opened_at = EXCLUDED.opened_at, closed_at = EXCLUDED.closed_at
+     RETURNING id, semester, is_open, opened_at, closed_at`,
+    [semester, isOpen, openedAt, closedAt],
+  );
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    semester: row.semester,
+    isOpen: row.is_open,
+    openedAt: row.opened_at,
+    closedAt: row.closed_at,
+  };
+}
+
 const SECTION_SELECT = `
   SELECT cs.id,
          cs.subject_id,

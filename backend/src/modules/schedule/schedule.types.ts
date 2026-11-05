@@ -5,6 +5,14 @@ export interface PeriodSlot {
   label: string;
 }
 
+export interface RegistrationConfig {
+  id: string;
+  semester: string;
+  isOpen: boolean;
+  openedAt: string | null;
+  closedAt: string | null;
+}
+
 export interface CourseSection {
   id: string;
   subjectId: string;

@@ -8,6 +8,7 @@ import type {
   ScheduleMeeting,
 } from './schedule.types';
 import type { CreateScheduleItemInput, UpdateScheduleItemInput } from './schedule.schemas';
+import type { RegistrationConfig } from './schedule.types';
 
 export async function listPeriods() {
   return repository.listPeriodSlots();
@@ -15,6 +16,23 @@ export async function listPeriods() {
 
 export async function listSemesters() {
   return repository.listSemesters();
+}
+
+export async function listRegistrationConfigs(semester?: string) {
+  return repository.listRegistrationConfigs(semester);
+}
+
+export async function getRegistrationConfig(semester: string) {
+  return repository.findRegistrationConfig(semester);
+}
+
+export async function updateRegistrationConfig(
+  semester: string,
+  isOpen: boolean,
+  openedAt: string | null,
+  closedAt: string | null,
+) {
+  return repository.upsertRegistrationConfig(semester, isOpen, openedAt, closedAt);
 }
 
 export async function listSections(filters: {
@@ -73,6 +91,20 @@ function itemToMeeting(item: ScheduleItem): ScheduleMeeting {
 }
 
 /**
+ * Check if registration is open for the given semester.
+ * Returns true if registration is open, false if closed.
+ * Throws AppError if no config exists for the semester.
+ */
+export async function checkRegistrationOpen(semester: string): Promise<boolean> {
+  const config = await getRegistrationConfig(semester);
+  if (!config) {
+    // If no config exists, registration is considered open by default
+    return true;
+  }
+  return config.isOpen;
+}
+
+/**
  * Simulate registration for a set of sections. Saved personal items are included
  * so the result warns about clashes with the student's existing calendar.
  */
@@ -81,6 +113,13 @@ export async function simulate(
   input: { semester: string; sectionIds: string[]; includeSavedItems?: boolean; weekStart?: string },
 ) {
   const sectionIds = [...new Set(input.sectionIds)];
+  
+  // Check if registration is open for this semester
+  const isOpen = await checkRegistrationOpen(input.semester);
+  if (!isOpen) {
+    throw AppError.badRequest('Đăng ký cho học kỳ này đã bị khóa.');
+  }
+
   const [sections, periods] = await Promise.all([
     repository.findCourseSectionsByIds(sectionIds),
     repository.listPeriodSlots(),

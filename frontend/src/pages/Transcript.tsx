@@ -1,21 +1,28 @@
 import { useState } from 'react';
 import { useGPA } from '../hooks';
-import { type TranscriptAttempt } from '../lib/api';
+import { updateEnrollment, type TranscriptAttempt } from '../lib/api';
 import { ContextualAiPanel } from '../components/ContextualAiPanel';
+import { useAuth } from '../auth/AuthContext';
 
-const REASON_LABELS: Record<TranscriptAttempt['reason'], string> = {
-  counted: 'Đang tính CPA',
-  superseded: 'Không tính CPA (lượt khác cao hơn)',
-  'not-passed': 'Không tính CPA (chưa đạt)',
-  'no-credits': 'Không tính CPA (0 tín chỉ)',
-  ungraded: 'Chưa có điểm',
-};
+function statusLabel(attempt: TranscriptAttempt): string {
+  if (attempt.processScore === null && attempt.finalScore === null) return 'Chờ điểm';
+  if (attempt.processScore !== null && attempt.finalScore === null) return 'Chờ thi';
+  return attempt.grade4 !== null && attempt.grade4 > 0 ? 'Đạt' : 'Chưa đạt';
+}
+
+function statusClass(attempt: TranscriptAttempt): string {
+  const status = statusLabel(attempt);
+  if (status === 'Đạt') return 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30';
+  if (status === 'Chưa đạt') return 'bg-rose-500/10 text-rose-700 ring-rose-500/30';
+  return 'bg-amber-500/10 text-amber-700 ring-amber-500/30';
+}
 
 function formatNumber(value: number | null, digits = 2): string {
   return value === null || Number.isNaN(value) ? '—' : value.toFixed(digits);
 }
 
 export function TranscriptPage() {
+  const { token } = useAuth();
   const {
     transcript,
     forecast,
@@ -23,12 +30,46 @@ export function TranscriptPage() {
     error,
     semesters,
     handleForecast,
+    refetch,
   } = useGPA();
 
   const [targetCpa, setTargetCpa] = useState('3.50');
   const [additionalCredits, setAdditionalCredits] = useState('30');
   const [plannedGrade4, setPlannedGrade4] = useState('');
   const [forecastError, setForecastError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [processScore, setProcessScore] = useState('');
+  const [finalScore, setFinalScore] = useState('');
+  const [scoreError, setScoreError] = useState<string | null>(null);
+  const [savingScore, setSavingScore] = useState(false);
+
+  const startEditing = (attempt: TranscriptAttempt) => {
+    setEditingId(attempt.id);
+    setProcessScore(attempt.processScore?.toString() ?? '');
+    setFinalScore(attempt.finalScore?.toString() ?? '');
+    setScoreError(null);
+  };
+
+  const saveScore = async () => {
+    if (!token || !editingId) return;
+    const process = Number(processScore);
+    const final = Number(finalScore);
+    if (!Number.isFinite(process) || !Number.isFinite(final) || process < 0 || process > 10 || final < 0 || final > 10) {
+      setScoreError('Điểm phải nằm trong khoảng 0 đến 10.');
+      return;
+    }
+    setSavingScore(true);
+    setScoreError(null);
+    try {
+      await updateEnrollment(token, editingId, { processScore: process, finalScore: final });
+      setEditingId(null);
+      refetch();
+    } catch (caught) {
+      setScoreError(caught instanceof Error ? caught.message : 'Không lưu được điểm.');
+    } finally {
+      setSavingScore(false);
+    }
+  };
 
   const handleForecastSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -225,7 +266,8 @@ export function TranscriptPage() {
                         <th className="px-4 py-3 text-right font-medium">Hệ 10</th>
                         <th className="px-4 py-3 text-center font-medium">Chữ</th>
                         <th className="px-4 py-3 text-right font-medium">Hệ 4</th>
-                        <th className="px-4 py-3 font-medium">Trạng thái CPA</th>
+                        <th className="px-4 py-3 font-medium">Trạng thái</th>
+                        <th className="px-4 py-3 font-medium">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -263,20 +305,34 @@ export function TranscriptPage() {
                             {formatNumber(attempt.grade4)}
                           </td>
                           <td className="px-4 py-3">
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${attempt.countedInCpa
-                                  ? 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30'
-                                  : 'bg-gray-100 text-slate-600 ring-slate-300'
-                                }`}
-                            >
-                              {REASON_LABELS[attempt.reason]}
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusClass(attempt)}`}>
+                              {statusLabel(attempt)}
                             </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {editingId === attempt.id ? (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <input type="number" min="0" max="10" step="0.01" value={processScore} onChange={(event) => setProcessScore(event.target.value)} className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-xs" aria-label="Điểm quá trình" />
+                                <input type="number" min="0" max="10" step="0.01" value={finalScore} onChange={(event) => setFinalScore(event.target.value)} className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-xs" aria-label="Điểm thi" />
+                                <button type="button" onClick={() => void saveScore()} disabled={savingScore} className="rounded-lg bg-brand-500 px-2 py-1 text-xs font-medium text-white disabled:opacity-50">Lưu</button>
+                                <button type="button" onClick={() => setEditingId(null)} className="rounded-lg px-2 py-1 text-xs text-slate-500">Huỷ</button>
+                              </div>
+                            ) : (
+                              <button type="button" onClick={() => startEditing(attempt)} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-300 hover:text-brand-700">
+                                Nhập điểm
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                {scoreError && semester.attempts.some((attempt) => attempt.id === editingId) ? (
+                  <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                    {scoreError}
+                  </p>
+                ) : null}
               </section>
             )))
           }

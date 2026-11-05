@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler, AppError } from '../../lib/errors';
 import { pool } from '../../database/pool';
+import * as repository from './schedule.repository';
+import type { RegistrationConfig } from '../schedule/schedule.types';
 
 const sectionSchema = z.object({
   subjectId: z.string().uuid(),
@@ -73,6 +75,34 @@ adminScheduleRouter.get('/periods', asyncHandler(async (_req, res) => {
       ORDER BY period`,
   );
   res.json({ periods: result.rows });
+}));
+
+adminScheduleRouter.get('/registration-config', asyncHandler(async (req, res) => {
+  const semester = typeof req.query.semester === 'string' ? req.query.semester : undefined;
+  const result = await pool.query(
+    `SELECT id, semester, is_open, opened_at, closed_at FROM registration_configs ${semester ? 'WHERE semester = $1' : ''} ORDER BY semester`,
+    semester ? [semester] : [],
+  );
+  res.json({ configs: result.rows });
+}));
+
+adminScheduleRouter.patch('/registration-config', asyncHandler(async (req, res) => {
+  const input = z.object({
+    semester: z.string().trim().min(1).max(20),
+    isOpen: z.boolean(),
+    openedAt: z.string().nullable().optional(),
+    closedAt: z.string().nullable().optional(),
+  }).parse(req.body);
+  
+  const result = await pool.query(
+    `INSERT INTO registration_configs (semester, is_open, opened_at, closed_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (semester) DO UPDATE
+     SET is_open = EXCLUDED.is_open, opened_at = EXCLUDED.opened_at, closed_at = EXCLUDED.closed_at
+     RETURNING id, semester, is_open, opened_at, closed_at`,
+    [input.semester, input.isOpen, input.openedAt, input.closedAt],
+  );
+  res.json({ config: result.rows[0] });
 }));
 
 adminScheduleRouter.patch('/periods/:period', asyncHandler(async (req, res) => {
