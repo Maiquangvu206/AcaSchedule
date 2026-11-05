@@ -170,8 +170,10 @@ function compareAttempts(a: CalculatedAttempt, b: CalculatedAttempt): number {
 function buildSemesterSummaries(attempts: CalculatedAttempt[]): SemesterCalculation[] {
   const groups = new Map<string, CalculatedAttempt[]>();
 
+  // Semester GPA reflects every graded attempt taken in that semester (including
+  // an F later replaced for CPA), so a retake semester is not silently dropped.
   for (const attempt of attempts) {
-    if (!attempt.counted || attempt.credits <= 0 || attempt.grade4 === null) continue;
+    if (attempt.credits <= 0 || attempt.grade4 === null) continue;
     const group = groups.get(attempt.semester) ?? [];
     group.push(attempt);
     groups.set(attempt.semester, group);

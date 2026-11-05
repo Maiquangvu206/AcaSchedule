@@ -133,6 +133,7 @@ make prod
 
 > Migration và seed chạy tự động khi container backend khởi động (dev và prod).
 > Có thể chạy thủ công: `make migrate` / `make seed`.
+> Chạy unit test GPA engine: `cd backend && npm test` (17 test, gồm property test CPA ∈ `[0, 4]`).
 
 ## 📑 6. Technical Highlights & Business Logic
 
@@ -140,6 +141,8 @@ make prod
 
 - **Logic Học lại (F → Pass):** Giữ vết lịch sử lượt trượt F ở kỳ cũ nhưng tự động cập nhật `is_counted_in_cpa = false` cho lượt F và bật `is_counted_in_cpa = true` cho lượt đạt mới.
 - **Logic Học cải thiện (Improvement):** So sánh tự động điểm số giữa các lượt học, chỉ giữ cờ `is_counted_in_cpa = true` cho lượt đạt điểm Point hệ 4 cao nhất. Tín chỉ tích lũy chỉ đếm **1 lần duy nhất**.
+- **Điểm tổng kết môn:** `processScore × processWeight + finalScore × finalWeight` (mặc định 40/60, cấu hình theo môn), sau đó quy đổi sang điểm chữ và Hệ 4 qua `grade_scales`.
+- **Dự báo CPA:** API trả điểm Hệ 4 trung bình cần đạt cho số tín chỉ sắp tới để chạm mục tiêu, kèm CPA dự kiến khi nhập điểm mong muốn.
 
 ### 2. Crowdsourced Document Hub (BR-DOCS)
 

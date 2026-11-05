@@ -143,16 +143,18 @@ describe('calculateGpa', () => {
     expect(result.cpa).toBe(3);
   });
 
-  it('builds per-semester GPA from counted attempts only', () => {
+  it('builds semester GPA from every graded attempt in that semester', () => {
     const result = calculateGpa([
       attempt({ id: 'a1', subjectId: 's1', semester: '2024-1', grade4: 2.0 }),
       attempt({ id: 'a2', subjectId: 's1', semester: '2025-1', grade4: 3.5 }),
       attempt({ id: 'b1', subjectId: 's2', semester: '2025-1', grade4: 3.0, subjectCode: 'SUB102' }),
     ]);
 
-    expect(result.semesters).toHaveLength(1);
-    expect(result.semesters[0]?.semester).toBe('2025-1');
-    expect(result.semesters[0]?.gpa).toBe(round2((3.5 * 3 + 3.0 * 3) / 6));
+    expect(result.semesters).toHaveLength(2);
+    expect(result.semesters[0]?.semester).toBe('2024-1');
+    expect(result.semesters[0]?.gpa).toBe(2);
+    expect(result.semesters[1]?.semester).toBe('2025-1');
+    expect(result.semesters[1]?.gpa).toBe(round2((3.5 * 3 + 3.0 * 3) / 6));
   });
 
   it('never produces a CPA outside [0, 4] over random inputs', () => {

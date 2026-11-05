@@ -12,9 +12,9 @@ import {
 
 const REASON_LABELS: Record<TranscriptAttempt['reason'], string> = {
   counted: 'Đang tính CPA',
-  superseded: 'Không tính (lượt khác cao hơn)',
-  'not-passed': 'Không tính (chưa đạt)',
-  'no-credits': 'Không tính (0 tín chỉ)',
+  superseded: 'Không tính CPA (lượt khác cao hơn)',
+  'not-passed': 'Không tính CPA (chưa đạt)',
+  'no-credits': 'Không tính CPA (0 tín chỉ)',
   ungraded: 'Chưa có điểm',
 };
 
@@ -203,10 +203,12 @@ export function TranscriptPage() {
                     Điểm cần đạt:{' '}
                     <span className="font-semibold text-white">{formatNumber(forecast.requiredAverageGrade4)}</span>
                   </p>
-                  <p className="text-slate-400">
-                    CPA dự kiến:{' '}
-                    <span className="font-semibold text-white">{formatNumber(forecast.projectedCpa)}</span>
-                  </p>
+                  {forecast.projectedCpa !== forecast.currentCpa ? (
+                    <p className="text-slate-400">
+                      CPA dự kiến:{' '}
+                      <span className="font-semibold text-white">{formatNumber(forecast.projectedCpa)}</span>
+                    </p>
+                  ) : null}
                   <p
                     className={`sm:col-span-2 font-medium ${
                       forecast.feasible ? 'text-emerald-300' : 'text-amber-300'

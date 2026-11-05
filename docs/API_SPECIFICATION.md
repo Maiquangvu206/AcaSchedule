@@ -129,6 +129,8 @@ Quy tắc chọn lượt tính CPA (**BR-RETENTION**):
 3. Trong các lượt được xét, giữ điểm Hệ 4 cao nhất; bằng điểm thì chọn `attemptNo` lớn hơn.
 4. Môn 0 tín chỉ không ảnh hưởng CPA.
 5. CPA = tổng(`grade4 * credits`) / tổng tín chỉ của các lượt được tính, làm tròn 2 chữ số.
+6. GPA học kỳ tính trên **mọi lượt có điểm** trong học kỳ đó (kể cả F về sau được thay thế),
+   nên học kỳ có môn trượt vẫn hiển thị đúng GPA và số tín chỉ đã học.
 
 ## Schedule
 

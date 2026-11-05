@@ -47,20 +47,24 @@ vào `main` và pass CI.
 
 ## 2. Sprint 1 — Academic Core: GPA/CPA `P0`
 
-- [ ] Admin CRUD `grade_scales` (validate khoảng điểm không chồng lấn)
-- [ ] Admin CRUD `subjects` (mã môn unique, tín chỉ, khối kiến thức)
-- [ ] Student CRUD `student_enrollments` (điểm QT, điểm thi, học kỳ, lần học)
-- [ ] Quy đổi Hệ 10 → điểm chữ → Hệ 4 theo `grade_scales`
-- [ ] **BR-RETENTION — Học lại:** lượt F cũ `is_counted_in_cpa = false`, lượt đạt mới `true`
-- [ ] **BR-RETENTION — Học cải thiện:** chỉ giữ lượt có điểm Hệ 4 cao nhất
-- [ ] Tín chỉ tích lũy chỉ đếm 1 lần/môn
-- [ ] `POST /api/gpa/calculate` trả GPA kỳ, CPA tích lũy, tín chỉ tích lũy
-- [ ] `POST /api/gpa/forecast`: điểm cần đạt để chạm mục tiêu
-- [ ] `GET /api/student/transcript` + UI bảng điểm
-- [ ] Unit test: F → Pass, cải thiện, nhiều lượt, môn 0 tín chỉ, làm tròn
-- [ ] Property test: CPA luôn trong `[0, 4]`
+- [x] Admin CRUD `grade_scales` (validate khoảng điểm không chồng lấn)
+- [x] Admin CRUD `subjects` (mã môn unique, tín chỉ, khối kiến thức)
+- [x] Student CRUD `student_enrollments` (điểm QT, điểm thi, học kỳ, lần học)
+- [x] Quy đổi Hệ 10 → điểm chữ → Hệ 4 theo `grade_scales`
+- [x] **BR-RETENTION — Học lại:** lượt F cũ `is_counted_in_cpa = false`, lượt đạt mới `true`
+- [x] **BR-RETENTION — Học cải thiện:** chỉ giữ lượt có điểm Hệ 4 cao nhất
+- [x] Tín chỉ tích lũy chỉ đếm 1 lần/môn
+- [x] `POST /api/gpa/calculate` trả GPA kỳ, CPA tích lũy, tín chỉ tích lũy
+- [x] `POST /api/gpa/forecast`: điểm cần đạt để chạm mục tiêu
+- [x] `GET /api/student/transcript` + UI bảng điểm
+- [x] Unit test: F → Pass, cải thiện, nhiều lượt, môn 0 tín chỉ, làm tròn
+- [x] Property test: CPA luôn trong `[0, 4]`
 
 **Exit criteria:** bộ test GPA cover 100% business rule; số liệu khớp file tính tay mẫu.
+
+> Đã kiểm thử end-to-end với PostgreSQL + Redis thật (43 check): CRUD admin, RBAC, cô lập dữ liệu
+> giữa sinh viên, quy đổi điểm, học lại/học cải thiện, calculate/forecast/transcript. `npm test`
+> chạy 17 test cho engine, gồm property test 500 bộ dữ liệu ngẫu nhiên.
 
 ---
 
@@ -118,10 +122,10 @@ vào `main` và pass CI.
 
 ## 6. Frontend `P1`
 
-- [ ] React Router + layout (sidebar/header), route guard theo role
+- [x] React Router + layout (sidebar/header), route guard theo role
 - [ ] Trang đăng nhập/đăng ký + lưu/refresh token an toàn
 - [ ] Dashboard GPA: thẻ CPA, biểu đồ xu hướng theo kỳ
-- [ ] Bảng điểm + chi tiết môn (các lượt học, cờ CPA)
+- [x] Bảng điểm + chi tiết môn (các lượt học, cờ CPA)
 - [ ] Weekly calendar + mô phỏng đăng ký
 - [ ] Document Hub + Document Viewer
 - [ ] AI chat panel (streaming, citations)
@@ -195,7 +199,7 @@ vào `main` và pass CI.
 | Mốc | Nội dung | Điều kiện thoát |
 | --- | --- | --- |
 | **M0 — Done** | Skeleton, health, AI service, Docker, CI | `make dev` chạy, CI xanh |
-| **M1** | Auth + DB schema + GPA engine | Tính đúng CPA theo BR-RETENTION, có test |
+| **M1 — Done** | Auth + DB schema + GPA engine | Tính đúng CPA theo BR-RETENTION, có test |
 | **M2** | Schedule + Document Hub | Hai luồng end-to-end qua UI |
 | **M3** | AI Advisor với RAG thật | Eval hit rate ≥ 80%, có citations |
 | **M4** | Hardening & release | Security checklist + E2E + staging |
