@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import { pool } from '../../database/pool';
-import type { CourseSection, PeriodSlot, ScheduleItem } from './schedule.types';
+import type { CourseSection, PeriodSlot, RegistrationConfig, ScheduleItem } from './schedule.types';
 
 export type Queryable = Pool | PoolClient;
 

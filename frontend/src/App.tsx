@@ -18,6 +18,7 @@ import { AdminDocumentsPage } from './pages/AdminDocuments';
 import { AdminSchedulePage } from './pages/AdminSchedule';
 import { AdminMajorsPage } from './pages/AdminMajors';
 import { AdminPeriodsPage } from './pages/AdminPeriods';
+import { AdminGradeScalesPage } from './pages/AdminGradeScales';
 import { ChangePasswordPage } from './pages/ChangePassword';
 
 export default function App() {
@@ -44,6 +45,7 @@ export default function App() {
                 <Route path="admin/tuition" element={<AdminTuitionPage />} />
                 <Route path="admin/schedule" element={<AdminSchedulePage />} />
                 <Route path="admin/periods" element={<AdminPeriodsPage />} />
+                <Route path="admin/grade-scales" element={<AdminGradeScalesPage />} />
                 <Route path="admin/documents" element={<AdminDocumentsPage />} />
                 <Route path="admin/activity" element={<AdminActivityPage />} />
               </Route>

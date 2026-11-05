@@ -9,6 +9,7 @@ import {
   fetchScheduleItems,
   fetchSchedulePeriods,
   fetchScheduleSemesters,
+  fetchRegistrationConfig,
   runScheduleSimulation,
   updateScheduleItem,
   type CourseSection,
@@ -112,6 +113,7 @@ export function SchedulePage() {
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [simulation, setSimulation] = useState<ScheduleSimulation | null>(null);
+  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
@@ -155,12 +157,14 @@ export function SchedulePage() {
       fetchCourseSections(token, { semester, includeCancelled }),
       fetchSchedulePeriods(token),
       fetchScheduleItems(token, semester, dateValue(weekStart)),
+      fetchRegistrationConfig(token, semester),
     ])
-      .then(([nextSections, nextPeriods, nextItems]) => {
+      .then(([nextSections, nextPeriods, nextItems, nextRegConfig]) => {
         if (cancelled) return;
         setSections(nextSections);
         setPeriods(nextPeriods);
         setItems(nextItems);
+        setRegistrationOpen(nextRegConfig.isOpen);
       })
       .catch((loadError) => {
         if (!cancelled) handleAuthError(loadError, 'Không tải được dữ liệu thời khóa biểu');
@@ -408,6 +412,13 @@ export function SchedulePage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Thời khóa biểu</h1>
+          {registrationOpen !== null && (
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
+              {registrationOpen
+                ? 'Đăng ký đang mở'
+                : 'Đăng ký đã khóa'}
+            </p>
+          )}
           <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
             Chọn lớp học phần để mô phỏng đăng ký. Hệ thống phát hiện trùng thứ và giao tiết, đồng thời
             so sánh với lịch cá nhân đã lưu.

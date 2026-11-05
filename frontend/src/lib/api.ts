@@ -73,6 +73,33 @@ export interface PeriodSlot {
   label: string;
 }
 
+export interface GradeScale {
+  id: string;
+  minScore10: number;
+  letterGrade: string;
+  grade4: number;
+  isPass: boolean;
+}
+
+export async function fetchAdminGradeScales(token: string): Promise<GradeScale[]> {
+  const result = await apiRequest<{ gradeScales: GradeScale[] }>('/admin/grade-scales', { token });
+  return result.gradeScales;
+}
+
+export async function createAdminGradeScale(token: string, input: Omit<GradeScale, 'id'>): Promise<GradeScale> {
+  const result = await apiRequest<{ gradeScale: GradeScale }>('/admin/grade-scales', { method: 'POST', token, body: input });
+  return result.gradeScale;
+}
+
+export async function updateAdminGradeScale(token: string, id: string, input: Omit<GradeScale, 'id'>): Promise<GradeScale> {
+  const result = await apiRequest<{ gradeScale: GradeScale }>(`/admin/grade-scales/${id}`, { method: 'PATCH', token, body: input });
+  return result.gradeScale;
+}
+
+export async function deleteAdminGradeScale(token: string, id: string): Promise<void> {
+  await apiRequest(`/admin/grade-scales/${id}`, { method: 'DELETE', token });
+}
+
 export interface DocumentSubject {
   id: string;
   code: string;
@@ -830,13 +857,39 @@ export interface TuitionFee {
   updatedAt: string;
 }
 
-export async function fetchTuitionFees(token: string): Promise<TuitionFee[]> {
-  const result = await apiRequest<{ tuitionFees: TuitionFee[] }>('/tuition-fees', { token });
-  return result.tuitionFees;
+export async function fetchRegistrationConfig(
+  token: string,
+  semester: string,
+): Promise<{ isOpen: boolean; openedAt: string | null; closedAt: string | null }> {
+  const result = await apiRequest<{ registrationConfig: {
+    isOpen: boolean;
+    openedAt: string | null;
+    closedAt: string | null;
+  } }>(`/admin/schedule/registration-config?semester=${semester}`, { token });
+  return result.registrationConfig;
+}
+
+export async function updateRegistrationConfigAPI(
+  token: string,
+  semester: string,
+  isOpen: boolean,
+  openedAt: string | null,
+  closedAt: string | null,
+): Promise<{ success: boolean }> {
+  await apiRequest<{ success: boolean }>(
+    `/admin/schedule/registration-config`,
+    { method: 'PATCH', token, body: { semester, isOpen, openedAt, closedAt } },
+  );
+  return { success: true };
 }
 
 export async function fetchTuitionFee(token: string, semester: string): Promise<TuitionFee> {
   return apiRequest<TuitionFee>(`/tuition-fees/${semester}`, { token });
+}
+
+export async function fetchTuitionFees(token: string): Promise<TuitionFee[]> {
+  const result = await apiRequest<{ tuitionFees: TuitionFee[] }>('/tuition-fees', { token });
+  return result.tuitionFees;
 }
 
 export async function saveTuitionFee(
