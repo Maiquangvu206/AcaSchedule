@@ -1,13 +1,23 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { LanguageToggle } from './LanguageToggle';
+import { BrandLogo } from './BrandLogo';
 
-const navItems = [
+const PUBLIC_NAV_ITEMS = [
   { to: '/', label: 'Tổng quan', end: true, protected: false },
   { to: '/transcript', label: 'Bảng điểm', end: false, protected: true },
   { to: '/schedule', label: 'Thời khóa biểu', end: false, protected: true },
   { to: '/documents', label: 'Tài liệu', end: false, protected: true },
   { to: '/ai', label: 'Tư vấn AI', end: false, protected: true },
+];
+
+const ADMIN_NAV_ITEMS = [
+  { to: '/admin/users', label: 'Sinh viên', end: false, protected: true },
+  { to: '/admin/majors', label: 'Ngành & khoa', end: false, protected: true },
+  { to: '/admin/subjects', label: 'Môn học', end: false, protected: true },
+  { to: '/admin/tuition', label: 'Học phí', end: false, protected: true },
+  { to: '/admin/schedule', label: 'Lịch học', end: false, protected: true },
+  { to: '/admin/documents', label: 'Tài liệu', end: false, protected: true },
+  { to: '/admin/activity', label: 'Hoạt động', end: false, protected: true },
 ];
 
 export function AppLayout() {
@@ -19,14 +29,14 @@ export function AppLayout() {
     navigate('/login');
   };
 
+  const items = user?.role === 'admin' ? ADMIN_NAV_ITEMS : PUBLIC_NAV_ITEMS;
+
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.10),_transparent_60%)]">
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <Link to="/" className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-500/20 text-xl ring-1 ring-inset ring-brand-400/30">
-              🎓
-            </span>
+            <BrandLogo size="sm" />
             <div>
               <p className="text-base font-semibold tracking-tight text-slate-900">AcaSchedule</p>
               <p className="text-[11px] text-slate-500">Personal Academic Hub</p>
@@ -34,25 +44,22 @@ export function AppLayout() {
           </Link>
 
           <nav className="flex items-center gap-1" aria-label="Điều hướng chính">
-            {navItems
-              .filter((item) => !item.protected || Boolean(user))
-              .map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      isActive
-                        ? 'bg-brand-500/15 text-brand-600'
-                        : 'text-slate-600 hover:bg-gray-100 hover:text-slate-900'
+            {items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    isActive
+                      ? 'bg-brand-500/15 text-brand-600'
+                      : 'text-slate-600 hover:bg-gray-100 hover:text-slate-900'
                     }`
                   }
                 >
                   {item.label}
                 </NavLink>
               ))}
-            <LanguageToggle />
           </nav>
 
           <div className="flex items-center gap-3">

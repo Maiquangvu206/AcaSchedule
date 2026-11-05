@@ -22,6 +22,14 @@ interface CourseSectionRow {
   day_of_week: number;
   start_period: number;
   end_period: number;
+  class_type: 'lecture' | 'practical';
+  meeting_count: number;
+  linked_section_id: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  second_day_of_week: number | null;
+  second_start_period: number | null;
+  second_end_period: number | null;
   room: string | null;
   lecturer: string | null;
   capacity: number | null;
@@ -66,6 +74,14 @@ function mapSection(row: CourseSectionRow): CourseSection {
     dayOfWeek: row.day_of_week,
     startPeriod: row.start_period,
     endPeriod: row.end_period,
+    classType: row.class_type,
+    meetingCount: row.meeting_count,
+    linkedSectionId: row.linked_section_id,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    secondDayOfWeek: row.second_day_of_week,
+    secondStartPeriod: row.second_start_period,
+    secondEndPeriod: row.second_end_period,
     room: row.room,
     lecturer: row.lecturer,
     capacity: row.capacity,
@@ -106,6 +122,14 @@ const SECTION_SELECT = `
          cs.day_of_week,
          cs.start_period,
          cs.end_period,
+         cs.class_type,
+         cs.meeting_count,
+         cs.linked_section_id,
+         cs.start_date,
+         cs.end_date,
+         cs.second_day_of_week,
+         cs.second_start_period,
+         cs.second_end_period,
          cs.room,
          cs.lecturer,
          cs.capacity,

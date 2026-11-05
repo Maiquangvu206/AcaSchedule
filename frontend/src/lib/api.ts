@@ -125,6 +125,14 @@ export interface CourseSection {
   dayOfWeek: number;
   startPeriod: number;
   endPeriod: number;
+  classType: 'lecture' | 'practical';
+  meetingCount: number;
+  linkedSectionId: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  secondDayOfWeek: number | null;
+  secondStartPeriod: number | null;
+  secondEndPeriod: number | null;
   room: string | null;
   lecturer: string | null;
   capacity: number | null;
@@ -266,20 +274,83 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export async function apiRequest<T>(
+/** Callback để cập nhật token trong React AuthContext khi refresh thành công */
+let refreshTokenCallback: ((newAccessToken: string | null) => void) | null = null;
+
+/** Đăng ký callback để cập nhật token trong React AuthContext */
+export function setRefreshTokenCallback(callback: (newAccessToken: string | null) => void) {
+  refreshTokenCallback = callback;
+}
+
+/** Làm mới access token bằng refresh token */
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = authStorage.getRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      authStorage.clear();
+      refreshTokenCallback?.(null);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.accessToken) {
+      authStorage.save({ ...data, user: authStorage.getUser()! });
+      refreshTokenCallback?.(data.accessToken);
+      return data.accessToken;
+    }
+    return null;
+  } catch {
+    authStorage.clear();
+    refreshTokenCallback?.(null);
+    return null;
+  }
+}
+
+async function apiRequest<T>(
   path: string,
   options: { method?: string; body?: unknown; token?: string | null } = {},
 ): Promise<T> {
   const { method = 'GET', body, token } = options;
+  const currentToken = token || authStorage.getAccessToken();
+
   const response = await fetch(`/api${path}`, {
     method,
     headers: {
       Accept: 'application/json',
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
+
+  // Nếu nhận 401 và có token, thử refresh và retry
+  if (response.status === 401 && currentToken) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      const retryResponse = await fetch(`/api${path}`, {
+        method,
+        headers: {
+          Accept: 'application/json',
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+          Authorization: `Bearer ${newToken}`,
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      return parseResponse<T>(retryResponse);
+    }
+    // Refresh failed, clear auth
+    authStorage.clear();
+    refreshTokenCallback?.(null);
+    throw new ApiError(401, 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'Unauthorized');
+  }
 
   return parseResponse<T>(response);
 }
@@ -291,6 +362,10 @@ export async function login(email: string, password: string): Promise<AuthRespon
   });
   authStorage.save(auth);
   return auth;
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiRequest('/auth/forgot-password', { method: 'POST', body: { email } });
 }
 
 export async function fetchTranscript(token: string): Promise<Transcript> {
@@ -456,11 +531,268 @@ export interface AiAdviceResponse {
   used_fallback: boolean;
 }
 
+export interface ActivityLog {
+  id: string;
+  action: string;
+  method: string | null;
+  path: string | null;
+  statusCode: number | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  email: string | null;
+  fullName: string | null;
+}
+
+export async function fetchActivityLogs(token: string): Promise<ActivityLog[]> {
+  const result = await apiRequest<{ logs: ActivityLog[] }>('/admin/activity', { token });
+  return result.logs;
+}
+
+export interface AdminStats {
+  students: number;
+  subjects: number;
+  documents: number;
+  accounts: number;
+}
+
+export async function fetchAdminStats(token: string): Promise<AdminStats> {
+  return apiRequest<AdminStats>('/admin/stats', { token });
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  studentCode: string | null;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  majors: Array<{ id: string; code: string; name: string; departmentName: string | null; isPrimary: boolean }>;
+}
+
+export async function fetchAdminUsers(token: string): Promise<AdminUser[]> {
+  const result = await apiRequest<{ users: AdminUser[] }>('/admin/users', { token });
+  return result.users;
+}
+
+export async function createAdminUser(token: string, input: { email: string; fullName: string; phone?: string; studentCode?: string; role?: 'student' | 'admin' }): Promise<AdminUser> {
+  const result = await apiRequest<{ user: AdminUser }>('/admin/users', { method: 'POST', token, body: input });
+  return result.user;
+}
+
+export async function updateAdminUser(token: string, id: string, input: { email?: string; fullName?: string; phone?: string | null; studentCode?: string | null }): Promise<AdminUser> {
+  const result = await apiRequest<{ user: AdminUser }>(`/admin/users/${id}`, { method: 'PATCH', token, body: input });
+  return result.user;
+}
+
+export async function resetAdminUserPassword(token: string, id: string): Promise<void> {
+  await apiRequest(`/admin/users/${id}/reset-password`, { method: 'POST', token });
+}
+
+export async function setAdminUserStatus(token: string, id: string, isActive: boolean): Promise<void> {
+  await apiRequest(`/admin/users/${id}/status`, { method: 'PATCH', token, body: { isActive } });
+}
+
+export async function deleteAdminUser(token: string, id: string): Promise<void> {
+  await apiRequest(`/admin/users/${id}`, { method: 'DELETE', token });
+}
+
+export interface AdminSubject {
+  id: string;
+  code: string;
+  name: string;
+  credits: number;
+  knowledgeBlock: string;
+  isActive: boolean;
+}
+
+export async function fetchAdminSubjects(token: string): Promise<AdminSubject[]> {
+  const result = await apiRequest<{ subjects: AdminSubject[] }>('/admin/subjects', { token });
+  return result.subjects;
+}
+
+export async function createAdminSubject(
+  token: string,
+  input: { code: string; name: string; credits: number; knowledgeBlock: string },
+): Promise<AdminSubject> {
+  const result = await apiRequest<{ subject: AdminSubject }>('/admin/subjects', {
+    method: 'POST',
+    token,
+    body: { ...input, processWeight: 0.4, finalWeight: 0.6 },
+  });
+  return result.subject;
+}
+
+export async function updateAdminSubject(
+  token: string,
+  id: string,
+  input: { code: string; name: string; credits: number; knowledgeBlock: string },
+): Promise<AdminSubject> {
+  const result = await apiRequest<{ subject: AdminSubject }>(`/admin/subjects/${id}`, {
+    method: 'PATCH',
+    token,
+    body: input,
+  });
+  return result.subject;
+}
+
+export interface AdminMajor {
+  id: string;
+  code: string;
+  name: string;
+  subjectCount: number;
+  departmentId: string | null;
+  departmentCode: string | null;
+  departmentName: string | null;
+}
+
+export interface AdminDepartment {
+  id: string;
+  code: string;
+  name: string;
+  majorCount: number;
+}
+
+export async function fetchAdminDepartments(token: string): Promise<AdminDepartment[]> {
+  const result = await apiRequest<{ departments: AdminDepartment[] }>('/admin/curriculum/departments', { token });
+  return result.departments;
+}
+
+export async function createAdminDepartment(token: string, input: { code: string; name: string }): Promise<AdminDepartment> {
+  const result = await apiRequest<{ department: AdminDepartment }>('/admin/curriculum/departments', { method: 'POST', token, body: input });
+  return result.department;
+}
+
+export interface CurriculumSubject extends AdminSubject {
+  isRequired: boolean;
+  semesterNo: number | null;
+}
+
+export async function fetchAdminMajors(token: string): Promise<AdminMajor[]> {
+  const result = await apiRequest<{ majors: AdminMajor[] }>('/admin/curriculum/majors', { token });
+  return result.majors;
+}
+
+export async function createAdminMajor(token: string, input: { code: string; name: string; departmentId: string }): Promise<AdminMajor> {
+  const result = await apiRequest<{ major: AdminMajor }>('/admin/curriculum/majors', {
+    method: 'POST', token, body: input,
+  });
+  return result.major;
+}
+
+export async function updateAdminMajor(token: string, id: string, input: { code?: string; name?: string; departmentId?: string }): Promise<AdminMajor> {
+  const result = await apiRequest<{ major: AdminMajor }>(`/admin/curriculum/majors/${id}`, { method: 'PATCH', token, body: input });
+  return result.major;
+}
+
+export async function fetchCurriculumSubjects(token: string, majorId: string): Promise<CurriculumSubject[]> {
+  const result = await apiRequest<{ subjects: CurriculumSubject[] }>(`/admin/curriculum/majors/${majorId}/subjects`, { token });
+  return result.subjects;
+}
+
+export async function assignCurriculumSubject(
+  token: string,
+  majorId: string,
+  input: { subjectId: string; isRequired: boolean; semesterNo: number | null },
+): Promise<void> {
+  await apiRequest(`/admin/curriculum/majors/${majorId}/subjects`, { method: 'POST', token, body: input });
+}
+
+export async function removeCurriculumSubject(token: string, majorId: string, subjectId: string): Promise<void> {
+  await apiRequest(`/admin/curriculum/majors/${majorId}/subjects/${subjectId}`, { method: 'DELETE', token });
+}
+
+export interface MajorStudent {
+  id: string;
+  email: string;
+  fullName: string;
+  isPrimary: boolean;
+}
+
+export async function fetchMajorStudents(token: string, majorId: string): Promise<MajorStudent[]> {
+  const result = await apiRequest<{ students: MajorStudent[] }>(`/admin/curriculum/majors/${majorId}/students`, { token });
+  return result.students;
+}
+
+export async function assignStudentMajor(
+  token: string,
+  majorId: string,
+  userId: string,
+  isPrimary: boolean,
+): Promise<void> {
+  await apiRequest(`/admin/curriculum/majors/${majorId}/students`, {
+    method: 'POST', token, body: { userId, isPrimary },
+  });
+}
+
+export async function removeStudentMajor(token: string, majorId: string, userId: string): Promise<void> {
+  await apiRequest(`/admin/curriculum/majors/${majorId}/students/${userId}`, { method: 'DELETE', token });
+}
+
+export interface AdminCourseSection extends CourseSection {}
+
+export async function fetchAdminScheduleSections(token: string, semester?: string): Promise<AdminCourseSection[]> {
+  const query = semester ? `?semester=${encodeURIComponent(semester)}` : '';
+  const result = await apiRequest<{ sections: AdminCourseSection[] }>(`/admin/schedule/sections${query}`, { token });
+  return result.sections;
+}
+
+export type AdminCourseSectionInput = Omit<AdminCourseSection, 'id' | 'subjectCode' | 'subjectName' | 'credits'>;
+
+export async function createAdminScheduleSection(token: string, input: AdminCourseSectionInput): Promise<AdminCourseSection> {
+  const result = await apiRequest<{ section: AdminCourseSection }>('/admin/schedule/sections', { method: 'POST', token, body: input });
+  return result.section;
+}
+
+export async function updateAdminScheduleSection(token: string, id: string, input: AdminCourseSectionInput): Promise<AdminCourseSection> {
+  const result = await apiRequest<{ section: AdminCourseSection }>(`/admin/schedule/sections/${id}`, { method: 'PATCH', token, body: input });
+  return result.section;
+}
+
+export async function deleteAdminScheduleSection(token: string, id: string): Promise<void> {
+  await apiRequest(`/admin/schedule/sections/${id}`, { method: 'DELETE', token });
+}
+
 export async function fetchAiAdvice(
   token: string,
   input: AiAdviceRequest,
 ): Promise<AiAdviceResponse> {
   return apiRequest<AiAdviceResponse>('/ai/advice', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+}
+
+export interface TuitionFee {
+  id: string;
+  semester: string;
+  majorId: string | null;
+  majorCode: string | null;
+  majorName: string | null;
+  feePerCredit: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function fetchTuitionFees(token: string): Promise<TuitionFee[]> {
+  const result = await apiRequest<{ tuitionFees: TuitionFee[] }>('/tuition-fees', { token });
+  return result.tuitionFees;
+}
+
+export async function fetchTuitionFee(token: string, semester: string): Promise<TuitionFee> {
+  return apiRequest<TuitionFee>(`/tuition-fees/${semester}`, { token });
+}
+
+export async function saveTuitionFee(
+  token: string,
+  input: { semester: string; majorId: string | null; feePerCredit: number; currency?: string },
+): Promise<TuitionFee> {
+  return apiRequest<TuitionFee>('/tuition-fees', {
     method: 'POST',
     token,
     body: input,

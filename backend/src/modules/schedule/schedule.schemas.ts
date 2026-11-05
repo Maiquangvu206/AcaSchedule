@@ -7,7 +7,7 @@ const semesterSchema = z
   .max(20)
   .regex(/^[A-Za-z0-9._-]+$/, 'Semester may only contain letters, digits, dot, dash and underscore');
 
-const daySchema = z.number().int().min(1).max(7);
+const daySchema = z.number().int().min(2).max(7);
 const periodSchema = z.number().int().min(1).max(12);
 
 export const listSectionsQuerySchema = z.object({

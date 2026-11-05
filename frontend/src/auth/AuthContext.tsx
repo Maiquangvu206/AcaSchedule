@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { authStorage, login as loginRequest, type ApiUser, type AuthResponse } from '../lib/api';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { authStorage, login as loginRequest, setRefreshTokenCallback, type ApiUser, type AuthResponse } from '../lib/api';
 
 interface AuthContextValue {
   user: ApiUser | null;
@@ -25,6 +25,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authStorage.clear();
     setUser(null);
     setToken(null);
+  }, []);
+
+  // Đăng ký callback để nhận token mới khi refresh thành công
+  useEffect(() => {
+    setRefreshTokenCallback((newToken) => {
+      if (newToken) {
+        setToken(newToken);
+      } else {
+        setToken(null);
+        setUser(null);
+      }
+    });
   }, []);
 
   const value = useMemo<AuthContextValue>(

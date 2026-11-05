@@ -504,7 +504,7 @@ export function DocumentsPage() {
                   required
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
-                  placeholder="VD: Đề thi giữa kỳ 2024"
+                  placeholder="Tên tài liệu"
                   className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400/60"
                 />
               </label>

@@ -16,6 +16,14 @@ export interface CourseSection {
   dayOfWeek: number;
   startPeriod: number;
   endPeriod: number;
+  classType: 'lecture' | 'practical';
+  meetingCount: number;
+  linkedSectionId: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  secondDayOfWeek: number | null;
+  secondStartPeriod: number | null;
+  secondEndPeriod: number | null;
   room: string | null;
   lecturer: string | null;
   capacity: number | null;

@@ -7,6 +7,7 @@ import { env } from './config/env';
 import { openApiDocument } from './docs/openapi';
 import { AppError } from './lib/errors';
 import { logger } from './lib/logger';
+import { auditRequest } from './lib/audit';
 import { requestContext, requestLogger } from './lib/request-context';
 import { adminRouter } from './modules/admin';
 import { aiRouter } from './modules/ai';
@@ -17,6 +18,7 @@ import { gpaRouter } from './modules/gpa';
 import { healthRouter } from './modules/health/health.routes';
 import { scheduleRouter } from './modules/schedule';
 import { studentRouter } from './modules/student';
+import { tuitionFeesRouter } from './modules/tuition_fees';
 
 export function createApp() {
   const app = express();
@@ -67,15 +69,16 @@ export function createApp() {
 
   // Public routes
   app.use('/api/health', healthRouter);
-  app.use('/api/auth', authRouter);
+  app.use('/api/auth', auditRequest, authRouter);
 
   // Protected routes
-  app.use('/api/admin', authenticate, requireRole('admin'), adminRouter);
-  app.use('/api/student', authenticate, studentRouter);
-  app.use('/api/gpa', authenticate, gpaRouter);
-  app.use('/api/schedule', authenticate, scheduleRouter);
-  app.use('/api/documents', authenticate, documentRouter);
-  app.use('/api/ai', authenticate, aiRouter);
+  app.use('/api/admin', authenticate, requireRole('admin'), auditRequest, adminRouter);
+  app.use('/api/student', authenticate, auditRequest, studentRouter);
+  app.use('/api/gpa', authenticate, auditRequest, gpaRouter);
+  app.use('/api/schedule', authenticate, auditRequest, scheduleRouter);
+  app.use('/api/documents', authenticate, auditRequest, documentRouter);
+  app.use('/api/ai', authenticate, auditRequest, aiRouter);
+  app.use('/api/tuition-fees', authenticate, auditRequest, tuitionFeesRouter);
 
   // 404
   app.use((req: Request, res: Response) => {

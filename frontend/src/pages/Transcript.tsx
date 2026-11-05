@@ -143,7 +143,7 @@ export function TranscriptPage() {
                     step="0.1"
                     value={plannedGrade4}
                     onChange={(event) => setPlannedGrade4(event.target.value)}
-                    placeholder="VD: 3.6"
+                    placeholder="CPA mục tiêu"
                     className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
                   />
                 </label>

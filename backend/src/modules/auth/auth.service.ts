@@ -90,7 +90,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
   const user = await findUserByEmail(email);
 
   // Same message for unknown email and wrong password to avoid user enumeration.
-  if (!user || !(await verifyPassword(input.password, user.password_hash))) {
+  if (!user || !user.is_active || !(await verifyPassword(input.password, user.password_hash))) {
     throw AppError.unauthorized('Invalid email or password');
   }
 
@@ -109,7 +109,7 @@ export async function refresh(refreshToken: string): Promise<AuthResult> {
   }
 
   const user = await findUserById(stored.user_id);
-  if (!user) {
+  if (!user || !user.is_active) {
     throw AppError.unauthorized('User no longer exists');
   }
 

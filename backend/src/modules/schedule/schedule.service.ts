@@ -21,9 +21,9 @@ export async function listSections(filters: {
   return repository.listCourseSections(filters);
 }
 
-function sectionToMeeting(section: CourseSection): ScheduleMeeting {
+function sectionToMeeting(section: CourseSection, suffix = ''): ScheduleMeeting {
   return {
-    id: section.id,
+    id: `${section.id}${suffix}`,
     kind: 'section',
     code: section.sectionCode,
     title: `${section.subjectCode} — ${section.subjectName}`,
@@ -34,6 +34,23 @@ function sectionToMeeting(section: CourseSection): ScheduleMeeting {
     isCancelled: section.isCancelled,
     sectionId: section.id,
   };
+}
+
+function sectionToMeetings(section: CourseSection): ScheduleMeeting[] {
+  const meetings = [sectionToMeeting(section)];
+  if (
+    section.secondDayOfWeek !== null &&
+    section.secondStartPeriod !== null &&
+    section.secondEndPeriod !== null
+  ) {
+    meetings.push({
+      ...sectionToMeeting(section, '-2'),
+      dayOfWeek: section.secondDayOfWeek,
+      startPeriod: section.secondStartPeriod,
+      endPeriod: section.secondEndPeriod,
+    });
+  }
+  return meetings;
 }
 
 function itemToMeeting(item: ScheduleItem): ScheduleMeeting {
@@ -80,7 +97,7 @@ export async function simulate(
       : await repository.listScheduleItems(studentId, input.semester);
 
   const meetings = [
-    ...sections.map(sectionToMeeting),
+    ...sections.flatMap(sectionToMeetings),
     ...savedItems.map(itemToMeeting),
   ];
   const result = simulateSchedule(meetings);

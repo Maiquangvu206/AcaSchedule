@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { ApiError } from '../lib/api';
+import { ApiError, requestPasswordReset } from '../lib/api';
+import { BrandLogo } from '../components/BrandLogo';
 
 interface LocationState {
   from?: string;
@@ -11,25 +12,36 @@ export function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('student@acaschedule.local');
-  const [password, setPassword] = useState('Student@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
-  const redirectTo = (location.state as LocationState | null)?.from ?? '/transcript';
+  const requestedPath = (location.state as LocationState | null)?.from;
+  const loggedInPath = user?.role === 'admin' ? '/admin' : '/transcript';
+  const loggedInRequestedPath = requestedPath && (
+    user?.role === 'admin' ? requestedPath.startsWith('/admin') : !requestedPath.startsWith('/admin')
+  ) ? requestedPath : null;
 
   if (user) {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={loggedInRequestedPath || loggedInPath} replace />;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setNotice(null);
     setSubmitting(true);
 
     try {
-      await login(email, password);
-      navigate(redirectTo, { replace: true });
+      const auth = await login(email, password);
+      const defaultPath = auth.user.role === 'admin' ? '/admin' : '/transcript';
+      const requestedIsAllowed = requestedPath && (
+        auth.user.role === 'admin' ? requestedPath.startsWith('/admin') : !requestedPath.startsWith('/admin')
+      );
+      navigate(requestedIsAllowed ? requestedPath : defaultPath, { replace: true });
     } catch (loginError) {
       setError(
         loginError instanceof ApiError
@@ -42,33 +54,23 @@ export function Login() {
   };
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-73px)] max-w-6xl items-center px-6 py-14">
-      <div className="grid w-full gap-10 lg:grid-cols-[1fr_420px]">
-        <section className="hidden flex-col justify-center gap-5 lg:flex">
-          <span className="inline-flex w-fit rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-600">
-            Sprint 1 · Academic Core
-          </span>
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-900">
-            Theo dõi GPA/CPA theo đúng nghiệp vụ học lại và học cải thiện.
-          </h1>
-          <p className="max-w-xl text-base leading-relaxed text-slate-600">
-            Hệ thống tự chọn lượt học có lợi nhất cho sinh viên: lượt đạt thay thế lượt F, điểm Hệ 4
-            cao nhất được giữ lại, tín chỉ chỉ tính một lần cho mỗi môn.
-          </p>
-          <ul className="space-y-2 text-sm text-slate-600">
-            <li>• Quy đổi Hệ 10 → điểm chữ → Hệ 4</li>
-            <li>• GPA từng học kỳ và CPA tích lũy</li>
-            <li>• Dự báo điểm cần đạt cho mục tiêu CPA</li>
-          </ul>
-        </section>
-
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-brand-50 px-5 py-10">
+      <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-brand-100/60 blur-3xl" />
+      <div className="absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-indigo-100/60 blur-3xl" />
+      <div className="relative w-full max-w-[430px]">
+        <div className="mb-8 text-center">
+          <div className="mx-auto w-fit">
+            <BrandLogo />
+          </div>
+          <p className="text-3xl font-bold tracking-tight text-slate-900">AcaSchedule</p>
+          <p className="mt-1 text-sm text-slate-500">Hệ thống quản lý học vụ</p>
+        </div>
         <form
           onSubmit={handleSubmit}
-          className="space-y-5 rounded-2xl border border-gray-200 bg-white p-7 shadow-2xl shadow-gray-200/40"
+          className="space-y-5 rounded-3xl border border-slate-200/80 bg-white p-8 shadow-2xl shadow-slate-300/30 sm:p-9"
         >
-          <div className="space-y-1">
+          <div className="space-y-1 text-center">
             <h2 className="text-2xl font-semibold text-slate-900">Đăng nhập</h2>
-            <p className="text-sm text-slate-600">Sử dụng tài khoản demo hoặc tài khoản của bạn.</p>
           </div>
 
           <label className="block space-y-2 text-sm">
@@ -80,7 +82,7 @@ export function Login() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
-              placeholder="student@acaschedule.local"
+              placeholder="Nhập email"
             />
           </label>
 
@@ -93,7 +95,7 @@ export function Login() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
-              placeholder="••••••••"
+              placeholder="Nhập mật khẩu"
             />
           </label>
 
@@ -102,6 +104,7 @@ export function Login() {
               {error}
             </p>
           ) : null}
+          {notice ? <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">{notice}</p> : null}
 
           <button
             type="submit"
@@ -111,18 +114,27 @@ export function Login() {
             {submitting ? 'Đang đăng nhập…' : 'Đăng nhập'}
           </button>
 
-          <div className="rounded-xl border border-gray-200/50 bg-gray-50 px-4 py-3 text-xs leading-6 text-slate-600">
-            <p>
-              <span className="font-medium text-slate-600">Sinh viên:</span>{' '}
-              student@acaschedule.local / Student@123
-            </p>
-            <p>
-              <span className="font-medium text-slate-600">Quản trị:</span>{' '}
-              admin@acaschedule.local / Admin@123
-            </p>
-          </div>
+          <button type="button" disabled={resetting} onClick={async () => {
+            if (!email.trim()) {
+              setError('Vui lòng nhập email để lấy lại mật khẩu.');
+              return;
+            }
+            setError(null);
+            setNotice(null);
+            setResetting(true);
+            try {
+              await requestPasswordReset(email.trim());
+              setNotice('Nếu email tồn tại, mật khẩu mới sẽ được gửi về hộp thư của bạn.');
+            } catch (resetError) {
+              setError(resetError instanceof ApiError ? resetError.message : 'Không thể gửi yêu cầu lấy lại mật khẩu.');
+            } finally {
+              setResetting(false);
+            }
+          }} className="w-full text-center text-sm font-medium text-brand-600 hover:text-brand-500 disabled:opacity-60">
+            {resetting ? 'Đang gửi yêu cầu…' : 'Quên mật khẩu?'}
+          </button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }

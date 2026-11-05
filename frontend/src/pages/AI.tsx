@@ -138,7 +138,7 @@ export function AIPage() {
             <input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="VD: Tôi nên học lại môn nào để nâng CPA nhanh nhất?"
+              placeholder="Nhập câu hỏi của bạn"
               className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400/60"
             />
           </label>

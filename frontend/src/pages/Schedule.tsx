@@ -661,7 +661,7 @@ export function SchedulePage() {
                 required
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="VD: Học nhóm môn Giải tích"
+                placeholder="Tên lịch cá nhân"
                 className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400/60 focus:ring-2 focus:ring-brand-500/20"
               />
             </label>

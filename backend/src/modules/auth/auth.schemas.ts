@@ -19,5 +19,9 @@ export const logoutSchema = z.object({
   refreshToken: z.string().min(20),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email().max(255),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

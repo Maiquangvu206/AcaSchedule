@@ -67,7 +67,7 @@ const translations: Record<string, Record<Lang, string>> = {
   // AI
   ai_title: { vi: 'Cố vấn học tập AI', en: 'AI Academic Advisor' },
   ask_ai: { vi: 'Gửi câu hỏi', en: 'Ask AI' },
-  ai_placeholder: { vi: 'VD: Tôi nên học lại môn nào để nâng CPA nhanh nhất?', en: 'E.g. Which subject should I retake to raise CPA fastest?' },
+  ai_placeholder: { vi: 'Nhập câu hỏi của bạn', en: 'Enter your question' },
 
   // States
   loading: { vi: 'Đang tải…', en: 'Loading…' },

@@ -37,6 +37,15 @@ const envSchema = z.object({
 
   GEMINI_API_KEY: z.string().optional().default(''),
   AI_SERVICE_URL: z.string().url().default('http://localhost:8001'),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().email().optional(),
+  ),
 
   JWT_ACCESS_SECRET: z.string().min(16).default('dev-access-secret-change-me'),
   JWT_REFRESH_SECRET: z.string().min(16).default('dev-refresh-secret-change-me'),
