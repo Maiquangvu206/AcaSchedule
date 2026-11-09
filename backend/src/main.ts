@@ -7,8 +7,11 @@ import { closeRedis, connectRedis } from './lib/redis';
 
 const app = createApp();
 
-const server = app.listen(env.PORT, () => {
-  logger.info({ port: env.PORT, env: env.NODE_ENV }, 'AcaSchedule API listening');
+const port = Number(process.env.PORT) || 5000;
+
+const server = app.listen(port, () => {
+  console.log("Backend started on port " + process.env.PORT);
+  logger.info({ port, env: env.NODE_ENV }, 'AcaSchedule API listening');
 });
 
 /** Best-effort infrastructure init; failures degrade the service, they do not crash it. */

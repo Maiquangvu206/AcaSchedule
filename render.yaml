@@ -1,26 +1,60 @@
 services:
-  # 1. Frontend (Static Site)
+  # 1. Frontend (Vite Static Site)
   - type: web
     name: acaschedule-frontend
     env: static
     rootDir: frontend
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
 
-  # 2. Express Backend (Node.js)
+  # 2. Backend (Express / Node.js)
   - type: web
     name: acaschedule-backend
     env: node
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: node index.js
     plan: free
+    rootDir: backend
+    # The app is TypeScript: it must be compiled to dist/ before `npm start`.
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    # Liveness probe (Redis/MinIO are optional on Render, so do not require them).
+    healthCheckPath: /api/health/live
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        value: https://acaschedule-frontend.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: acaschedule-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AI_SERVICE_URL
+        value: https://acaschedule-ai.onrender.com
 
-  # 3. AI Service (FastAPI Python)
+  # 3. AI Service (FastAPI / Python)
   - type: web
     name: acaschedule-ai
     env: python
+    plan: free
     rootDir: ai
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # FastAPI app lives in ai/app/main.py (package `app`, module `main`).
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+
+databases:
+  - name: acaschedule-db
     plan: free
+    databaseName: acaschedule
+    user: acaschedule
