@@ -118,6 +118,13 @@ export async function listPeriodSlots(db: Queryable = pool): Promise<PeriodSlot[
 }
 
 export async function listSemesters(db: Queryable = pool): Promise<string[]> {
+  const configured = await db.query<{ code: string }>(
+    `SELECT code FROM semesters WHERE is_active = true ORDER BY sort_no, code`,
+  );
+  if (configured.rows.length > 0) {
+    return configured.rows.map((row) => row.code);
+  }
+  // Fallback before the catalogue is populated: semesters referenced elsewhere.
   const result = await db.query<{ semester: string }>(
     `SELECT semester FROM course_sections
      UNION

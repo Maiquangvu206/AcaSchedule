@@ -11,22 +11,27 @@ import httpx
 from ..config import get_settings
 
 GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models"
+MAX_CONTINUATIONS = 2
+CONTINUE_PROMPT = (
+    "Câu trả lời trước bị cắt do giới hạn độ dài. Hãy viết tiếp ngay tại chỗ đang dừng, "
+    "không lặp lại phần đã viết, và kết thúc trọn câu."
+)
 
 
 class GeminiError(RuntimeError):
     """Raised when Gemini is unavailable or returns an unusable payload."""
 
 
-async def generate(prompt: str) -> str:
+async def _request(contents: list[dict[str, object]]) -> tuple[str, str | None]:
     settings = get_settings()
-
-    if not settings.gemini_api_key:
-        raise GeminiError("GEMINI_API_KEY is not configured")
 
     url = f"{GEMINI_ENDPOINT}/{settings.gemini_model}:generateContent"
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1536},
+        "contents": contents,
+        "generationConfig": {
+            "temperature": 0.3,
+            "maxOutputTokens": settings.max_output_tokens,
+        },
     }
 
     try:
@@ -44,9 +49,50 @@ async def generate(prompt: str) -> str:
 
     data = response.json()
     try:
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        candidate = data["candidates"][0]
+        parts = candidate["content"]["parts"]
+        text = "".join(
+            part.get("text", "") for part in parts if not part.get("thought")
+        )
+        finish_reason = candidate.get("finishReason")
     except (KeyError, IndexError, TypeError) as exc:
         raise GeminiError("Unexpected Gemini response shape") from exc
+
+    return text, finish_reason
+
+
+async def generate(prompt: str) -> str:
+    settings = get_settings()
+
+    if not settings.gemini_api_key:
+        raise GeminiError("GEMINI_API_KEY is not configured")
+
+    contents: list[dict[str, object]] = [
+        {"role": "user", "parts": [{"text": prompt}]}
+    ]
+    chunks: list[str] = []
+
+    for attempt in range(MAX_CONTINUATIONS + 1):
+        text, finish_reason = await _request(contents)
+        chunks.append(text)
+
+        if finish_reason != "MAX_TOKENS":
+            break
+        if attempt == MAX_CONTINUATIONS:
+            break
+
+        # Keep the conversation going so the model continues exactly where it stopped.
+        partial = "".join(chunks)
+        contents = [
+            {"role": "user", "parts": [{"text": prompt}]},
+            {"role": "model", "parts": [{"text": partial}]},
+            {"role": "user", "parts": [{"text": CONTINUE_PROMPT}]},
+        ]
+
+    result = "".join(chunks).strip()
+    if not result:
+        raise GeminiError("Gemini returned an empty response")
+    return result
 
 
 async def generate_or_fallback(prompt: str, fallback: str) -> tuple[str, bool]:

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import {
-  createAdminDepartment, createAdminMajor, fetchAdminDepartments, fetchAdminMajors, updateAdminMajor,
-  type AdminDepartment, type AdminMajor,
+  createAdminDepartment, createAdminMajor, fetchAdminDepartments, fetchAdminMajors, fetchCurriculumSubjects, updateAdminMajor, updateAdminSubject,
+  type AdminDepartment, type AdminMajor, type CurriculumSubject,
 } from '../lib/api';
 import { AdminListPage } from './AdminUsers';
 
@@ -16,6 +16,9 @@ export function AdminMajorsPage() {
   const [majorCode, setMajorCode] = useState('');
   const [majorName, setMajorName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [curriculumByMajor, setCurriculumByMajor] = useState<Map<string, CurriculumSubject[]>>(new Map());
+  const [draftBySubject, setDraftBySubject] = useState<Record<string, string>>({});
+  const [savingSubjectId, setSavingSubjectId] = useState<string | null>(null);
 
   const load = () => {
     if (!token) return;
@@ -24,6 +27,15 @@ export function AdminMajorsPage() {
         setDepartments(departmentItems);
         setMajors(majorItems);
         if (!departmentId && departmentItems[0]) setDepartmentId(departmentItems[0].id);
+        return majorItems;
+      })
+      .then((majorItems) => {
+        if (!majorItems?.length) return;
+        Promise.all(majorItems.map((major) => fetchCurriculumSubjects(token, major.id).catch(() => [])))
+          .then((lists) => {
+            setCurriculumByMajor(new Map(majorItems.map((major, index) => [major.id, lists[index] ?? []])));
+          })
+          .catch(() => undefined);
       })
       .catch(() => setError('Không tải được dữ liệu khoa/ngành.'));
   };
@@ -68,6 +80,34 @@ export function AdminMajorsPage() {
     }
   };
 
+  const saveManagingUnit = async (subject: CurriculumSubject) => {
+    if (!token) return;
+    const next = (draftBySubject[subject.id] ?? subject.managingUnit ?? '').trim();
+    setSavingSubjectId(subject.id);
+    setError(null);
+    try {
+      const updated = await updateAdminSubject(token, subject.id, {
+        code: subject.code,
+        name: subject.name,
+        credits: subject.credits,
+        knowledgeBlock: subject.knowledgeBlock,
+        managingUnit: next,
+      });
+      setCurriculumByMajor((prev) => {
+        const nextMap = new Map(prev);
+        for (const [majorId, list] of nextMap) {
+          nextMap.set(majorId, list.map((item) => (item.id === subject.id ? { ...item, managingUnit: updated.managingUnit } : item)));
+        }
+        return nextMap;
+      });
+      setDraftBySubject((prev) => ({ ...prev, [subject.id]: next }));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Không thể lưu bộ môn quản lý.');
+    } finally {
+      setSavingSubjectId(null);
+    }
+  };
+
   return (
     <AdminListPage title="Ngành & khoa" description="Tạo khoa, tạo ngành và sắp xếp ngành thuộc khoa. Việc gán sinh viên thực hiện tại trang Sinh viên.">
       {error ? <p role="alert" className="m-5 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
@@ -97,6 +137,60 @@ export function AdminMajorsPage() {
         </div>
         {majors.some((major) => !major.departmentId) ? <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4"><h3 className="font-semibold text-amber-900">Ngành chưa gán khoa</h3><div className="mt-3 space-y-2">{majors.filter((major) => !major.departmentId).map((major) => <div key={major.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"><span className="text-sm font-medium text-slate-800">{major.code} - {major.name}</span><select defaultValue="" onChange={(event) => attachMajor(major, event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Chọn khoa để gán</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.code} - {department.name}</option>)}</select></div>)}</div></section> : null}
         {!departments.length ? <p className="mt-4 text-sm text-slate-500">Chưa có khoa nào. Hãy tạo khoa trước.</p> : null}
+      </div>
+      <div className="border-t border-slate-100 p-5">
+        <h2 className="font-semibold text-slate-900">Bộ môn quản lý theo ngành</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Thiết lập bộ môn phụ trách từng môn học trong chương trình đào tạo.
+          Nội dung này hiển thị trên trang Chương trình đào tạo và Lộ trình học của sinh viên.
+        </p>
+        <div className="mt-4 space-y-4">
+          {majors.map((major) => {
+            const subjects = curriculumByMajor.get(major.id) ?? [];
+            return (
+              <section key={major.id} className="overflow-x-auto rounded-xl border border-slate-200">
+                <header className="border-b bg-slate-50/70 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-900">{major.code} - {major.name}</p>
+                  <p className="text-xs text-slate-500">{subjects.length} môn trong chương trình</p>
+                </header>
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead className="border-b bg-white text-xs uppercase text-slate-500">
+                    <tr><th className="px-4 py-2">Mã môn</th><th className="px-4 py-2">Tên môn</th><th className="px-4 py-2">Học kỳ</th><th className="px-4 py-2">Bộ môn quản lý</th><th className="px-4 py-2 text-right">Thao tác</th></tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {subjects.map((subject) => (
+                      <tr key={subject.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-2 font-semibold">{subject.code}</td>
+                        <td className="px-4 py-2">{subject.name}</td>
+                        <td className="px-4 py-2 text-slate-600">{subject.semesterNo ? `Học kỳ ${subject.semesterNo}` : 'Chưa xếp kỳ'}</td>
+                        <td className="px-4 py-2">
+                          <input
+                            value={draftBySubject[subject.id] ?? subject.managingUnit ?? ''}
+                            onChange={(event) => setDraftBySubject((prev) => ({ ...prev, [subject.id]: event.target.value }))}
+                            placeholder="Tên bộ môn"
+                            className="w-full min-w-[180px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => void saveManagingUnit(subject)}
+                            disabled={savingSubjectId === subject.id}
+                            className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                          >
+                            {savingSubjectId === subject.id ? 'Đang lưu…' : 'Lưu'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!subjects.length ? <p className="px-4 py-6 text-center text-sm text-slate-500">Ngành này chưa có môn trong chương trình. Hãy gán môn ở tab Môn học.</p> : null}
+              </section>
+            );
+          })}
+          {!majors.length ? <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">Chưa có ngành nào.</p> : null}
+        </div>
       </div>
     </AdminListPage>
   );

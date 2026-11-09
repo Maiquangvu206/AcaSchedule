@@ -1,24 +1,34 @@
 import { useState } from 'react';
 import { useGPA } from '../hooks';
-import { updateEnrollment, type TranscriptAttempt } from '../lib/api';
+import {
+  updateEnrollment,
+  type TranscriptAttempt,
+} from '../lib/api';
 import { ContextualAiPanel } from '../components/ContextualAiPanel';
 import { useAuth } from '../auth/AuthContext';
 
 function statusLabel(attempt: TranscriptAttempt): string {
   if (attempt.processScore === null && attempt.finalScore === null) return 'Chờ điểm';
   if (attempt.processScore !== null && attempt.finalScore === null) return 'Chờ thi';
-  return attempt.grade4 !== null && attempt.grade4 > 0 ? 'Đạt' : 'Chưa đạt';
+  return attempt.grade4 !== null && attempt.grade4 > 0 ? 'Đạt' : 'Trượt';
 }
 
 function statusClass(attempt: TranscriptAttempt): string {
   const status = statusLabel(attempt);
   if (status === 'Đạt') return 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30';
-  if (status === 'Chưa đạt') return 'bg-rose-500/10 text-rose-700 ring-rose-500/30';
+  if (status === 'Trượt') return 'bg-rose-500/10 text-rose-700 ring-rose-500/30';
   return 'bg-amber-500/10 text-amber-700 ring-amber-500/30';
 }
 
 function formatNumber(value: number | null, digits = 2): string {
   return value === null || Number.isNaN(value) ? '—' : value.toFixed(digits);
+}
+
+/** "Lần 1", "Học lại lần 2" (after a fail) or "Cải thiện lần 2" (after a pass). */
+function attemptKindLabel(attempt: TranscriptAttempt): string {
+  if (attempt.attemptKind === 'retake') return `Học lại lần ${attempt.attemptNo}`;
+  if (attempt.attemptKind === 'improvement') return `Cải thiện lần ${attempt.attemptNo}`;
+  return `Lần ${attempt.attemptNo}`;
 }
 
 export function TranscriptPage() {
@@ -237,6 +247,13 @@ export function TranscriptPage() {
 
           <ContextualAiPanel mode="direction" />
 
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Chi tiết điểm theo học kỳ</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Điểm của từng lần học, bao gồm học lại và học cải thiện.
+            </p>
+          </div>
+
           {semesters.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-slate-500">
               Chưa có dữ liệu bảng điểm. Hãy đăng ký lớp học phần ở trang Thời khóa biểu để bắt đầu theo dõi môn học.
@@ -256,7 +273,18 @@ export function TranscriptPage() {
                 </div>
 
                 <div className="overflow-x-auto rounded-2xl border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <table className="w-full min-w-[900px] table-fixed divide-y divide-gray-200 text-sm">
+                    <colgroup>
+                      <col className="w-[26%]" />
+                      <col className="w-[14%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[14%]" />
+                    </colgroup>
                     <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <tr>
                         <th className="px-4 py-3 font-medium">Môn học</th>
@@ -284,7 +312,9 @@ export function TranscriptPage() {
                               {attempt.subjectCode} · {attempt.credits} tín chỉ
                             </p>
                           </td>
-                          <td className="px-4 py-3 text-slate-600">{attempt.attemptNo}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-slate-600">
+                            {attemptKindLabel(attempt)}
+                          </td>
                           <td className="px-4 py-3 text-right text-slate-700">
                             {formatNumber(attempt.processScore)}
                           </td>

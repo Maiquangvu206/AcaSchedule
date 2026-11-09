@@ -16,6 +16,7 @@ export const createSubjectSchema = z
     name: z.string().trim().min(2).max(255),
     credits: z.number().int().min(1).max(30),
     knowledgeBlock: z.string().trim().min(1).max(100).default('General'),
+    managingUnit: z.string().trim().max(100).default(''),
     processWeight: weightSchema.default(0.4),
     finalWeight: weightSchema.default(0.6),
   })
@@ -30,6 +31,7 @@ export const updateSubjectSchema = z
     name: z.string().trim().min(2).max(255).optional(),
     credits: z.number().int().min(1).max(30).optional(),
     knowledgeBlock: z.string().trim().min(1).max(100).optional(),
+    managingUnit: z.string().trim().max(100).optional(),
     processWeight: weightSchema.optional(),
     finalWeight: weightSchema.optional(),
     isActive: z.boolean().optional(),

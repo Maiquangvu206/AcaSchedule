@@ -158,7 +158,12 @@ export function SchedulePage() {
       fetchCourseSections(token, { semester, includeCancelled }),
       fetchSchedulePeriods(token),
       fetchScheduleItems(token, semester, dateValue(weekStart)),
-      fetchRegistrationConfig(token, semester),
+      // Registration status must not block the timetable if it fails.
+      fetchRegistrationConfig(token, semester).catch(() => ({
+        isOpen: true,
+        openedAt: null,
+        closedAt: null,
+      })),
     ])
       .then(([nextSections, nextPeriods, nextItems, nextRegConfig]) => {
         if (cancelled) return;

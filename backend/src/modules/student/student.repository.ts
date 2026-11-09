@@ -221,3 +221,137 @@ export async function deleteEnrollment(
   );
   return (result.rowCount ?? 0) > 0;
 }
+
+export interface StudentMajor {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Primary major of a student (falls back to any assigned major). */
+export async function findStudentMajor(
+  studentId: string,
+  db: Queryable = pool,
+): Promise<StudentMajor | null> {
+  const result = await db.query<{ id: string; code: string; name: string }>(
+    `SELECT m.id, m.code, m.name
+       FROM user_majors um
+       JOIN majors m ON m.id = um.major_id
+      WHERE um.user_id = $1
+      ORDER BY um.is_primary DESC, m.code
+      LIMIT 1`,
+    [studentId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export interface CurriculumSubjectRecord {
+  subjectId: string;
+  subjectCode: string;
+  subjectName: string;
+  credits: number;
+  isRequired: boolean;
+  semesterNo: number | null;
+  managingUnit: string;
+}
+
+/** Personal study-plan semester overrides for a student. */
+export async function listStudyPlanPlacements(
+  studentId: string,
+  db: Queryable = pool,
+): Promise<Map<string, number>> {
+  const result = await db.query<{ subject_id: string; semester_no: number }>(
+    `SELECT subject_id, semester_no
+       FROM student_study_plan
+      WHERE student_id = $1`,
+    [studentId],
+  );
+  return new Map(result.rows.map((row) => [row.subject_id, row.semester_no]));
+}
+
+/** Save (or overwrite) the student's desired semester for one subject. */
+export async function saveStudyPlanPlacement(
+  studentId: string,
+  subjectId: string,
+  semesterNo: number,
+  db: Queryable = pool,
+): Promise<void> {
+  await db.query(
+    `INSERT INTO student_study_plan (student_id, subject_id, semester_no)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (student_id, subject_id)
+     DO UPDATE SET semester_no = EXCLUDED.semester_no`,
+    [studentId, subjectId, semesterNo],
+  );
+}
+
+/** Remove a personal override so the subject follows the default programme again. */
+export async function deleteStudyPlanPlacement(
+  studentId: string,
+  subjectId: string,
+  db: Queryable = pool,
+): Promise<void> {
+  await db.query(
+    `DELETE FROM student_study_plan WHERE student_id = $1 AND subject_id = $2`,
+    [studentId, subjectId],
+  );
+}
+
+/** Remove every personal override (back to the admin-defined programme). */
+export async function resetStudyPlanPlacements(
+  studentId: string,
+  db: Queryable = pool,
+): Promise<void> {
+  await db.query(`DELETE FROM student_study_plan WHERE student_id = $1`, [studentId]);
+}
+
+/** Subjects in a major's training programme, ordered by planned semester. */
+export async function listCurriculumSubjects(
+  majorId: string,
+  db: Queryable = pool,
+): Promise<CurriculumSubjectRecord[]> {
+  const result = await db.query<{
+    subject_id: string;
+    subject_code: string;
+    subject_name: string;
+    credits: number;
+    is_required: boolean;
+    semester_no: number | null;
+    managing_unit: string;
+  }>(
+    `SELECT s.id AS subject_id,
+            s.code AS subject_code,
+            s.name AS subject_name,
+            s.credits,
+            cs.is_required,
+            cs.semester_no,
+            s.managing_unit
+       FROM curriculum_subjects cs
+       JOIN subjects s ON s.id = cs.subject_id
+      WHERE cs.major_id = $1
+      ORDER BY cs.semester_no NULLS LAST, s.code`,
+    [majorId],
+  );
+  return result.rows.map((row) => ({
+    subjectId: row.subject_id,
+    subjectCode: row.subject_code,
+    subjectName: row.subject_name,
+    credits: row.credits,
+    isRequired: row.is_required,
+    semesterNo: row.semester_no,
+    managingUnit: row.managing_unit ?? '',
+  }));
+}
+
+/** Managing units of arbitrary subjects (for subjects outside a programme). */
+export async function listSubjectManagingUnits(
+  subjectIds: string[],
+  db: Queryable = pool,
+): Promise<Map<string, string>> {
+  if (!subjectIds.length) return new Map();
+  const result = await db.query<{ id: string; managing_unit: string }>(
+    `SELECT id, managing_unit FROM subjects WHERE id = ANY($1::uuid[])`,
+    [subjectIds],
+  );
+  return new Map(result.rows.map((row) => [row.id, row.managing_unit ?? '']));
+}

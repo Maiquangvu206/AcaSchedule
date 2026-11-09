@@ -11,6 +11,7 @@ import { auditRequest } from './lib/audit';
 import { requestContext, requestLogger } from './lib/request-context';
 import { adminRouter } from './modules/admin';
 import { aiRouter } from './modules/ai';
+import { semestersRouter, adminSemestersRouter } from './modules/semesters';
 import { authRouter } from './modules/auth/auth.routes';
 import { authenticate, requireRole } from './modules/auth/auth.middleware';
 import { documentRouter } from './modules/document';
@@ -73,6 +74,8 @@ export function createApp() {
 
   // Protected routes
   app.use('/api/admin', authenticate, requireRole('admin'), auditRequest, adminRouter);
+  app.use('/api/admin/semesters', authenticate, requireRole('admin'), auditRequest, adminSemestersRouter);
+  app.use('/api/semesters', authenticate, auditRequest, semestersRouter);
   app.use('/api/student', authenticate, auditRequest, studentRouter);
   app.use('/api/gpa', authenticate, auditRequest, gpaRouter);
   app.use('/api/schedule', authenticate, auditRequest, scheduleRouter);

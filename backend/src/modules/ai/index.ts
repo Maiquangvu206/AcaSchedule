@@ -2,7 +2,6 @@ import { Router, Request } from 'express';
 import { env } from '../../config/env';
 import { asyncHandler, AppError } from '../../lib/errors';
 import { getCalculation } from '../gpa/gpa.service';
-import { consumeQuota } from '../../lib/quota';
 import { getRedis } from '../../lib/redis';
 import { redactPii } from '../../lib/pii';
 import { logger } from '../../lib/logger';
@@ -12,8 +11,9 @@ import { createHash } from 'node:crypto';
  * AI Advisor — proxy to the dedicated Python AI service (`ai/`).
  *
  * The `/advice` endpoint no longer trusts the client for grade data: it loads the
- * authenticated student's transcript from PostgreSQL, redacts PII, enforces a
- * per-user quota and caches answers in Redis before forwarding to the AI service.
+ * authenticated student's transcript from PostgreSQL, redacts PII, and caches
+ * answers in Redis before forwarding to the AI service. There is intentionally
+ * no per-user request quota: students may ask the AI as often as needed.
  * Other routes (`/documents/summarize`, `/qa`) pass through with PII redaction and
  * sanitized logging.
  */
@@ -21,9 +21,7 @@ export const aiRouter = Router();
 
 const upstreamBase = () => env.AI_SERVICE_URL.replace(/\/+$/, '');
 const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
-const CACHE_VERSION = 'v3';
-const QUOTA_LIMIT = 20;            // requests per window
-const QUOTA_TTL_SECONDS = 60 * 60; // 1 hour
+const CACHE_VERSION = 'v4';
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -80,7 +78,8 @@ async function setCached<T>(key: string, value: T): Promise<void> {
  * POST /api/ai/advice
  *
  * Builds the advice request from the authenticated student's real transcript so the
- * client cannot forge grades. Applies PII redaction, per-user quota and Redis cache.
+ * client cannot forge grades. Applies PII redaction and Redis cache.
+ * No request quota is enforced.
  */
 aiRouter.post(
   '/advice',
@@ -91,17 +90,7 @@ aiRouter.post(
       question?: string;
     };
 
-    // Quota check (degrades to allow when Redis is down).
-    const quota = await consumeQuota(`ai:advice:${studentId}`, QUOTA_LIMIT, QUOTA_TTL_SECONDS);
-    if (!quota.allowed) {
-      throw new AppError(
-        429,
-        'TooManyRequests',
-        `Đã đạt giới hạn ${QUOTA_LIMIT} lần tư vấn AI mỗi giờ. Vui lòng thử lại sau.`,
-        { remaining: quota.remaining },
-      );
-    }
-
+    // No per-user request quota: students may ask the AI as often as needed.
     // Load real transcript data from PostgreSQL.
     const calculation = await getCalculation(studentId);
 
@@ -149,7 +138,7 @@ aiRouter.post(
     }
 
     const result = {
-      advice: redactPii(parsed.advice ?? ''),
+      advice: parsed.advice ?? '',
       model: parsed.model ?? 'fallback',
       used_fallback: parsed.used_fallback ?? true,
     };

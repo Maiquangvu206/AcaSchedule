@@ -84,6 +84,19 @@ function attemptReason(attempt: AttemptInput, countedId: string | null, hasPassi
   return 'superseded';
 }
 
+/**
+ * Classify an attempt by looking at the attempts taken before it:
+ * the 2nd+ attempt is a retake if any earlier attempt was failed, otherwise an
+ * improvement attempt. Attempts without an earlier graded result are treated as
+ * retakes so the transcript never hides a repeated enrolment.
+ */
+function attemptKind(attempt: AttemptInput, earlier: AttemptInput[]): CalculatedAttempt['attemptKind'] {
+  if (attempt.attemptNo <= 1) return 'first';
+  if (earlier.some((item) => item.grade4 !== null && !isPassed(item))) return 'retake';
+  if (earlier.some(isPassed)) return 'improvement';
+  return 'retake';
+}
+
 export function calculateGpa(attempts: AttemptInput[]): GpaCalculation {
   const bySubject = new Map<string, AttemptInput[]>();
 
@@ -109,15 +122,18 @@ export function calculateGpa(attempts: AttemptInput[]): GpaCalculation {
     const counted = hasCredit ? selectCounted(group) : null;
     const hasPassing = group.some(isPassed);
 
-    const subjectAttempts: CalculatedAttempt[] = group
-      .slice()
-      .sort((a, b) => a.attemptNo - b.attemptNo)
-      .map((attempt) => ({
+    const ordered = group.slice().sort((a, b) => a.attemptNo - b.attemptNo);
+    const subjectAttempts: CalculatedAttempt[] = ordered.map((attempt, index) => {
+      const kind = attemptKind(attempt, ordered.slice(0, index));
+      return {
         ...attempt,
         counted: counted?.id === attempt.id,
         passed: isPassed(attempt),
         reason: attemptReason(attempt, counted?.id ?? null, hasPassing),
-      }));
+        attemptKind: kind,
+        isRetake: kind === 'retake',
+      };
+    });
 
     calculatedAttempts.push(...subjectAttempts);
 

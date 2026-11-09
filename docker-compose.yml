@@ -94,6 +94,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-documents}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       AI_SERVICE_URL: http://ai:8000
       SMTP_HOST: ${SMTP_HOST:-}
@@ -109,8 +110,6 @@ services:
       JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-7d}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@acaschedule.local}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@123}
-      SEED_STUDENT_EMAIL: ${SEED_STUDENT_EMAIL:-student@acaschedule.local}
-      SEED_STUDENT_PASSWORD: ${SEED_STUDENT_PASSWORD:-Student@123}
       SEED_ON_START: ${SEED_ON_START:-false}
     depends_on:
       db:

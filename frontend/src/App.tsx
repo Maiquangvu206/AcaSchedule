@@ -9,6 +9,9 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { Login } from './pages/Login';
 import { SchedulePage } from './pages/Schedule';
 import { TranscriptPage } from './pages/Transcript';
+import { StudyPlanPage } from './pages/StudyPlan';
+import { AdminEnrollmentsPage } from './pages/AdminEnrollments';
+import { AdminSemestersPage } from './pages/AdminSemesters';
 import { AdminRoute } from './auth/AdminRoute';
 import { AdminActivityPage } from './pages/AdminActivity';
 import { AdminUsersPage } from './pages/AdminUsers';
@@ -34,12 +37,15 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route index element={<DashboardPage />} />
               <Route path="transcript" element={<TranscriptPage />} />
+              <Route path="study-plan" element={<StudyPlanPage />} />
               <Route path="schedule" element={<SchedulePage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="ai" element={<AIPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="admin" element={<AdminDashboard />} />
                 <Route path="admin/users" element={<AdminUsersPage />} />
+                <Route path="admin/semesters" element={<AdminSemestersPage />} />
+                <Route path="admin/enrollments" element={<AdminEnrollmentsPage />} />
                 <Route path="admin/majors" element={<AdminMajorsPage />} />
                 <Route path="admin/subjects" element={<AdminSubjectsPage />} />
                 <Route path="admin/tuition" element={<AdminTuitionPage />} />

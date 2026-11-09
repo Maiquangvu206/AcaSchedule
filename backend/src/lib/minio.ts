@@ -8,6 +8,7 @@ export const minioClient = new Client({
   useSSL: env.MINIO_USE_SSL,
   accessKey: env.MINIO_ACCESS_KEY,
   secretKey: env.MINIO_SECRET_KEY,
+  region: env.MINIO_REGION,
 });
 
 /**
@@ -21,6 +22,9 @@ export const minioPublicClient = new Client({
   useSSL: env.MINIO_PUBLIC_USE_SSL ?? env.MINIO_USE_SSL,
   accessKey: env.MINIO_ACCESS_KEY,
   secretKey: env.MINIO_SECRET_KEY,
+  // The public host (localhost:19000) is only reachable from the browser, not
+  // from inside the backend container, so skip the bucket-region lookup call.
+  region: env.MINIO_REGION,
 });
 
 const RETRY_DELAYS_MS = [500, 1_500, 3_000];

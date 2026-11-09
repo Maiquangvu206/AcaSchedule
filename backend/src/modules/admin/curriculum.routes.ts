@@ -101,6 +101,7 @@ curriculumRouter.patch('/majors/:majorId', asyncHandler(async (req, res) => {
 curriculumRouter.get('/majors/:majorId/subjects', asyncHandler(async (req, res) => {
   const result = await pool.query(`
     SELECT s.id, s.code, s.name, s.credits, s.knowledge_block AS "knowledgeBlock",
+           s.managing_unit AS "managingUnit",
            cs.is_required AS "isRequired", cs.semester_no AS "semesterNo"
     FROM curriculum_subjects cs
     JOIN subjects s ON s.id = cs.subject_id

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { fetchAdminMajors, fetchTuitionFees, saveTuitionFee, type AdminMajor, type TuitionFee } from '../lib/api';
 import { AdminListPage } from './AdminUsers';
-
-const semesterOptions = ['HK1 2026-2027', 'HK2 2026-2027', 'HK3 2026-2027'];
+import { useSemesters } from '../hooks/useSemesters';
 
 export function AdminTuitionPage() {
   const { token } = useAuth();
+  const { codes: semesterOptions } = useSemesters();
   const [fees, setFees] = useState<TuitionFee[]>([]);
   const [majors, setMajors] = useState<AdminMajor[]>([]);
   const [majorId, setMajorId] = useState('');
@@ -87,16 +87,10 @@ export function AdminTuitionPage() {
           </label>
           <label className="text-sm font-medium text-slate-700">
             Học kỳ
-            <input
-              list="semester-options"
-              value={semester}
-              onChange={(event) => setSemester(event.target.value)}
-              placeholder="Học kỳ"
-              required
-              maxLength={20}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-            />
-            <datalist id="semester-options">{semesterOptions.map((item) => <option key={item} value={item} />)}</datalist>
+            <select value={semester} onChange={(event) => setSemester(event.target.value)} required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100">
+              <option value="">Chọn học kỳ</option>
+              {semesterOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
           </label>
           <label className="text-sm font-medium text-slate-700">
             Học phí / tín chỉ

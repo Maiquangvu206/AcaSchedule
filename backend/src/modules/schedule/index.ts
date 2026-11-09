@@ -36,6 +36,26 @@ scheduleRouter.get(
   }),
 );
 
+/** Public registration status for a semester (students need this to know if registration is open). */
+scheduleRouter.get(
+  '/registration-status',
+  asyncHandler(async (req, res) => {
+    const semester = typeof req.query.semester === 'string' ? req.query.semester.trim() : '';
+    if (!semester) {
+      res.status(400).json({ error: { message: 'semester is required' } });
+      return;
+    }
+    const config = await scheduleService.getRegistrationConfig(semester);
+    res.json({
+      registrationConfig: {
+        isOpen: config?.isOpen ?? true,
+        openedAt: config?.openedAt ?? null,
+        closedAt: config?.closedAt ?? null,
+      },
+    });
+  }),
+);
+
 /** Simulate registration and return the weekly calendar + conflicts. */
 scheduleRouter.post(
   '/simulate',

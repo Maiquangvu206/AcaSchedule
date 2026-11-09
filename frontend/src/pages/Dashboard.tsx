@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useGPA } from '../hooks';
-import { fetchTuitionFees } from '../lib/api';
+import { fetchTuitionFees, type TuitionFee } from '../lib/api';
 
 function formatNumber(value: number | null, digits = 2): string {
   return value === null || Number.isNaN(value) ? '—' : value.toFixed(digits);
@@ -120,7 +120,7 @@ function CPATrendChart({ semesters }: { semesters: { semester: string; gpa: numb
 export function Dashboard() {
   const { token } = useAuth();
   const { transcript } = useGPA();
-  const [tuitionFees, setTuitionFees] = useState<any[]>([]);
+  const [tuitionFees, setTuitionFees] = useState<TuitionFee[]>([]);
   const [tuitionLoading, setTuitionLoading] = useState(true);
 
   const semesters = transcript?.semesters ?? [];
@@ -138,12 +138,41 @@ export function Dashboard() {
   const countedSubjects = transcript?.summary.countedSubjects ?? 0;
   const cpa = transcript?.summary.cpa ?? 0;
 
-  // Tính tổng học phí dựa trên học phí theo từng kỳ và tín chỉ đã học của từng kỳ
-  const totalTuition = semesters.reduce((total, semester) => {
-    const feeInfo = tuitionFees.find((f) => f.semester === semester.semester);
-    const feePerCredit = feeInfo ? feeInfo.feePerCredit : 0;
-    return total + semester.earnedCredits * feePerCredit;
-  }, 0);
+  // Mức phí cấu hình mới nhất được dùng làm mức áp dụng chung cho những học kỳ
+  // chưa có cấu hình riêng (ví dụ admin mới thiết lập cho kỳ sắp tới).
+  const latestFee = tuitionFees.reduce<TuitionFee | null>(
+    (latest, fee) =>
+      !latest || new Date(fee.updatedAt).getTime() > new Date(latest.updatedAt).getTime()
+        ? fee
+        : latest,
+    null,
+  );
+
+  const tuitionRows = semesters.length
+    ? semesters.map((semester) => {
+        const exact = tuitionFees.find((fee) => fee.semester === semester.semester);
+        const fee = exact ?? latestFee;
+        const feePerCredit = fee?.feePerCredit ?? 0;
+        return {
+          semester: semester.semester,
+          credits: semester.earnedCredits,
+          feePerCredit,
+          currency: fee?.currency ?? 'VND',
+          isFallback: Boolean(fee && !exact),
+          amount: semester.earnedCredits * feePerCredit,
+        };
+      })
+    : tuitionFees.map((fee) => ({
+        semester: fee.semester,
+        credits: 0,
+        feePerCredit: fee.feePerCredit,
+        currency: fee.currency,
+        isFallback: false,
+        amount: 0,
+      }));
+
+  const totalTuition = tuitionRows.reduce((total, row) => total + row.amount, 0);
+  const tuitionCurrency = tuitionRows[0]?.currency ?? 'VND';
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
@@ -188,36 +217,32 @@ export function Dashboard() {
 
         {tuitionLoading ? (
           <p className="text-center text-sm text-slate-500 py-4">Đang tải học phí…</p>
-        ) : tuitionFees.length === 0 ? (
+        ) : tuitionRows.length === 0 ? (
           <p className="text-center text-sm text-slate-500 py-4">
             Chưa có dữ liệu học phí.
           </p>
         ) : (
           <div className="space-y-2">
-            {tuitionFees.map((fee) => {
-              const semesterData = semesters.find((s) => s.semester === fee.semester);
-              const creditsInSemester = semesterData?.earnedCredits || 0;
-              const semesterFee = creditsInSemester * fee.feePerCredit;
-              return (
-                <div
-                  key={fee.semester}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 bg-white"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{fee.semester}</p>
-                    <p className="text-xs text-slate-500">
-                      {creditsInSemester} tín chỉ đã học × {fee.feePerCredit.toLocaleString()} VNĐ/tín chỉ
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold text-slate-900">
-                    {semesterFee.toLocaleString()} VNĐ
-                  </span>
+            {tuitionRows.map((row) => (
+              <div
+                key={row.semester}
+                className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 bg-white"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{row.semester}</p>
+                  <p className="text-xs text-slate-500">
+                    {row.credits} tín chỉ đã học × {row.feePerCredit.toLocaleString()} {row.currency}/tín chỉ
+                    {row.isFallback ? ' (áp dụng mức phí hiện hành)' : ''}
+                  </p>
                 </div>
-              );
-            })}
+                <span className="text-sm font-bold text-slate-900">
+                  {row.amount.toLocaleString()} {row.currency}
+                </span>
+              </div>
+            ))}
             <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 mt-2">
               <span className="text-sm font-semibold text-slate-900">Tổng học phí</span>
-              <span className="text-sm font-bold text-slate-900">{totalTuition.toLocaleString()} VNĐ</span>
+              <span className="text-sm font-bold text-slate-900">{totalTuition.toLocaleString()} {tuitionCurrency}</span>
             </div>
           </div>
         )}

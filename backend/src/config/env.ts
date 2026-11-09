@@ -34,6 +34,7 @@ const envSchema = z.object({
   MINIO_ACCESS_KEY: z.string().default('minioadmin'),
   MINIO_SECRET_KEY: z.string().default('minioadmin'),
   MINIO_BUCKET: z.string().default('documents'),
+  MINIO_REGION: z.string().default('us-east-1'),
 
   GEMINI_API_KEY: z.string().optional().default(''),
   AI_SERVICE_URL: z.string().url().default('http://localhost:8001'),
@@ -54,8 +55,6 @@ const envSchema = z.object({
 
   SEED_ADMIN_EMAIL: z.string().email().default('admin@acaschedule.local'),
   SEED_ADMIN_PASSWORD: z.string().min(8).default('Admin@123'),
-  SEED_STUDENT_EMAIL: z.string().email().default('student@acaschedule.local'),
-  SEED_STUDENT_PASSWORD: z.string().min(8).default('Student@123'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -70,7 +69,13 @@ export const env = parsed.data;
 export type Env = typeof env;
 
 if (env.NODE_ENV === 'production') {
+  // Fail hard on insecure defaults in production.
   if (env.JWT_ACCESS_SECRET.startsWith('dev-') || env.JWT_REFRESH_SECRET.startsWith('dev-')) {
-    console.warn('⚠️  Using development JWT secrets in production. Set JWT_ACCESS_SECRET/JWT_REFRESH_SECRET.');
+    console.error('❌ Production requires JWT_ACCESS_SECRET and JWT_REFRESH_SECRET (32+ random chars).');
+    process.exit(1);
+  }
+  if (env.SEED_ADMIN_PASSWORD === 'Admin@123') {
+    console.error('❌ Production requires a unique SEED_ADMIN_PASSWORD.');
+    process.exit(1);
   }
 }

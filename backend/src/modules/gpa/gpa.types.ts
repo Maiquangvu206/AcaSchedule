@@ -27,10 +27,20 @@ export type CountReason =
   | 'no-credits'
   | 'ungraded';
 
+/**
+ * How an attempt relates to the earlier attempts of the same subject:
+ *  - `first`: first time the subject is taken
+ *  - `retake`: taken again because an earlier attempt was not passed
+ *  - `improvement`: taken again although an earlier attempt already passed
+ */
+export type AttemptKind = 'first' | 'retake' | 'improvement';
+
 export interface CalculatedAttempt extends AttemptInput {
   counted: boolean;
   passed: boolean;
   reason: CountReason;
+  attemptKind: AttemptKind;
+  isRetake: boolean;
 }
 
 export interface SubjectCalculation {

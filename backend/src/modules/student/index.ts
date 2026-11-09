@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../lib/errors';
-import { createEnrollmentSchema, registerSectionsSchema, updateEnrollmentSchema } from './student.schemas';
+import { createEnrollmentSchema, registerSectionsSchema, studyPlanPlacementSchema, updateEnrollmentSchema } from './student.schemas';
 import * as studentService from './student.service';
 
 export const studentRouter = Router();
@@ -50,5 +50,37 @@ studentRouter.get(
   asyncHandler(async (req, res) => {
     const transcript = await studentService.getTranscript(req.user!.id);
     res.json(transcript);
+  }),
+);
+
+/** Study plan of the student's own major with personal placements applied. */
+studentRouter.get(
+  '/study-plan',
+  asyncHandler(async (req, res) => {
+    const plan = await studentService.getStudyPlan(req.user!.id);
+    res.json(plan);
+  }),
+);
+
+/** Move one subject to another semester in the student's personal plan. */
+studentRouter.put(
+  '/study-plan/placements',
+  asyncHandler(async (req, res) => {
+    const input = studyPlanPlacementSchema.parse(req.body);
+    const plan = await studentService.updateStudyPlanPlacement(
+      req.user!.id,
+      input.subjectId,
+      input.semesterNo,
+    );
+    res.json(plan);
+  }),
+);
+
+/** Reset every personal placement back to the admin-defined programme. */
+studentRouter.delete(
+  '/study-plan/placements',
+  asyncHandler(async (req, res) => {
+    const plan = await studentService.resetStudyPlan(req.user!.id);
+    res.json(plan);
   }),
 );

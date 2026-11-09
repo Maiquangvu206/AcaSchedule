@@ -13,6 +13,8 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
+export type AttemptKind = 'first' | 'retake' | 'improvement';
+
 export interface TranscriptAttempt {
   id: string;
   subjectId: string;
@@ -29,6 +31,44 @@ export interface TranscriptAttempt {
   passed: boolean;
   countedInCpa: boolean;
   reason: 'counted' | 'superseded' | 'not-passed' | 'no-credits' | 'ungraded';
+  attemptKind: AttemptKind;
+  isRetake: boolean;
+}
+
+export type CurriculumSubjectStatus = 'not-started' | 'studying' | 'passed' | 'failed';
+
+export interface CurriculumSubject {
+  subjectId: string;
+  subjectCode: string;
+  subjectName: string;
+  credits: number;
+  isRequired: boolean;
+  semesterNo: number | null;
+  defaultSemesterNo: number | null;
+  personalSemesterNo: number | null;
+  effectiveSemesterNo: number | null;
+  managingUnit: string;
+  isCustomized: boolean;
+  inCurriculum: boolean;
+  status: CurriculumSubjectStatus;
+  attemptCount: number;
+  latestAttempt: TranscriptAttempt | null;
+  attempts: TranscriptAttempt[];
+}
+
+export interface CurriculumSemester {
+  semesterNo: number;
+  plannedCredits: number;
+  completedCredits: number;
+  subjects: CurriculumSubject[];
+}
+
+export interface TranscriptCurriculum {
+  majorId: string;
+  majorCode: string;
+  majorName: string;
+  maxSemesterNo: number;
+  semesters: CurriculumSemester[];
 }
 
 export interface TranscriptSemester {
@@ -53,6 +93,7 @@ export interface Transcript {
     totalAttempts: number;
   };
   semesters: TranscriptSemester[];
+  curriculum: TranscriptCurriculum | null;
 }
 
 export interface ForecastResult {
@@ -442,6 +483,29 @@ export async function fetchForecast(
   });
 }
 
+export async function fetchStudyPlan(token: string): Promise<TranscriptCurriculum> {
+  return apiRequest<TranscriptCurriculum>('/student/study-plan', { token });
+}
+
+export async function updateStudyPlanPlacement(
+  token: string,
+  subjectId: string,
+  semesterNo: number | null,
+): Promise<TranscriptCurriculum> {
+  return apiRequest<TranscriptCurriculum>('/student/study-plan/placements', {
+    method: 'PUT',
+    token,
+    body: { subjectId, semesterNo },
+  });
+}
+
+export async function resetStudyPlan(token: string): Promise<TranscriptCurriculum> {
+  return apiRequest<TranscriptCurriculum>('/student/study-plan/placements', {
+    method: 'DELETE',
+    token,
+  });
+}
+
 export async function fetchSchedulePeriods(token: string): Promise<PeriodSlot[]> {
   const result = await apiRequest<{ periods: PeriodSlot[] }>('/schedule/periods', { token });
   return result.periods;
@@ -450,6 +514,55 @@ export async function fetchSchedulePeriods(token: string): Promise<PeriodSlot[]>
 export async function fetchScheduleSemesters(token: string): Promise<string[]> {
   const result = await apiRequest<{ semesters: string[] }>('/schedule/semesters', { token });
   return result.semesters;
+}
+
+export interface SemesterConfig {
+  code: string;
+  name: string;
+  startDate: string | null;
+  endDate: string | null;
+  isActive: boolean;
+  sortNo: number;
+}
+
+/** Central semester catalogue shared by every combo box in the app. */
+export async function fetchSemesters(token: string): Promise<SemesterConfig[]> {
+  const result = await apiRequest<{ semesters: SemesterConfig[] }>('/semesters', { token });
+  return result.semesters;
+}
+
+export async function fetchAdminSemesters(token: string): Promise<SemesterConfig[]> {
+  const result = await apiRequest<{ semesters: SemesterConfig[] }>('/admin/semesters', { token });
+  return result.semesters;
+}
+
+export async function createAdminSemester(
+  token: string,
+  input: { code: string; name: string; startDate?: string | null; endDate?: string | null; isActive?: boolean; sortNo?: number },
+): Promise<SemesterConfig> {
+  const result = await apiRequest<{ semester: SemesterConfig }>('/admin/semesters', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+  return result.semester;
+}
+
+export async function updateAdminSemester(
+  token: string,
+  code: string,
+  input: Partial<{ name: string; startDate: string | null; endDate: string | null; isActive: boolean; sortNo: number }>,
+): Promise<SemesterConfig> {
+  const result = await apiRequest<{ semester: SemesterConfig }>(`/admin/semesters/${encodeURIComponent(code)}`, {
+    method: 'PATCH',
+    token,
+    body: input,
+  });
+  return result.semester;
+}
+
+export async function deleteAdminSemester(token: string, code: string): Promise<void> {
+  await apiRequest(`/admin/semesters/${encodeURIComponent(code)}`, { method: 'DELETE', token });
 }
 
 export async function fetchAdminPeriods(token: string): Promise<PeriodSlot[]> {
@@ -688,6 +801,7 @@ export interface AdminSubject {
   name: string;
   credits: number;
   knowledgeBlock: string;
+  managingUnit: string;
   isActive: boolean;
 }
 
@@ -698,7 +812,7 @@ export async function fetchAdminSubjects(token: string): Promise<AdminSubject[]>
 
 export async function createAdminSubject(
   token: string,
-  input: { code: string; name: string; credits: number; knowledgeBlock: string },
+  input: { code: string; name: string; credits: number; knowledgeBlock: string; managingUnit: string },
 ): Promise<AdminSubject> {
   const result = await apiRequest<{ subject: AdminSubject }>('/admin/subjects', {
     method: 'POST',
@@ -711,7 +825,7 @@ export async function createAdminSubject(
 export async function updateAdminSubject(
   token: string,
   id: string,
-  input: { code: string; name: string; credits: number; knowledgeBlock: string },
+  input: { code: string; name: string; credits: number; knowledgeBlock: string; managingUnit: string },
 ): Promise<AdminSubject> {
   const result = await apiRequest<{ subject: AdminSubject }>(`/admin/subjects/${id}`, {
     method: 'PATCH',
@@ -773,6 +887,47 @@ export async function updateAdminMajor(token: string, id: string, input: { code?
 export async function fetchCurriculumSubjects(token: string, majorId: string): Promise<CurriculumSubject[]> {
   const result = await apiRequest<{ subjects: CurriculumSubject[] }>(`/admin/curriculum/majors/${majorId}/subjects`, { token });
   return result.subjects;
+}
+
+export async function fetchAdminEnrollments(token: string, studentId: string): Promise<TranscriptAttempt[]> {
+  const result = await apiRequest<{ enrollments: TranscriptAttempt[] }>(
+    `/admin/enrollments?studentId=${encodeURIComponent(studentId)}`,
+    { token },
+  );
+  return result.enrollments;
+}
+
+export async function createAdminEnrollment(
+  token: string,
+  input: {
+    studentId: string;
+    subjectId: string;
+    semester: string;
+    processScore?: number;
+    finalScore?: number;
+  },
+): Promise<{ enrollment: TranscriptAttempt | null }> {
+  return apiRequest('/admin/enrollments', { method: 'POST', token, body: input });
+}
+
+export async function updateAdminEnrollment(
+  token: string,
+  studentId: string,
+  enrollmentId: string,
+  input: { processScore: number; finalScore: number },
+): Promise<void> {
+  await apiRequest(`/admin/enrollments/${enrollmentId}?studentId=${encodeURIComponent(studentId)}`, {
+    method: 'PATCH',
+    token,
+    body: input,
+  });
+}
+
+export async function deleteAdminEnrollment(token: string, studentId: string, enrollmentId: string): Promise<void> {
+  await apiRequest(`/admin/enrollments/${enrollmentId}?studentId=${encodeURIComponent(studentId)}`, {
+    method: 'DELETE',
+    token,
+  });
 }
 
 export async function assignCurriculumSubject(
@@ -869,7 +1024,7 @@ export async function fetchRegistrationConfig(
     isOpen: boolean;
     openedAt: string | null;
     closedAt: string | null;
-  } }>(`/admin/schedule/registration-config?semester=${semester}`, { token });
+  } }>(`/schedule/registration-status?semester=${encodeURIComponent(semester)}`, { token });
   return result.registrationConfig;
 }
 

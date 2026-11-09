@@ -35,7 +35,9 @@ export async function listTuitionFees(userId?: string, db: Queryable = pool): Pr
     `SELECT tf.*, m.code AS major_code, m.name AS major_name
        FROM tuition_fees tf
        LEFT JOIN majors m ON m.id = tf.major_id
-      ${userId ? 'WHERE tf.major_id IS NULL OR tf.major_id IN (SELECT major_id FROM user_majors WHERE user_id = $1)' : ''}
+      ${userId ? `WHERE tf.major_id IS NULL
+          OR NOT EXISTS (SELECT 1 FROM user_majors WHERE user_id = $1)
+          OR tf.major_id IN (SELECT major_id FROM user_majors WHERE user_id = $1)` : ''}
       ORDER BY tf.semester DESC, m.code NULLS FIRST`,
     userId ? [userId] : [],
   );
@@ -51,7 +53,9 @@ export async function getTuitionFee(
     `SELECT tf.*, m.code AS major_code, m.name AS major_name
        FROM tuition_fees tf LEFT JOIN majors m ON m.id = tf.major_id
       WHERE tf.semester = $1
-        ${userId ? 'AND (tf.major_id IS NULL OR tf.major_id IN (SELECT major_id FROM user_majors WHERE user_id = $2))' : ''}
+        ${userId ? `AND (tf.major_id IS NULL
+          OR NOT EXISTS (SELECT 1 FROM user_majors WHERE user_id = $2)
+          OR tf.major_id IN (SELECT major_id FROM user_majors WHERE user_id = $2))` : ''}
       ORDER BY (tf.major_id IS NULL), m.code
       LIMIT 1`,
     userId ? [semester, userId] : [semester],

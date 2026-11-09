@@ -2,6 +2,10 @@
 
 PostgreSQL 16. Thiết kế chuẩn hóa, lưu vết lịch sử học tập và tài liệu cộng đồng.
 
+Seed chỉ tạo duy nhất tài khoản admin (từ biến môi trường) và dữ liệu tham chiếu
+(`grade_scales`, `period_slots`). Dữ liệu nghiệp vụ (sinh viên, môn học, học kỳ,
+học phí, lượt học, ...) do admin tạo qua giao diện.
+
 ## ERD
 
 ```
@@ -68,11 +72,59 @@ Khung đào tạo do Admin quản lý.
 | name | varchar(255) | Tên môn |
 | credits | smallint | Số tín chỉ |
 | knowledge_block | varchar(100) | Khối kiến thức |
+| managing_unit | varchar(100) | Bộ môn quản lý (hiển thị trên CTĐT/Lộ trình học) |
 | process_weight | numeric(3,2) | Trọng số điểm quá trình, mặc định `0.40` |
 | final_weight | numeric(3,2) | Trọng số điểm thi, mặc định `0.60` |
 | is_active | boolean | |
 
 Ràng buộc: `process_weight + final_weight = 1` (check constraint `subjects_weights_sum_check`).
+
+### `semesters`
+
+Danh mục học kỳ dùng chung, admin cấu hình một lần tại tab **Học kỳ**.
+Mọi combo box (lịch học, học phí, môn học theo kỳ, đăng ký) đều đọc từ bảng này
+qua `GET /api/semesters`; dữ liệu lịch sử được backfill vào lúc migration tạo bảng.
+
+| Cột | Kiểu | Ghi chú |
+| --- | --- | --- |
+| code | varchar(30) PK | Mã học kỳ, VD `2024-1` hoặc `HK1 2026-2027` |
+| name | varchar(100) | Tên hiển thị |
+| start_date / end_date | date | Thời gian học kỳ (tùy chọn) |
+| is_active | boolean | `false` = ẩn khỏi combo box |
+| sort_no | int | Thứ tự sắp xếp trong combo box |
+
+### `departments` / `majors` / `curriculum_subjects` / `user_majors`
+
+- `departments(id, code UNIQUE, name)` — khoa.
+- `majors(id, code UNIQUE, name, department_id FK NULL)` — ngành thuộc khoa.
+- `curriculum_subjects(major_id, subject_id, is_required, semester_no)` — chương trình đào tạo:
+  môn thuộc ngành nào, học kỳ kế hoạch nào (`semester_no` 1–20), bắt buộc/tự chọn.
+  PK `(major_id, subject_id)`.
+- `user_majors(user_id, major_id, is_primary)` — sinh viên thuộc tối đa 2 ngành,
+  một ngành chính. Lộ trình học của sinh viên lọc theo ngành chính này.
+
+### `tuition_fees`
+
+| Cột | Kiểu | Ghi chú |
+| --- | --- | --- |
+| semester | varchar(20) | Học kỳ áp dụng |
+| major_id | uuid FK NULL | NULL = mức chung toàn trường |
+| fee_per_credit | numeric | Mức thu / tín chỉ |
+| currency | varchar(3) | `VND` mặc định |
+
+Dashboard sinh viên: kỳ có mức riêng thì dùng mức đó, kỳ chưa có thì áp dụng mức
+cấu hình mới nhất (ghi chú "áp dụng mức phí hiện hành").
+
+### `registration_configs`
+
+Theo học kỳ: `is_open`, `opened_at`, `closed_at`. Sinh viên xem trạng thái qua
+`GET /api/schedule/registration-status`; admin cấu hình qua `/api/admin/schedule/*`.
+
+### `student_study_plan`
+
+Sắp xếp cá nhân của sinh viên trên Lộ trình học: `(student_id, subject_id, semester_no)`.
+Có dòng = sinh viên kéo môn sang học kỳ tự chọn; không có = theo CTĐT gốc
+(`curriculum_subjects.semester_no`).
 
 ### `student_enrollments`
 
@@ -200,5 +252,5 @@ Migration runner lưu checksum vào `schema_migrations`, chạy trong transactio
 file đã bị sửa sau khi apply.
 
 - `npm run migrate` — áp dụng migration còn thiếu.
-- `npm run seed` — nạp dữ liệu demo (idempotent).
+- `npm run seed` — tạo tài khoản admin (nếu chưa có) + đảm bảo dữ liệu tham chiếu.
 - `docker compose exec backend node dist/database/migrate.js` — chạy trong container production.

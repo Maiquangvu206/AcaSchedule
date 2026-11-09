@@ -5,6 +5,7 @@ import { BrandLogo } from './BrandLogo';
 const PUBLIC_NAV_ITEMS = [
   { to: '/', label: 'Tổng quan', end: true, protected: false },
   { to: '/transcript', label: 'Bảng điểm', end: false, protected: true },
+  { to: '/study-plan', label: 'Lộ trình học', end: false, protected: true },
   { to: '/schedule', label: 'Thời khóa biểu', end: false, protected: true },
   { to: '/documents', label: 'Tài liệu', end: false, protected: true },
   { to: '/ai', label: 'Tư vấn AI', end: false, protected: true },
@@ -12,6 +13,8 @@ const PUBLIC_NAV_ITEMS = [
 
 const ADMIN_NAV_ITEMS = [
   { to: '/admin/users', label: 'Sinh viên', end: false, protected: true },
+  { to: '/admin/semesters', label: 'Học kỳ', end: false, protected: true },
+  { to: '/admin/enrollments', label: 'Môn học theo kỳ', end: false, protected: true },
   { to: '/admin/majors', label: 'Ngành & khoa', end: false, protected: true },
   { to: '/admin/subjects', label: 'Môn học', end: false, protected: true },
   { to: '/admin/tuition', label: 'Học phí', end: false, protected: true },

@@ -42,9 +42,17 @@ Yêu cầu role `admin`.
 | DELETE | `/api/admin/grade-scales/:id` | Xoá mốc quy đổi. |
 | GET | `/api/admin/subjects` | Danh sách môn học. |
 | POST | `/api/admin/subjects` | Tạo môn; mã unique, `processWeight + finalWeight = 1`. |
-| PATCH | `/api/admin/subjects/:id` | Cập nhật môn (mã, tên, tín chỉ, khối, trọng số, `isActive`). |
+| PATCH | `/api/admin/subjects/:id` | Cập nhật môn (mã, tên, tín chỉ, khối, bộ môn quản lý `managingUnit`, trọng số, `isActive`). |
 | DELETE | `/api/admin/subjects/:id` | Vô hiệu hoá môn (`is_active = false`). |
 | GET | `/api/admin/users` | Danh sách tài khoản. |
+| GET | `/api/admin/semesters` | Danh sách học kỳ (kể cả đã ẩn). |
+| POST | `/api/admin/semesters` | Tạo học kỳ dùng chung: `{ code, name, startDate?, endDate?, isActive?, sortNo? }`. |
+| PATCH | `/api/admin/semesters/:code` | Cập nhật học kỳ. |
+| DELETE | `/api/admin/semesters/:code` | Xoá học kỳ. |
+| GET | `/api/admin/enrollments?studentId=` | Lượt học của một sinh viên (lọc `semester` tùy chọn). |
+| POST | `/api/admin/enrollments` | Thêm môn vào kỳ cho sinh viên; kèm điểm hoặc chờ điểm. |
+| PATCH | `/api/admin/enrollments/:id?studentId=` | Cập nhật điểm một lượt học. |
+| DELETE | `/api/admin/enrollments/:id?studentId=` | Xoá một lượt học. |
 
 `grade_scales` body:
 
@@ -65,6 +73,12 @@ Yêu cầu role `admin`.
 }
 ```
 
+## Semesters (học kỳ dùng chung)
+
+| Method | Path | Mô tả |
+| --- | --- | --- |
+| GET | `/api/semesters` | Học kỳ đang dùng (`is_active`), dùng cho mọi combo box của frontend. |
+
 ## Student
 
 | Method | Path | Mô tả |
@@ -73,7 +87,18 @@ Yêu cầu role `admin`.
 | POST | `/api/student/enrollments` | Thêm lượt học; tự tính điểm Hệ 10, điểm chữ, Hệ 4; tự cấp `attemptNo`. |
 | PATCH | `/api/student/enrollments/:id` | Sửa điểm/học kỳ của lượt học thuộc chính sinh viên. |
 | DELETE | `/api/student/enrollments/:id` | Xoá lượt học và tính lại cờ CPA của môn. |
-| GET | `/api/student/transcript` | Bảng điểm nhóm theo học kỳ + tổng hợp CPA. |
+| GET | `/api/student/transcript` | Bảng điểm nhóm theo học kỳ + tổng hợp CPA (kèm `attemptKind`: first/retake/improvement). |
+| GET | `/api/student/study-plan` | Lộ trình học theo CTĐT của ngành sinh viên, đã áp dụng sắp xếp cá nhân. |
+| PUT | `/api/student/study-plan/placements` | Chuyển môn sang học kỳ tự chọn `{ subjectId, semesterNo }` (`null` = về CTĐT). |
+| DELETE | `/api/student/study-plan/placements` | Khôi phục toàn bộ lộ trình theo CTĐT gốc. |
+
+Tuition (sinh viên + admin):
+
+| Method | Path | Mô tả |
+| --- | --- | --- |
+| GET | `/api/tuition-fees` | Sinh viên: mức phí áp dụng cho mình; admin: tất cả. |
+| POST | `/api/tuition-fees` | Admin: tạo/cập nhật mức thu `{ semester, majorId?, feePerCredit, currency }`. |
+| GET | `/api/tuition-fees/:semester` | Mức phí của một học kỳ. |
 
 Body tạo lượt học:
 
@@ -137,6 +162,8 @@ Quy tắc chọn lượt tính CPA (**BR-RETENTION**):
 | Method | Path | Mô tả |
 | --- | --- | --- |
 | GET | `/api/schedule/periods` | Cấu hình tiết → giờ (`period_slots`), dùng chung cho backend và UI. |
+| GET | `/api/schedule/semesters` | Danh sách học kỳ (đọc từ bảng `semesters` trung tâm). |
+| GET | `/api/schedule/registration-status?semester=` | Trạng thái mở/đóng đăng ký của học kỳ (sinh viên). |
 | GET | `/api/schedule/sections?semester=2025-2&subjectId=&includeCancelled=true` | Danh sách lớp học phần theo học kỳ; mặc định ẩn lớp đã huỷ. |
 | POST | `/api/schedule/simulate` | Mô phỏng đăng ký, trả lịch tuần và danh sách xung đột. |
 | GET | `/api/schedule/items?semester=2025-2` | Lịch cá nhân của sinh viên hiện tại (kèm mục không gắn học kỳ). |
@@ -265,7 +292,7 @@ Response tạo document:
     "score": 0.0,
     "myVote": 0,
     "uploaderId": "f4636ebb-4186-46c9-aa28-022ca21d134d",
-    "uploaderName": "Sinh viên Demo",
+    "uploaderName": "Nguyen Van A",
     "createdAt": "2026-11-05T08:13:47.000Z",
     "updatedAt": "2026-11-05T08:13:47.000Z"
   }
@@ -290,7 +317,7 @@ Response vote:
     "score": 0.5,
     "myVote": 1,
     "uploaderId": "f4636ebb-4186-46c9-aa28-022ca21d134d",
-    "uploaderName": "Sinh viên Demo",
+    "uploaderName": "Nguyen Van A",
     "createdAt": "2026-11-05T08:13:47.000Z",
     "updatedAt": "2026-11-05T08:13:47.000Z"
   }
@@ -309,6 +336,9 @@ Response download:
 ```
 
 ## AI Advisor
+
+Không giới hạn lượt hỏi (AI không có quota); cache Redis 10 phút cho cùng nội dung.
+Câu trả lời tự nối phần còn thiếu khi chạm giới hạn token nên không bị cắt giữa câu.
 
 Body advice:
 
@@ -388,9 +418,9 @@ Body register:
 
 ```json
 {
-  "email": "student@acaschedule.local",
+  "email": "student@example.com",
   "password": "Student@123",
-  "fullName": "Sinh viên Demo"
+  "fullName": "Sinh viên"
 }
 ```
 
@@ -400,8 +430,8 @@ Response register/login:
 {
   "user": {
     "id": "uuid",
-    "email": "student@acaschedule.local",
-    "fullName": "Sinh viên Demo",
+    "email": "student@example.com",
+    "fullName": "Sinh viên",
     "role": "student",
     "createdAt": "2026-11-05T08:00:00.000Z"
   },
@@ -416,8 +446,8 @@ Response refresh:
 {
   "user": {
     "id": "uuid",
-    "email": "student@acaschedule.local",
-    "fullName": "Sinh viên Demo",
+    "email": "student@example.com",
+    "fullName": "Sinh viên",
     "role": "student",
     "createdAt": "2026-11-05T08:00:00.000Z"
   },
@@ -432,8 +462,8 @@ Response me:
 {
   "user": {
     "id": "uuid",
-    "email": "student@acaschedule.local",
-    "fullName": "Sinh viên Demo",
+    "email": "student@example.com",
+    "fullName": "Sinh viên",
     "role": "student",
     "createdAt": "2026-11-05T08:00:00.000Z"
   }

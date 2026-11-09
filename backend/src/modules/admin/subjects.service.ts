@@ -16,6 +16,7 @@ export async function createSubject(input: {
   name: string;
   credits: number;
   knowledgeBlock: string;
+  managingUnit: string;
   processWeight: number;
   finalWeight: number;
 }) {
@@ -33,6 +34,7 @@ export async function updateSubject(
     name?: string;
     credits?: number;
     knowledgeBlock?: string;
+    managingUnit?: string;
     processWeight?: number;
     finalWeight?: number;
     isActive?: boolean;
@@ -46,6 +48,7 @@ export async function updateSubject(
     name: input.name ?? existing.name,
     credits: input.credits ?? existing.credits,
     knowledgeBlock: input.knowledgeBlock ?? existing.knowledgeBlock,
+    managingUnit: input.managingUnit ?? existing.managingUnit,
     processWeight: input.processWeight ?? existing.processWeight,
     finalWeight: input.finalWeight ?? existing.finalWeight,
     isActive: input.isActive ?? existing.isActive,

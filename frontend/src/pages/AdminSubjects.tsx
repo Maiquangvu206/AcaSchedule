@@ -20,6 +20,7 @@ export function AdminSubjectsPage() {
   const [subjectName, setSubjectName] = useState('');
   const [subjectCredits, setSubjectCredits] = useState('');
   const [knowledgeBlock, setKnowledgeBlock] = useState('');
+  const [managingUnit, setManagingUnit] = useState('');
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,13 +55,14 @@ export function AdminSubjectsPage() {
     event.preventDefault();
     if (!token || !subjectCode.trim() || !subjectName.trim() || !subjectCredits) return;
     try {
-      const input = { code: subjectCode.trim(), name: subjectName.trim(), credits: Number(subjectCredits), knowledgeBlock: knowledgeBlock.trim() || 'Chung' };
+      const input = { code: subjectCode.trim(), name: subjectName.trim(), credits: Number(subjectCredits), knowledgeBlock: knowledgeBlock.trim() || 'Chung', managingUnit: managingUnit.trim() };
       const subject = editingSubjectId ? await updateAdminSubject(token, editingSubjectId, input) : await createAdminSubject(token, input);
       setSubjects((items) => editingSubjectId ? items.map((item) => item.id === subject.id ? subject : item) : [...items, subject].sort((a, b) => a.code.localeCompare(b.code)));
       setSubjectCode('');
       setSubjectName('');
       setSubjectCredits('');
       setKnowledgeBlock('');
+      setManagingUnit('');
       setEditingSubjectId(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Không thể lưu môn học.');
@@ -78,11 +80,12 @@ export function AdminSubjectsPage() {
       {error ? <p role="alert" className="m-5 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
       <form onSubmit={saveSubject} className="border-b border-slate-100 bg-slate-50/70 p-5">
         <h2 className="font-semibold text-slate-900">{editingSubjectId ? 'Chỉnh sửa môn học' : 'Cấu hình môn học'}</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-[0.8fr_1.5fr_0.6fr_1fr_auto] md:items-end">
+        <div className="mt-3 grid gap-3 md:grid-cols-[0.8fr_1.5fr_0.5fr_1fr_1.2fr_auto] md:items-end">
           <label className="text-sm font-medium text-slate-700">Mã môn<input value={subjectCode} onChange={(e) => setSubjectCode(e.target.value.toUpperCase())} placeholder="INT2208" required className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
           <label className="text-sm font-medium text-slate-700">Tên môn<input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="Tên môn học" required className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
           <label className="text-sm font-medium text-slate-700">Tín chỉ<input type="number" value={subjectCredits} onChange={(e) => setSubjectCredits(e.target.value)} min="1" max="30" required className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
           <label className="text-sm font-medium text-slate-700">Khối kiến thức<input value={knowledgeBlock} onChange={(e) => setKnowledgeBlock(e.target.value)} placeholder="Cơ sở ngành" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-slate-700">Bộ môn quản lý<input value={managingUnit} onChange={(e) => setManagingUnit(e.target.value)} placeholder="Tin học và Kỹ thuật tính toán" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
           <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white">{editingSubjectId ? 'Lưu thay đổi' : 'Thêm môn'}</button>
         </div>
       </form>
@@ -96,7 +99,7 @@ export function AdminSubjectsPage() {
         <label className="flex items-center gap-2 pb-2 text-sm text-slate-600"><input type="checkbox" checked={isRequired} onChange={(e) => setIsRequired(e.target.checked)} /> Bắt buộc</label>
         <button disabled={!selectedMajor} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Lưu cấu hình</button>
       </form>
-      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b bg-white text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Mã môn</th><th className="px-5 py-3">Tên môn</th><th className="px-5 py-3">Tín chỉ</th><th className="px-5 py-3">Học kỳ</th><th className="px-5 py-3">Loại môn</th><th className="px-5 py-3 text-right">Thao tác</th></tr></thead><tbody className="divide-y">{assigned.map((item) => <tr key={item.id} className="hover:bg-slate-50"><td className="px-5 py-4 font-semibold">{item.code}</td><td className="px-5 py-4">{item.name}</td><td className="px-5 py-4">{item.credits}</td><td className="px-5 py-4">{item.semesterNo ? `Học kỳ ${item.semesterNo}` : 'Chưa xếp kỳ'}</td><td className="px-5 py-4">{item.isRequired ? 'Bắt buộc' : 'Tự chọn'}</td><td className="px-5 py-4 text-right"><button type="button" onClick={() => { setEditingSubjectId(item.id); setSubjectCode(item.code); setSubjectName(item.name); setSubjectCredits(String(item.credits)); setKnowledgeBlock(item.knowledgeBlock); }} className="mr-3 text-brand-600">Sửa môn</button><button type="button" onClick={() => removeSubject(item.id)} className="text-rose-600">Bỏ môn</button></td></tr>)}</tbody></table>{!assigned.length ? <p className="p-10 text-center text-sm text-slate-500">Chưa có môn trong chương trình này.</p> : null}</div>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b bg-white text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Mã môn</th><th className="px-5 py-3">Tên môn</th><th className="px-5 py-3">Tín chỉ</th><th className="px-5 py-3">Học kỳ</th><th className="px-5 py-3">Loại môn</th><th className="px-5 py-3">Bộ môn quản lý</th><th className="px-5 py-3 text-right">Thao tác</th></tr></thead><tbody className="divide-y">{assigned.map((item) => <tr key={item.id} className="hover:bg-slate-50"><td className="px-5 py-4 font-semibold">{item.code}</td><td className="px-5 py-4">{item.name}</td><td className="px-5 py-4">{item.credits}</td><td className="px-5 py-4">{item.semesterNo ? `Học kỳ ${item.semesterNo}` : 'Chưa xếp kỳ'}</td><td className="px-5 py-4">{item.isRequired ? 'Bắt buộc' : 'Tự chọn'}</td><td className="px-5 py-4 text-slate-600">{item.managingUnit || '—'}</td><td className="px-5 py-4 text-right"><button type="button" onClick={() => { setEditingSubjectId(item.id); setSubjectCode(item.code); setSubjectName(item.name); setSubjectCredits(String(item.credits)); setKnowledgeBlock(item.knowledgeBlock); setManagingUnit(item.managingUnit); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="mr-3 text-brand-600">Sửa môn</button><button type="button" onClick={() => removeSubject(item.id)} className="text-rose-600">Bỏ môn</button></td></tr>)}</tbody></table>{!assigned.length ? <p className="p-10 text-center text-sm text-slate-500">Chưa có môn trong chương trình này.</p> : null}</div>
     </AdminListPage>
   );
 }

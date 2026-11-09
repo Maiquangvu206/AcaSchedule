@@ -9,6 +9,7 @@ export interface SubjectRecord {
   name: string;
   credits: number;
   knowledgeBlock: string;
+  managingUnit: string;
   isActive: boolean;
   processWeight: number;
   finalWeight: number;
@@ -20,6 +21,7 @@ interface SubjectRow {
   name: string;
   credits: number;
   knowledge_block: string;
+  managing_unit: string;
   is_active: boolean;
   process_weight: string;
   final_weight: string;
@@ -32,6 +34,7 @@ function mapRow(row: SubjectRow): SubjectRecord {
     name: row.name,
     credits: row.credits,
     knowledgeBlock: row.knowledge_block,
+    managingUnit: row.managing_unit ?? '',
     isActive: row.is_active,
     processWeight: Number(row.process_weight),
     finalWeight: Number(row.final_weight),
@@ -39,7 +42,7 @@ function mapRow(row: SubjectRow): SubjectRecord {
 }
 
 const SELECT = `
-  SELECT id, code, name, credits, knowledge_block, is_active, process_weight, final_weight
+  SELECT id, code, name, credits, knowledge_block, managing_unit, is_active, process_weight, final_weight
     FROM subjects
 `;
 
@@ -69,20 +72,22 @@ export async function create(
     name: string;
     credits: number;
     knowledgeBlock: string;
+    managingUnit: string;
     processWeight: number;
     finalWeight: number;
   },
   db: Queryable = pool,
 ): Promise<SubjectRecord> {
   const result = await db.query<SubjectRow>(
-    `INSERT INTO subjects (code, name, credits, knowledge_block, process_weight, final_weight)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, code, name, credits, knowledge_block, is_active, process_weight, final_weight`,
+    `INSERT INTO subjects (code, name, credits, knowledge_block, managing_unit, process_weight, final_weight)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, code, name, credits, knowledge_block, managing_unit, is_active, process_weight, final_weight`,
     [
       input.code,
       input.name,
       input.credits,
       input.knowledgeBlock,
+      input.managingUnit,
       input.processWeight,
       input.finalWeight,
     ],
@@ -99,6 +104,7 @@ export async function update(
     name: string;
     credits: number;
     knowledgeBlock: string;
+    managingUnit: string;
     processWeight: number;
     finalWeight: number;
     isActive: boolean;
@@ -111,17 +117,19 @@ export async function update(
             name = $3,
             credits = $4,
             knowledge_block = $5,
-            process_weight = $6,
-            final_weight = $7,
-            is_active = $8
+            managing_unit = $6,
+            process_weight = $7,
+            final_weight = $8,
+            is_active = $9
       WHERE id = $1
-      RETURNING id, code, name, credits, knowledge_block, is_active, process_weight, final_weight`,
+      RETURNING id, code, name, credits, knowledge_block, managing_unit, is_active, process_weight, final_weight`,
     [
       id,
       input.code,
       input.name,
       input.credits,
       input.knowledgeBlock,
+      input.managingUnit,
       input.processWeight,
       input.finalWeight,
       input.isActive,
