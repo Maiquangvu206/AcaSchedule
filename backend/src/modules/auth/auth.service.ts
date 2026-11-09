@@ -93,7 +93,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
 
   // Same message for unknown email and wrong password to avoid user enumeration.
   if (!user || !user.is_active || !(await verifyPassword(input.password, user.password_hash))) {
-    throw AppError.unauthorized('Invalid email or password');
+    throw AppError.unauthorized('Email hoặc mật khẩu không đúng');
   }
 
   const tokens = await issueTokens(user);
