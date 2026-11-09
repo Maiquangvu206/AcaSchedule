@@ -1,12 +1,13 @@
 services:
-  # 1. Frontend Service (Vite Static Site)
+  # 1. Frontend (Static Site)
   - type: web
     name: acaschedule-frontend
     env: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: ./frontend/dist
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
 
-  # 2. Backend Service (Express.js Node)
+  # 2. Express Backend (Node.js)
   - type: web
     name: acaschedule-backend
     env: node
