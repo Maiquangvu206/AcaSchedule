@@ -17,7 +17,7 @@ services:
     plan: free
     rootDir: backend
     # The app is TypeScript: it must be compiled to dist/ before `npm start`.
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     # Liveness probe (Redis/MinIO are optional on Render, so do not require them).
     healthCheckPath: /api/health/live
