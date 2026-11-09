@@ -86,7 +86,21 @@ async function ensureAdmin(client: PoolClient): Promise<string> {
   const existing = await client.query<{ id: string }>('SELECT id FROM users WHERE email = $1', [
     email,
   ]);
-  if (existing.rows[0]) return existing.rows[0].id;
+  if (existing.rows[0]) {
+    const id = existing.rows[0].id;
+    // One-time password recovery: set SEED_RESET_ADMIN_PASSWORD=true to copy
+    // the env password into the existing admin account, then set it back to false.
+    if (env.SEED_RESET_ADMIN_PASSWORD) {
+      await client.query(
+        `UPDATE users
+            SET password_hash = $1, must_change_password = false, is_active = true
+          WHERE id = $2`,
+        [await hashPassword(env.SEED_ADMIN_PASSWORD), id],
+      );
+      logger.warn({ admin: email }, 'admin password reset from seed env (SEED_RESET_ADMIN_PASSWORD=true)');
+    }
+    return id;
+  }
 
   const result = await client.query<{ id: string }>(
     `INSERT INTO users (email, password_hash, full_name, role)

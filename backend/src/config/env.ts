@@ -55,6 +55,10 @@ const envSchema = z.object({
 
   SEED_ADMIN_EMAIL: z.string().email().default('admin@acaschedule.local'),
   SEED_ADMIN_PASSWORD: z.string().min(8).default('Admin@123'),
+  SEED_RESET_ADMIN_PASSWORD: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

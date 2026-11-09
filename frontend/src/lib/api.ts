@@ -348,6 +348,14 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
+/**
+ * Base URL of the backend.
+ * - Local (Docker + nginx): empty → same-origin `/api` (nginx proxies to backend).
+ * - Render/static hosts: `VITE_API_URL` is baked at build time to the backend origin.
+ */
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined ?? '')
+  .replace(/\/+$/, '');
+
 /** Callback để cập nhật token trong React AuthContext khi refresh thành công */
 let refreshTokenCallback: ((newAccessToken: string | null) => void) | null = null;
 
@@ -362,7 +370,7 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshToken) return null;
 
   try {
-    const response = await fetch('/api/auth/refresh', {
+    const response = await fetch(`${API_BASE}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -395,7 +403,7 @@ async function apiRequest<T>(
   const { method = 'GET', body, token } = options;
   const currentToken = token || authStorage.getAccessToken();
 
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_BASE}/api${path}`, {
     method,
     headers: {
       Accept: 'application/json',
@@ -409,7 +417,7 @@ async function apiRequest<T>(
   if (response.status === 401 && currentToken) {
     const newToken = await refreshAccessToken();
     if (newToken) {
-      const retryResponse = await fetch(`/api${path}`, {
+      const retryResponse = await fetch(`${API_BASE}/api${path}`, {
         method,
         headers: {
           Accept: 'application/json',

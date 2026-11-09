@@ -40,7 +40,44 @@ export function createApp() {
   );
   app.use(
     cors({
-      origin: env.CORS_ORIGIN.split(',').map((origin) => origin.trim()),
+      origin(origin, callback) {
+        // Allow requests without an Origin (curl, health checks, server-side).
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        const allowed = env.CORS_ORIGIN.split(',').map((value) => value.trim()).filter(Boolean);
+        if (allowed.includes('*')) {
+          callback(null, true);
+          return;
+        }
+        if (allowed.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+        // Render free tier uses *.onrender.com service URLs; allow our own
+        // frontend subdomain family without opening the API to arbitrary sites.
+        try {
+          const parsed = new URL(origin);
+          if (
+            parsed.protocol === 'https:' &&
+            parsed.hostname.endsWith('.onrender.com') &&
+            allowed.some((value) => {
+              try {
+                return new URL(value).hostname.endsWith('.onrender.com');
+              } catch {
+                return false;
+              }
+            })
+          ) {
+            callback(null, true);
+            return;
+          }
+        } catch {
+          // fall through to rejection
+        }
+        callback(null, false);
+      },
       credentials: true,
     }),
   );
