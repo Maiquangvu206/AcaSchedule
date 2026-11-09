@@ -37,9 +37,12 @@ docker compose up --build -d
 
 **Tài khoản duy nhất** (tạo tự động lúc seed):
 
-| Role | Email | Mật khẩu (mặc định dev) |
+| Role | Email | Mật khẩu |
 | --- | --- | --- |
-| Admin | `admin@acaschedule.local` | `Admin@123` |
+| Admin | `admin@acaschedule.local` | Giá trị của biến môi trường `SEED_ADMIN_PASSWORD` |
+
+- **Local dev:** mật khẩu mặc định trong `.env.example` là `Admin@123`.
+- **Render:** `SEED_ADMIN_PASSWORD` được tạo tự động (`generateValue`) trong `render.yaml` — lấy giá trị tại **Render Dashboard → Environment** để đăng nhập (khôngHard-code trong repo).
 
 > ⚠️ Đổi mật khẩu admin và các secret khi deploy production (xem [Bảo mật](#bảo-mật)).
 

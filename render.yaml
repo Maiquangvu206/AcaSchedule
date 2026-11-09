@@ -35,6 +35,10 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
+      - key: SEED_ADMIN_EMAIL
+        value: admin@acaschedule.local
+      - key: SEED_ADMIN_PASSWORD
+        generateValue: true
       - key: GEMINI_API_KEY
         sync: false
       - key: AI_SERVICE_URL
