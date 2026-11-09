@@ -18,7 +18,8 @@ services:
     rootDir: backend
     # The app is TypeScript: it must be compiled to dist/ before `npm start`.
     buildCommand: npm install --include=dev && npm run build
-    startCommand: npm start
+    # Migrations/seeds use the compiled JS so no dev-only tooling (tsx) is required at runtime.
+    startCommand: npm run migrate:compiled && npm run seed:compiled && npm start
     # Liveness probe (Redis/MinIO are optional on Render, so do not require them).
     healthCheckPath: /api/health/live
     envVars:
