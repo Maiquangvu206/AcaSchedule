@@ -43,6 +43,8 @@ const envSchema = z.object({
   SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
+  // Resend HTTPS API key (Render blocks SMTP on free plans — preferred).
+  RESEND_API_KEY: z.string().optional().default(''),
   SMTP_FROM: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z.string().email().optional(),
