@@ -69,8 +69,12 @@ export function AdminUsersPage() {
   const resetPassword = async (user: AdminUser) => {
     if (!token) return;
     try {
-      await resetAdminUserPassword(token, user.id);
-      setMessage('Đã tạo mật khẩu mới và gửi về email sinh viên.');
+      const result = await resetAdminUserPassword(token, user.id);
+      setMessage(
+        result.emailSent
+          ? 'Đã tạo mật khẩu mới và gửi về email sinh viên.'
+          : `Đã đặt mật khẩu mới. Chưa gửi được email (SMTP chưa cấu hình) — mật khẩu tạm thời: ${result.temporaryPassword}`,
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Không thể tạo hoặc gửi mật khẩu mới.');
     }
@@ -102,10 +106,14 @@ export function AdminUsersPage() {
     event.preventDefault();
     if (!token) return;
     try {
-      const user = await createAdminUser(token, newAccount);
+      const { user, temporaryPassword, emailSent } = await createAdminUser(token, newAccount);
       setUsers((items) => [user, ...items]);
       setNewAccount({ fullName: '', email: '', phone: '', studentCode: '' });
-      setMessage('Đã cấp tài khoản mới.');
+      setMessage(
+        emailSent
+          ? 'Đã cấp tài khoản mới và gửi mật khẩu về email.'
+          : `Đã cấp tài khoản mới. Chưa gửi được email (SMTP chưa cấu hình) — mật khẩu tạm thời: ${temporaryPassword}`,
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Không thể cấp tài khoản.');
     }

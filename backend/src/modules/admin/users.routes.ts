@@ -73,6 +73,7 @@ usersRouter.post(
   asyncHandler(async (req, res) => {
     const input = userSchema.parse(req.body);
     const password = generateTemporaryPassword();
+    let row;
     try {
       const result = await pool.query(
         `INSERT INTO users (email, password_hash, full_name, phone, student_code, role, must_change_password)
@@ -80,20 +81,26 @@ usersRouter.post(
          RETURNING id, email, full_name, phone, student_code, role, is_active, created_at`,
         [input.email, await hashPassword(password), input.fullName, input.phone || null, input.studentCode || null, input.role],
       );
-      const row = result.rows[0];
-      try {
-        await sendTemporaryPasswordEmail({ recipient: row.email, fullName: row.full_name, password, reset: false });
-      } catch (error) {
-        await pool.query('DELETE FROM users WHERE id = $1', [row.id]);
-        throw error;
-      }
-      res.status(201).json({
-        user: { id: row.id, email: row.email, fullName: row.full_name, phone: row.phone, studentCode: row.student_code, role: row.role, isActive: row.is_active, createdAt: row.created_at.toISOString(), majors: [] },
-      });
+      row = result.rows[0];
     } catch (error) {
       if ((error as { code?: string }).code === '23505') throw AppError.conflict('Email hoặc mã sinh viên đã tồn tại');
       throw error;
     }
+    // Email is best-effort: when SMTP is not configured (or sending fails) we keep the
+    // account and hand the temporary password back to the admin so they can share it
+    // through another channel instead of losing the account entirely.
+    let emailSent = false;
+    try {
+      await sendTemporaryPasswordEmail({ recipient: row.email, fullName: row.full_name, password, reset: false });
+      emailSent = true;
+    } catch {
+      // best-effort email: keep the account, return password to admin instead
+    }
+    res.status(201).json({
+      user: { id: row.id, email: row.email, fullName: row.full_name, phone: row.phone, studentCode: row.student_code, role: row.role, isActive: row.is_active, createdAt: row.created_at.toISOString(), majors: [] },
+      temporaryPassword: emailSent ? null : password,
+      emailSent,
+    });
   }),
 );
 
@@ -142,22 +149,18 @@ usersRouter.post(
   '/:userId/reset-password',
   asyncHandler(async (req, res) => {
     const password = generateTemporaryPassword();
-    const client = await pool.connect();
+    const result = await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = true, updated_at = now() WHERE id = $2 RETURNING email, full_name',
+      [await hashPassword(password), req.params.userId],
+    );
+    if (!result.rowCount) throw AppError.notFound('Không tìm thấy tài khoản');
+    let emailSent = false;
     try {
-      await client.query('BEGIN');
-      const result = await client.query(
-        'UPDATE users SET password_hash = $1, must_change_password = true, updated_at = now() WHERE id = $2 RETURNING email, full_name',
-        [await hashPassword(password), req.params.userId],
-      );
-      if (!result.rowCount) throw AppError.notFound('Không tìm thấy tài khoản');
       await sendTemporaryPasswordEmail({ recipient: result.rows[0].email, fullName: result.rows[0].full_name, password, reset: true });
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+      emailSent = true;
+    } catch {
+      // best-effort email: keep the new password, return it to admin instead
     }
-    res.status(204).send();
+    res.json({ temporaryPassword: emailSent ? null : password, emailSent });
   }),
 );

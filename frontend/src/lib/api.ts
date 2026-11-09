@@ -781,9 +781,12 @@ export async function fetchAdminUsers(token: string): Promise<AdminUser[]> {
   return result.users;
 }
 
-export async function createAdminUser(token: string, input: { email: string; fullName: string; phone?: string; studentCode?: string; role?: 'student' | 'admin' }): Promise<AdminUser> {
-  const result = await apiRequest<{ user: AdminUser }>('/admin/users', { method: 'POST', token, body: input });
-  return result.user;
+export async function createAdminUser(
+  token: string,
+  input: { email: string; fullName: string; phone?: string; studentCode?: string; role?: 'student' | 'admin' },
+): Promise<{ user: AdminUser; temporaryPassword: string | null; emailSent: boolean }> {
+  const result = await apiRequest<{ user: AdminUser; temporaryPassword: string | null; emailSent: boolean }>('/admin/users', { method: 'POST', token, body: input });
+  return result;
 }
 
 export async function updateAdminUser(token: string, id: string, input: { email?: string; fullName?: string; phone?: string | null; studentCode?: string | null }): Promise<AdminUser> {
@@ -791,8 +794,11 @@ export async function updateAdminUser(token: string, id: string, input: { email?
   return result.user;
 }
 
-export async function resetAdminUserPassword(token: string, id: string): Promise<void> {
-  await apiRequest(`/admin/users/${id}/reset-password`, { method: 'POST', token });
+export async function resetAdminUserPassword(
+  token: string,
+  id: string,
+): Promise<{ temporaryPassword: string | null; emailSent: boolean }> {
+  return apiRequest(`/admin/users/${id}/reset-password`, { method: 'POST', token });
 }
 
 export async function setAdminUserStatus(token: string, id: string, isActive: boolean): Promise<void> {

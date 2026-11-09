@@ -43,6 +43,19 @@ services:
         sync: false
       - key: AI_SERVICE_URL
         value: https://acaschedule-ai.onrender.com
+      # Mail (tạm thời — thiếu SMTP thì mật khẩu tạm sẽ hiện trên màn hình admin)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_SECURE
+        value: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
 
   # 3. AI Service (FastAPI / Python)
   - type: web

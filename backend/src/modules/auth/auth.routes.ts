@@ -4,7 +4,7 @@ import { authenticate } from './auth.middleware';
 import { changePasswordSchema, forgotPasswordSchema, loginSchema, logoutSchema, refreshSchema, registerSchema } from './auth.schemas';
 import { pool } from '../../database/pool';
 import { hashPassword, verifyPassword } from '../../lib/password';
-import { sendTemporaryPasswordEmail } from '../../lib/mail';
+import { sendTemporaryPasswordEmail, isMailConfigured } from '../../lib/mail';
 import { randomBytes } from 'node:crypto';
 import * as authService from './auth.service';
 import { authRateLimit } from '../../lib/rate-limit';
@@ -24,6 +24,11 @@ authRouter.post(
 
 authRouter.post('/forgot-password', authRateLimit, asyncHandler(async (req, res) => {
   const { email } = forgotPasswordSchema.parse(req.body);
+  // Without a configured SMTP server we cannot deliver a temporary password —
+  // do not lock the user out by changing it first. Ask them to contact an admin instead.
+  if (!isMailConfigured()) {
+    throw AppError.badRequest('Hệ thống chưa cấu hình máy chủ gửi thư. Vui lòng liên hệ quản trị viên để đặt lại mật khẩu.');
+  }
   const result = await pool.query<{ id: string; email: string; full_name: string }>(
     'SELECT id, email, full_name FROM users WHERE email = $1 AND is_active = true',
     [email.trim().toLowerCase()],

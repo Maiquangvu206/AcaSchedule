@@ -10,6 +10,10 @@ const transporter = env.SMTP_HOST
     })
   : null;
 
+export function isMailConfigured(): boolean {
+  return Boolean(env.SMTP_HOST && env.SMTP_FROM);
+}
+
 export async function sendTemporaryPasswordEmail(input: {
   recipient: string;
   fullName: string;
