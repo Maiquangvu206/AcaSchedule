@@ -538,8 +538,9 @@ export async function fetchForecast(
   });
 }
 
-export async function fetchStudyPlan(token: string): Promise<TranscriptCurriculum> {
-  return apiRequest<TranscriptCurriculum>('/student/study-plan', { token });
+export async function fetchStudyPlan(token: string, majorId?: string | null): Promise<TranscriptCurriculum> {
+  const path = majorId ? `/student/study-plan?majorId=${encodeURIComponent(majorId)}` : '/student/study-plan';
+  return apiRequest<TranscriptCurriculum>(path, { token });
 }
 
 export async function updateStudyPlanPlacement(

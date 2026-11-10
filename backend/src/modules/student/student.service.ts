@@ -654,11 +654,19 @@ export async function getEnrollmentById(studentId: string, enrollmentId: string)
   return existing;
 }
 
-/** Study plan of the student's major, with personal placements applied. */
-export async function getStudyPlan(studentId: string) {
+/** Study plan of one training programme, with personal placements applied. */
+export async function getStudyPlan(studentId: string, majorId?: string | null) {
   const attempts = await listStudentAttempts(studentId);
   const calculation = calculateGpa(attempts);
-  const major = await findStudentMajor(studentId);
+  let major: { id: string; code: string; name: string } | null = null;
+
+  if (majorId) {
+    const majors = await listStudentMajors(studentId);
+    major = majors.find((m) => m.id === majorId) ?? null;
+  } else {
+    major = await findStudentMajor(studentId);
+  }
+
   const curriculum = major ? await buildCurriculum(studentId, calculation, major) : null;
   if (!curriculum) {
     throw AppError.badRequest('Sinh viên chưa được gán ngành nên chưa có lộ trình học tập');

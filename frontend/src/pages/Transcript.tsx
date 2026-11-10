@@ -519,6 +519,57 @@ function MajorStatsCard({ stats }: { stats: MajorStatistics }) {
           </table>
         </div>
       )}
+
+      {stats.curriculum ? (
+        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200">
+          <div className="bg-gray-50 px-3 py-2 text-xs font-semibold uppercase text-slate-500">
+            Chương trình đào tạo · {stats.curriculum.semesters.length} học kỳ
+          </div>
+          <div className="p-3 space-y-2">
+            {stats.curriculum.semesters.map((semester) => (
+              <div key={semester.semesterNo} className="overflow-hidden rounded-lg border border-gray-200">
+                <div className="px-3 py-2 bg-gray-50 text-xs font-medium text-slate-700 flex items-center justify-between">
+                  <span>Học kỳ {semester.semesterNo}</span>
+                  <span className="text-right">
+                    {semester.completedCredits}/{semester.plannedCredits} tín chỉ
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 p-3">
+                  {semester.subjects.map((subject) => {
+                    const statusColor =
+                      subject.status === 'passed'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : subject.status === 'failed'
+                        ? 'bg-rose-50 text-rose-700'
+                        : subject.status === 'studying'
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-slate-50 text-slate-500';
+                    return (
+                      <div
+                        key={subject.subjectId}
+                        className={`rounded p-2 text-xs border border-gray-100 ${statusColor}`}
+                      >
+                        <div className="font-medium text-slate-900 leading-tight">
+                          {subject.subjectCode}
+                        </div>
+                        <div className="text-slate-500 leading-tight line-clamp-1">
+                          {subject.subjectName}
+                        </div>
+                        <div className="mt-1 flex items-center gap-1">
+                          <span className={subject.isRequired ? 'text-[10px] bg-brand-100 text-brand-700 rounded px-1.5' : 'text-[10px] bg-slate-100 text-slate-500 rounded px-1.5'}>
+                            {subject.isRequired ? 'Bắt buộc' : 'Tự chọn'}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{subject.credits} TC</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

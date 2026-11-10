@@ -4,10 +4,12 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useAuth } from '../auth/AuthContext';
 import {
   fetchStudyPlan,
+  fetchTranscript,
   resetStudyPlan,
   updateStudyPlanPlacement,
   type CurriculumSubject,
   type CurriculumSubjectStatus,
+  type MajorStatistics,
   type TranscriptAttempt,
   type TranscriptCurriculum,
 } from '../lib/api';
@@ -168,7 +170,15 @@ function SemesterColumn({
   );
 }
 
-function StudyPlanBoard() {
+function StudyPlanBoard({
+  majors,
+  selectedMajorId,
+  onMajorChange,
+}: {
+  majors: MajorStatistics[];
+  selectedMajorId: string | null;
+  onMajorChange: (id: string | null) => void;
+}) {
   const { token } = useAuth();
   const [plan, setPlan] = useState<TranscriptCurriculum | null>(null);
   const [loading, setLoading] = useState(true);
@@ -177,16 +187,16 @@ function StudyPlanBoard() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !selectedMajorId) return;
     setLoading(true);
     setError(null);
-    fetchStudyPlan(token)
+    fetchStudyPlan(token, selectedMajorId)
       .then(setPlan)
       .catch((caught) =>
         setError(caught instanceof Error ? caught.message : 'Không tải được lộ trình học tập.'),
       )
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, selectedMajorId]);
 
   const customizedCount = useMemo(
     () =>
@@ -294,7 +304,23 @@ function StudyPlanBoard() {
             </p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-4">
+          {majors.length > 1 ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Xem ngành:</span>
+              <select
+                value={selectedMajorId ?? ''}
+                onChange={(event) => onMajorChange(event.target.value || null)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              >
+                {majors.map((major) => (
+                  <option key={major.majorId} value={major.majorId}>
+                    {major.isPrimary ? 'Ngành chính' : 'Ngành phụ'} · {major.majorCode}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <div className="flex gap-1.5 text-[11px]" aria-label="Chú thích trạng thái">
             {(Object.keys(STATUS_META) as CurriculumSubjectStatus[]).map((status) => (
               <span
@@ -400,9 +426,43 @@ function subjectIdOf(subject: CurriculumSubject): string {
 }
 
 export function StudyPlanPage() {
+  const { token } = useAuth();
+  const [majors, setMajors] = useState<MajorStatistics[]>([]);
+  const [selectedMajorId, setSelectedMajorId] = useState<string | null>(null);
+  const [loadingMajors, setLoadingMajors] = useState(true);
+
+  useEffect(() => {
+    if (!token) return;
+    setLoadingMajors(true);
+    fetchTranscript(token)
+      .then((data) => {
+        setMajors(data.majors ?? []);
+        // Mặc định chọn ngành chính nếu có
+        const primary = data.majors?.find((m) => m.isPrimary);
+        setSelectedMajorId(primary ? primary.majorId : null);
+      })
+      .catch(() => setMajors([]))
+      .finally(() => setLoadingMajors(false));
+  }, [token]);
+
+  if (loadingMajors) {
+    return (
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-6 py-10">
+        <p className="text-sm text-slate-500">Đang tải chương trình đào tạo…</p>
+      </div>
+    );
+  }
+
+  const primary = majors.find((m) => m.isPrimary);
+  const effectiveMajorId = selectedMajorId ?? primary?.majorId ?? null;
+
   return (
     <DndProvider backend={HTML5Backend}>
-      <StudyPlanBoard />
+      <StudyPlanBoard
+        majors={majors}
+        selectedMajorId={effectiveMajorId}
+        onMajorChange={setSelectedMajorId}
+      />
     </DndProvider>
   );
 }

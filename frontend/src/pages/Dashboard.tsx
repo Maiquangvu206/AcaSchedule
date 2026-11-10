@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useGPA } from '../hooks';
 import { semesterSortKey } from '../lib/api';
 
@@ -128,9 +129,35 @@ export function Dashboard() {
   const cpa = transcript?.summary.cpa ?? 0;
 
   const tuitionRows = transcript?.tuition?.rows ?? [];
-  const totalTuition = transcript?.tuition?.total ?? 0;
   const tuitionCurrency = transcript?.tuition?.currency ?? 'VND';
   const majors = transcript?.majors ?? [];
+  const [selectedMajorId, setSelectedMajorId] = useState<'all' | string>('all');
+
+  const majorOptions = majors.map((major) => ({
+    value: major.majorId,
+    label: `${major.isPrimary ? 'Ngành chính' : 'Ngành phụ'} · ${major.majorCode} - ${major.majorName}`,
+  }));
+
+  const selectedMajor = majors.find((m) => m.majorId === selectedMajorId);
+
+  // Khi xem “Cả hai ngành”: mỗi tín chỉ chỉ tính 1 lần (không bị gấp môn chung).
+  // Khi xem một ngành cụ thể: hiển thị học phí của chính ngành đó (môn chung vẫn được tính
+  // theo yêu cầu C — xuất hiện ở cả 2 bảng ngành riêng).
+  const filteredTuitionRows = selectedMajorId === 'all'
+    ? tuitionRows
+    : (selectedMajor?.tuition ?? []);
+
+  const filteredTotalTuition = filteredTuitionRows.reduce((total, row) => total + (row.amount ?? 0), 0);
+  const filteredCurrency = selectedMajorId === 'all' ? tuitionCurrency : (selectedMajor?.tuitionCurrency ?? 'VND');
+
+  const chartSemesters = (selectedMajorId === 'all'
+    ? semesters
+    : selectedMajor?.semesters ?? []
+  ).sort(
+    (a, b) =>
+      semesterSortKey(a.semester)[0] - semesterSortKey(b.semester)[0] ||
+      semesterSortKey(a.semester)[1] - semesterSortKey(b.semester)[1],
+  );
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
@@ -180,7 +207,7 @@ export function Dashboard() {
           </p>
         ) : (
           <div className="space-y-2">
-            {tuitionRows.map((row) => {
+            {filteredTuitionRows.map((row) => {
               const major = majors.find((item) => item.majorId === row.majorId);
               return (
                 <div
@@ -223,10 +250,14 @@ export function Dashboard() {
             ) : null}
 
             <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 mt-2">
-              <span className="text-sm font-semibold text-slate-900">Tổng học phí</span>
-              <span className="text-sm font-bold text-slate-900">{totalTuition.toLocaleString()} {tuitionCurrency}</span>
+              <span className="text-sm font-semibold text-slate-900">
+                {selectedMajorId === 'all' ? 'Tổng học phí' : `${selectedMajor?.majorCode} học phí`}
+              </span>
+              <span className="text-sm font-bold text-slate-900">
+                {filteredTotalTuition.toLocaleString()} {filteredCurrency}
+              </span>
             </div>
-            {majors.length > 1 ? (
+            {majors.length > 1 && selectedMajorId === 'all' ? (
               <p className="px-1 text-xs text-slate-500">
                 Môn học chung của hai ngành được tính một lần trong tổng, nhưng hiển thị ở cả hai bảng ngành.
               </p>
@@ -236,8 +267,40 @@ export function Dashboard() {
       </section>
 
       {/* Sơ đồ GPA theo kỳ */}
-      {semesters.length > 0 ? (
-        <CPATrendChart semesters={semesters} />
+      {chartSemesters.length > 0 ? (
+        <section className="rounded-2xl border border-gray-200 bg-white p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Xu hướng GPA theo học kỳ
+              {selectedMajorId !== 'all' && selectedMajor ? (
+                <span className="ml-2 text-xs font-medium text-brand-700 bg-brand-50/10 rounded-full px-2.5 py-1">
+                  {selectedMajor.majorCode}
+                </span>
+              ) : null}
+            </h2>
+            {majors.length > 1 && (
+              <select
+                value={selectedMajorId}
+                onChange={(event) => setSelectedMajorId(event.target.value as 'all' | string)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="all">Cả hai ngành</option>
+                {majorOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <CPATrendChart semesters={chartSemesters} />
+          <p className="mt-2 text-xs text-slate-500">
+            Điểm GPA được tính theo từng học kỳ, đường màu xanh đậm là học kỳ gần nhất.
+            {selectedMajorId !== 'all' && selectedMajor
+              ? `Chỉ tính các môn thuộc chương trình ${selectedMajor.majorCode}.`
+              : 'Tính toàn bộ môn đã học của hai ngành.'}
+          </p>
+        </section>
       ) : (
         <section className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-slate-500">
           Chưa có dữ liệu học kỳ nào.

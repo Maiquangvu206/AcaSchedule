@@ -37,6 +37,8 @@ export function AdminEnrollmentsPage() {
   const [subjects, setSubjects] = useState<AdminSubject[]>([]);
   const [studentId, setStudentId] = useState('');
   const [subjectId, setSubjectId] = useState('');
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [subjectDropdownOpen, setSubjectDropdownOpen] = useState(false);
   const [semester, setSemester] = useState('');
   const [processScore, setProcessScore] = useState('');
   const [finalScore, setFinalScore] = useState('');
@@ -47,6 +49,19 @@ export function AdminEnrollmentsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editProcess, setEditProcess] = useState('');
   const [editFinal, setEditFinal] = useState('');
+
+  const selectedSubject = subjects.find((item) => item.id === subjectId);
+
+  const filteredSubjects = useMemo(
+    () =>
+      subjects.filter(
+        (item) =>
+          !subjectSearch ||
+          item.code.toLowerCase().includes(subjectSearch.toLowerCase()) ||
+          item.name.toLowerCase().includes(subjectSearch.toLowerCase()),
+      ),
+    [subjects, subjectSearch],
+  );
 
   const loadEnrollments = async (id: string) => {
     if (!token || !id) return;
@@ -172,12 +187,44 @@ export function AdminEnrollmentsPage() {
           </label>
           <label className="text-sm font-medium text-slate-700">
             Môn học
-            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-              <option value="">Chọn môn học</option>
-              {subjects.map((item) => (
-                <option key={item.id} value={item.id}>{item.code} - {item.name} ({item.credits} TC)</option>
-              ))}
-            </select>
+            <div className="mt-1 w-full relative" onClick={() => setSubjectDropdownOpen(!subjectDropdownOpen)}>
+              <input
+                value={
+                  subjectSearch ||
+                  (selectedSubject
+                    ? `${selectedSubject.code} - ${selectedSubject.name} (${selectedSubject.credits} TC)`
+                    : '')
+                }
+                onChange={(e) => {
+                  setSubjectSearch(e.target.value);
+                  setSubjectDropdownOpen(true);
+                }}
+                placeholder="Nhập mã môn hoặc tên môn…"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                readOnly={subjectDropdownOpen ? false : true}
+              />
+              {subjectDropdownOpen && (
+                <div className="absolute z-10 w-full max-h-60 mt-1 rounded-lg border border-slate-200 bg-white shadow-lg overflow-y-auto">
+                  <option value="" key="placeholder" className="px-3 py-2 text-sm text-slate-500 cursor-pointer hover:bg-slate-50" onClick={() => { setSubjectId(''); setSubjectDropdownOpen(false); setSubjectSearch(''); }}>
+                    Chọn môn học
+                  </option>
+                  {filteredSubjects.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-brand-50 ${subjectId === item.id ? 'bg-brand-50 text-brand-700 font-medium' : 'text-slate-900'}`}
+                      onClick={() => {
+                        setSubjectId(item.id);
+                        setSubjectSearch(`${item.code} - ${item.name} (${item.credits} TC)`);
+                        setSubjectDropdownOpen(false);
+                      }}
+                    >
+                      {item.code} - {item.name} ({item.credits} TC)
+                    </div>
+                  ))}
+                  {filteredSubjects.length === 0 && <div className="px-3 py-2 text-sm text-slate-400">Không tìm thấy môn học</div>}
+                </div>
+              )}
+            </div>
           </label>
           <label className="text-sm font-medium text-slate-700">
             Học kỳ

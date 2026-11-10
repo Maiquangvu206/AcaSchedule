@@ -53,11 +53,11 @@ studentRouter.get(
   }),
 );
 
-/** Study plan of the student's own major with personal placements applied. */
+/** Study plan of one training programme with personal placements applied. */
 studentRouter.get(
   '/study-plan',
   asyncHandler(async (req, res) => {
-    const plan = await studentService.getStudyPlan(req.user!.id);
+    const plan = await studentService.getStudyPlan(req.user!.id, req.query.majorId as string | undefined);
     res.json(plan);
   }),
 );
