@@ -55,7 +55,7 @@ curriculumRouter.get('/majors', asyncHandler(async (_req, res) => {
     SELECT m.id, m.code, m.name, m.department_id AS "departmentId",
            d.code AS "departmentCode", d.name AS "departmentName",
            count(cs.subject_id)::int AS "subjectCount",
-           count(cs.id) FILTER (WHERE cs.calculate_grade)::int AS "gradedSubjectCount"
+           count(cs.subject_id) FILTER (WHERE cs.calculate_grade)::int AS "gradedSubjectCount"
     FROM majors m
     LEFT JOIN departments d ON d.id = m.department_id
     LEFT JOIN curriculum_subjects cs ON cs.major_id = m.id
