@@ -879,6 +879,9 @@ export async function createAdminDepartment(token: string, input: { code: string
 export interface CurriculumSubject extends AdminSubject {
   isRequired: boolean;
   semesterNo: number | null;
+  calculateGrade: boolean;
+  processWeight: number;
+  finalWeight: number;
 }
 
 export async function fetchAdminMajors(token: string): Promise<AdminMajor[]> {
@@ -947,7 +950,14 @@ export async function deleteAdminEnrollment(token: string, studentId: string, en
 export async function assignCurriculumSubject(
   token: string,
   majorId: string,
-  input: { subjectId: string; isRequired: boolean; semesterNo: number | null },
+  input: {
+    subjectId: string;
+    isRequired: boolean;
+    semesterNo: number | null;
+    calculateGrade?: boolean;
+    processWeight?: number;
+    finalWeight?: number;
+  },
 ): Promise<void> {
   await apiRequest(`/admin/curriculum/majors/${majorId}/subjects`, { method: 'POST', token, body: input });
 }

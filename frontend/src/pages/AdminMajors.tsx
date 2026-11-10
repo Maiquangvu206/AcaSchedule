@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import {
-  createAdminDepartment, createAdminMajor, fetchAdminDepartments, fetchAdminMajors, fetchCurriculumSubjects, updateAdminMajor, updateAdminSubject,
+  assignCurriculumSubject, createAdminDepartment, createAdminMajor, fetchAdminDepartments, fetchAdminMajors, fetchCurriculumSubjects, updateAdminMajor, updateAdminSubject,
   type AdminDepartment, type AdminMajor, type CurriculumSubject,
 } from '../lib/api';
 import { AdminListPage } from './AdminUsers';
@@ -18,6 +18,7 @@ export function AdminMajorsPage() {
   const [error, setError] = useState<string | null>(null);
   const [curriculumByMajor, setCurriculumByMajor] = useState<Map<string, CurriculumSubject[]>>(new Map());
   const [draftBySubject, setDraftBySubject] = useState<Record<string, string>>({});
+  const [weightDraft, setWeightDraft] = useState<Record<string, { process: string; final: string }>>({});
   const [savingSubjectId, setSavingSubjectId] = useState<string | null>(null);
 
   const load = () => {
@@ -80,27 +81,43 @@ export function AdminMajorsPage() {
     }
   };
 
-  const saveManagingUnit = async (subject: CurriculumSubject) => {
+  const saveManagingUnit = async (major: AdminMajor, subject: CurriculumSubject) => {
     if (!token) return;
-    const next = (draftBySubject[subject.id] ?? subject.managingUnit ?? '').trim();
+    const nextManagingUnit = (draftBySubject[subject.id] ?? subject.managingUnit ?? '').trim();
+    const weight = weightDraft[subject.id];
+    const processWeight = weight ? Number(weight.process) : subject.processWeight;
+    const finalWeight = weight ? Number(weight.final) : subject.finalWeight;
+    if (Math.abs(processWeight + finalWeight - 1) > 0.001) {
+      setError('Tỉ lệ Process + Final phải bằng 1 (ví dụ 0.4 và 0.6).');
+      return;
+    }
     setSavingSubjectId(subject.id);
     setError(null);
     try {
-      const updated = await updateAdminSubject(token, subject.id, {
+      await updateAdminSubject(token, subject.id, {
         code: subject.code,
         name: subject.name,
         credits: subject.credits,
         knowledgeBlock: subject.knowledgeBlock,
-        managingUnit: next,
+        managingUnit: nextManagingUnit,
+      });
+      await assignCurriculumSubject(token, major.id, {
+        subjectId: subject.id,
+        isRequired: subject.isRequired,
+        semesterNo: subject.semesterNo,
+        calculateGrade: subject.calculateGrade,
+        processWeight,
+        finalWeight,
       });
       setCurriculumByMajor((prev) => {
         const nextMap = new Map(prev);
         for (const [majorId, list] of nextMap) {
-          nextMap.set(majorId, list.map((item) => (item.id === subject.id ? { ...item, managingUnit: updated.managingUnit } : item)));
+          nextMap.set(majorId, list.map((item) => (item.id === subject.id ? { ...item, managingUnit: nextManagingUnit, processWeight, finalWeight } : item)));
         }
         return nextMap;
       });
-      setDraftBySubject((prev) => ({ ...prev, [subject.id]: next }));
+      setDraftBySubject((prev) => ({ ...prev, [subject.id]: nextManagingUnit }));
+      setWeightDraft((prev) => ({ ...prev, [subject.id]: { process: String(processWeight), final: String(finalWeight) } }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Không thể lưu bộ môn quản lý.');
     } finally {
@@ -176,10 +193,44 @@ export function AdminMajorsPage() {
                             {subject.calculateGrade ? 'Tính điểm' : 'Chỉ học phí'}
                           </span>
                         </td>
+                        <td className="px-4 py-2">
+                          <input
+                            value={weightDraft[subject.id]?.process ?? String(subject.processWeight)}
+                            onChange={(event) => setWeightDraft((prev) => ({
+                              ...prev,
+                              [subject.id]: {
+                                process: event.target.value,
+                                final: prev[subject.id]?.final ?? String(subject.finalWeight),
+                              },
+                            }))}
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            className="w-full min-w-[90px] rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            value={weightDraft[subject.id]?.final ?? String(subject.finalWeight)}
+                            onChange={(event) => setWeightDraft((prev) => ({
+                              ...prev,
+                              [subject.id]: {
+                                process: prev[subject.id]?.process ?? String(subject.processWeight),
+                                final: event.target.value,
+                              },
+                            }))}
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            className="w-full min-w-[90px] rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                          />
+                        </td>
                         <td className="px-4 py-2 text-right">
                           <button
                             type="button"
-                            onClick={() => void saveManagingUnit(subject)}
+                            onClick={() => void saveManagingUnit(major, subject)}
                             disabled={savingSubjectId === subject.id}
                             className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                           >

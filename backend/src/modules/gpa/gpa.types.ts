@@ -18,6 +18,8 @@ export interface AttemptInput {
   totalScore10: number | null;
   letterGrade: string | null;
   grade4: number | null;
+  /** Per-major flag: false means the subject only tracks tuition, not CPA. */
+  calculateGrade?: boolean;
 }
 
 export type CountReason =

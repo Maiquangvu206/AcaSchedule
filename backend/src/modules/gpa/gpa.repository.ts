@@ -30,6 +30,7 @@ interface AttemptRow {
   total_score_10: string | null;
   letter_grade: string | null;
   grade_4: string | null;
+  calculate_grade: boolean;
 }
 
 export async function listGradeScales(db: Queryable = pool): Promise<GradeScale[]> {
@@ -59,12 +60,23 @@ const ATTEMPT_SELECT = `
          e.final_score,
          CASE
            WHEN e.process_score IS NULL OR e.final_score IS NULL THEN NULL
-           ELSE ROUND(e.process_score * s.process_weight + e.final_score * s.final_weight, 2)
+           ELSE ROUND(
+             e.process_score * COALESCE(cc.process_weight, s.process_weight)
+             + e.final_score * COALESCE(cc.final_weight, s.final_weight), 2)
          END AS total_score_10,
          e.letter_grade,
-         e.grade_4
+         e.grade_4,
+         COALESCE(cc.calculate_grade, true) AS calculate_grade
     FROM student_enrollments e
     JOIN subjects s ON s.id = e.subject_id
+    LEFT JOIN LATERAL (
+      SELECT cs.process_weight, cs.final_weight, cs.calculate_grade
+        FROM curriculum_subjects cs
+        JOIN user_majors um ON um.major_id = cs.major_id
+       WHERE um.user_id = e.student_id AND cs.subject_id = e.subject_id
+       ORDER BY um.is_primary DESC
+       LIMIT 1
+    ) cc ON true
 `;
 
 function mapAttempt(row: AttemptRow): AttemptInput {
@@ -81,6 +93,7 @@ function mapAttempt(row: AttemptRow): AttemptInput {
     totalScore10: toNumber(row.total_score_10),
     letterGrade: row.letter_grade,
     grade4: toNumber(row.grade_4),
+    calculateGrade: row.calculate_grade,
   };
 }
 
