@@ -2,8 +2,17 @@ import type { PoolClient } from 'pg';
 import { pool } from '../../database/pool';
 import { AppError } from '../../lib/errors';
 import { calculateGpa, compositeScore, scoreToGrade } from '../gpa/gpa.engine';
-import { listGradeScales, listSubjectAttempts, listStudentAttempts } from '../gpa/gpa.repository';
-import type { CalculatedAttempt, GpaCalculation } from '../gpa/gpa.types';
+import {
+  listGradeScales,
+  listStudentAttempts,
+  listStudentMajorAttempts,
+  listStudentMajors,
+  listSubjectAttempts,
+  type StudentMajorRow,
+} from '../gpa/gpa.repository';
+import type { AttemptInput, CalculatedAttempt, GpaCalculation } from '../gpa/gpa.types';
+import { buildTuitionRows, sumTuition, type TuitionRow } from '../tuition_fees/tuition_fees.calculator';
+import { listTuitionFees } from '../tuition_fees/tuition_fees.repository';
 import {
   deleteEnrollment,
   deleteStudyPlanPlacement,
@@ -352,6 +361,35 @@ export interface Transcript {
   semesters: TranscriptSemester[];
   /** Study plan from the major's training programme, enriched with the student's attempts. */
   curriculum: TranscriptCurriculum | null;
+  /** One statistics block per training programme (2 blocks for a dual-major student). */
+  majors: MajorStatistics[];
+  /** Tuition for every registered credit, each credit charged once. */
+  tuition: TranscriptTuition;
+}
+
+export interface MajorStatistics {
+  majorId: string;
+  majorCode: string;
+  majorName: string;
+  isPrimary: boolean;
+  summary: {
+    cpa: number;
+    creditsAttempted: number;
+    creditsEarned: number;
+    countedSubjects: number;
+    totalAttempts: number;
+  };
+  semesters: TranscriptSemester[];
+  tuition: TuitionRow[];
+  tuitionTotal: number;
+  tuitionCurrency: string;
+  curriculum: TranscriptCurriculum | null;
+}
+
+export interface TranscriptTuition {
+  rows: TuitionRow[];
+  total: number;
+  currency: string;
 }
 
 function subjectStatus(
@@ -374,10 +412,8 @@ function subjectStatus(
 async function buildCurriculum(
   studentId: string,
   calculation: GpaCalculation,
-): Promise<TranscriptCurriculum | null> {
-  const major = await findStudentMajor(studentId);
-  if (!major) return null;
-
+  major: { id: string; code: string; name: string },
+): Promise<TranscriptCurriculum> {
   const [curriculumSubjects, placements] = await Promise.all([
     listCurriculumSubjects(major.id),
     listStudyPlanPlacements(studentId),
@@ -472,18 +508,7 @@ async function buildCurriculum(
   };
 }
 
-export async function getTranscript(studentId: string): Promise<Transcript> {
-  const [student, attempts] = await Promise.all([
-    findStudentProfile(studentId),
-    listStudentAttempts(studentId),
-  ]);
-
-  if (!student) {
-    throw AppError.notFound('Student not found');
-  }
-
-  const calculation: GpaCalculation = calculateGpa(attempts);
-  const curriculum = await buildCurriculum(studentId, calculation);
+function buildSemesterViews(calculation: GpaCalculation): TranscriptSemester[] {
   const semesterSummary = new Map(calculation.semesters.map((item) => [item.semester, item]));
   const bySemester = new Map<string, CalculatedAttempt[]>();
 
@@ -493,7 +518,7 @@ export async function getTranscript(studentId: string): Promise<Transcript> {
     bySemester.set(attempt.semester, group);
   }
 
-  const semesters: TranscriptSemester[] = [...bySemester.entries()]
+  return [...bySemester.entries()]
     .map(([semester, group]) => {
       const summary = semesterSummary.get(semester);
       return {
@@ -505,6 +530,101 @@ export async function getTranscript(studentId: string): Promise<Transcript> {
       };
     })
     .sort((a, b) => b.semester.localeCompare(a.semester));
+}
+
+/**
+ * Statistics for one training programme. Only subjects that belong to that
+ * major's curriculum are counted, and weights/`calculate_grade` come from that
+ * same curriculum — so a dual-major student gets two independent tables.
+ */
+async function buildMajorStatistics(
+  studentId: string,
+  major: StudentMajorRow,
+  attempts: AttemptInput[],
+  fees: Awaited<ReturnType<typeof listTuitionFees>>,
+): Promise<MajorStatistics> {
+  const inProgramme = attempts.filter((attempt) => attempt.inCurriculum);
+  const calculation = calculateGpa(inProgramme);
+  const curriculum = await buildCurriculum(studentId, calculation, major);
+
+  // Tuition is charged on registered credits, so retakes are billed again.
+  const tuition = buildTuitionRows(
+    inProgramme.map((attempt) => ({
+      semester: attempt.semester,
+      credits: attempt.credits,
+      majorId: major.id,
+    })),
+    fees,
+  );
+
+  return {
+    majorId: major.id,
+    majorCode: major.code,
+    majorName: major.name,
+    isPrimary: major.isPrimary,
+    summary: {
+      cpa: calculation.cpa,
+      creditsAttempted: calculation.creditsAttempted,
+      creditsEarned: calculation.creditsEarned,
+      countedSubjects: calculation.countedSubjects,
+      totalAttempts: inProgramme.length,
+    },
+    semesters: buildSemesterViews(calculation),
+    tuition,
+    tuitionTotal: sumTuition(tuition),
+    tuitionCurrency: tuition[0]?.currency ?? 'VND',
+    curriculum,
+  };
+}
+
+export async function getTranscript(studentId: string): Promise<Transcript> {
+  const [student, attempts, majors, fees] = await Promise.all([
+    findStudentProfile(studentId),
+    listStudentAttempts(studentId),
+    listStudentMajors(studentId),
+    listTuitionFees(studentId),
+  ]);
+
+  if (!student) {
+    throw AppError.notFound('Student not found');
+  }
+
+  const calculation: GpaCalculation = calculateGpa(attempts);
+
+  const majorAttempts = await Promise.all(
+    majors.map((major) => listStudentMajorAttempts(studentId, major.id)),
+  );
+
+  // Each attempt is billed once: the primary programme that owns the subject wins.
+  const billingMajor = new Map<string, string>();
+  majorAttempts.forEach((list, index) => {
+    const major = majors[index];
+    if (!major) return;
+    for (const attempt of list) {
+      if (attempt.inCurriculum && !billingMajor.has(attempt.id)) {
+        billingMajor.set(attempt.id, major.id);
+      }
+    }
+  });
+
+  const primary = majors[0];
+  const [curriculum, majorStatistics] = await Promise.all([
+    primary ? buildCurriculum(studentId, calculation, primary) : Promise.resolve(null),
+    Promise.all(
+      majors.map((major, index) =>
+        buildMajorStatistics(studentId, major, majorAttempts[index] ?? [], fees),
+      ),
+    ),
+  ]);
+
+  const combinedTuition = buildTuitionRows(
+    attempts.map((attempt) => ({
+      semester: attempt.semester,
+      credits: attempt.credits,
+      majorId: billingMajor.get(attempt.id) ?? null,
+    })),
+    fees,
+  );
 
   return {
     student,
@@ -515,8 +635,14 @@ export async function getTranscript(studentId: string): Promise<Transcript> {
       countedSubjects: calculation.countedSubjects,
       totalAttempts: calculation.totalAttempts,
     },
-    semesters,
+    semesters: buildSemesterViews(calculation),
     curriculum,
+    majors: majorStatistics,
+    tuition: {
+      rows: combinedTuition,
+      total: sumTuition(combinedTuition),
+      currency: combinedTuition[0]?.currency ?? 'VND',
+    },
   };
 }
 
@@ -532,7 +658,8 @@ export async function getEnrollmentById(studentId: string, enrollmentId: string)
 export async function getStudyPlan(studentId: string) {
   const attempts = await listStudentAttempts(studentId);
   const calculation = calculateGpa(attempts);
-  const curriculum = await buildCurriculum(studentId, calculation);
+  const major = await findStudentMajor(studentId);
+  const curriculum = major ? await buildCurriculum(studentId, calculation, major) : null;
   if (!curriculum) {
     throw AppError.badRequest('Sinh viên chưa được gán ngành nên chưa có lộ trình học tập');
   }
@@ -551,7 +678,8 @@ export async function updateStudyPlanPlacement(
 ) {
   const attempts = await listStudentAttempts(studentId);
   const calculation = calculateGpa(attempts);
-  const curriculum = await buildCurriculum(studentId, calculation);
+  const major = await findStudentMajor(studentId);
+  const curriculum = major ? await buildCurriculum(studentId, calculation, major) : null;
   if (!curriculum) {
     throw AppError.badRequest('Sinh viên chưa được gán ngành');
   }

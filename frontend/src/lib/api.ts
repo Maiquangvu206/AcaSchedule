@@ -94,6 +94,40 @@ export interface Transcript {
   };
   semesters: TranscriptSemester[];
   curriculum: TranscriptCurriculum | null;
+  /** One block per training programme (2 for dual-major students). */
+  majors?: MajorStatistics[];
+  /** Tuition for every registered credit, each credit charged exactly once. */
+  tuition?: TranscriptTuition;
+}
+
+export interface TuitionRow {
+  semester: string;
+  /** Registered credits (retakes are charged again). */
+  credits: number;
+  feePerCredit: number | null;
+  currency: string;
+  amount: number;
+  isFallback: boolean;
+  majorId: string | null;
+}
+
+export interface TranscriptTuition {
+  rows: TuitionRow[];
+  total: number;
+  currency: string;
+}
+
+export interface MajorStatistics {
+  majorId: string;
+  majorCode: string;
+  majorName: string;
+  isPrimary: boolean;
+  summary: Transcript['summary'];
+  semesters: TranscriptSemester[];
+  tuition: TuitionRow[];
+  tuitionTotal: number;
+  tuitionCurrency: string;
+  curriculum: TranscriptCurriculum | null;
 }
 
 export interface ForecastResult {
@@ -112,6 +146,19 @@ export interface PeriodSlot {
   startTime: string;
   endTime: string;
   label: string;
+}
+
+/**
+ * Sort key for a semester string so semesters are ordered chronologically
+ * instead of lexicographically (e.g. HK2 2024-2025 must come before HK1 2025-2026).
+ * Accepts both "HK1 2024-2025" and "2024-2025-1" shapes.
+ */
+export function semesterSortKey(semester: string): [number, number] {
+  const hk = semester.match(/HK(\d)\s+(\d{4})/);
+  if (hk) return [Number(hk[2]), Number(hk[1])];
+  const plain = semester.match(/(\d{4})-\d{4}(?:-(\d+))?/);
+  if (plain) return [Number(plain[1]), plain[2] ? Number(plain[2]) : 1];
+  return [0, 0];
 }
 
 export interface GradeScale {

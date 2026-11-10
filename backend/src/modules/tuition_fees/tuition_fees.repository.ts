@@ -23,7 +23,7 @@ function mapTuitionFee(row: TuitionFeeRow): TuitionFee {
     majorId: row.major_id,
     majorCode: row.major_code,
     majorName: row.major_name,
-    feePerCredit: row.fee_per_credit,
+    feePerCredit: Number(row.fee_per_credit),
     currency: row.currency,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),

@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   fetchTranscript,
   fetchForecast,
+  semesterSortKey,
   type Transcript,
   type ForecastResult,
 } from '../lib/api';
@@ -67,7 +68,8 @@ export function useGPA(): UseGPAState {
     () =>
       transcript
         ? [...transcript.semesters].sort(
-            (a, b) => b.semester.localeCompare(a.semester),
+            (a, b) => semesterSortKey(b.semester)[0] - semesterSortKey(a.semester)[0] ||
+              semesterSortKey(b.semester)[1] - semesterSortKey(a.semester)[1],
           )
         : [],
     [transcript],

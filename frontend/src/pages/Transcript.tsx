@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGPA } from '../hooks';
 import {
   updateEnrollment,
+  type MajorStatistics,
   type TranscriptAttempt,
 } from '../lib/api';
 import { ContextualAiPanel } from '../components/ContextualAiPanel';
@@ -137,6 +138,23 @@ export function TranscriptPage() {
               suffix={`/ ${transcript.summary.totalAttempts} lượt`}
             />
           </section>
+
+          {transcript.majors && transcript.majors.length > 1 ? (
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Thống kê theo từng ngành</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Bạn đang học {transcript.majors.length} ngành nên mỗi ngành có bảng theo dõi riêng.
+                  Môn học chung được tính cho cả hai ngành, nhưng học phí mỗi tín chỉ chỉ thu một lần.
+                </p>
+              </div>
+              <div className="grid gap-6 lg:grid-cols-2">
+                {transcript.majors.map((major) => (
+                  <MajorStatsCard key={major.majorId} stats={major} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div className="rounded-2xl border border-gray-200 bg-white p-6">
@@ -395,6 +413,112 @@ function SummaryCard({
         {value}
         {suffix ? <span className="ml-1 text-sm font-medium text-slate-500">{suffix}</span> : null}
       </p>
+    </div>
+  );
+}
+
+/** Independent statistics for one training programme of a dual-major student. */
+function MajorStatsCard({ stats }: { stats: MajorStatistics }) {
+  const plannedCredits =
+    stats.curriculum?.semesters.reduce((sum, semester) => sum + semester.plannedCredits, 0) ?? 0;
+  const completedCredits =
+    stats.curriculum?.semesters.reduce((sum, semester) => sum + semester.completedCredits, 0) ?? 0;
+  const semestersByName = new Map(stats.semesters.map((semester) => [semester.semester, semester]));
+
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            {stats.isPrimary ? 'Ngành chính' : 'Ngành phụ'}
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">
+            {stats.majorCode} · {stats.majorName}
+          </h3>
+        </div>
+        <span className="rounded-full bg-brand-500/10 px-3 py-1 text-sm font-semibold text-brand-700">
+          CPA {formatNumber(stats.summary.cpa)}
+        </span>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-xl border border-gray-200 px-3 py-2">
+          <dt className="text-xs text-slate-500">Tín chỉ đã đạt</dt>
+          <dd className="text-lg font-semibold text-slate-900">
+            {stats.summary.creditsEarned}
+            {plannedCredits > 0 ? (
+              <span className="text-xs font-normal text-slate-500"> / {plannedCredits}</span>
+            ) : null}
+          </dd>
+        </div>
+        <div className="rounded-xl border border-gray-200 px-3 py-2">
+          <dt className="text-xs text-slate-500">Tín chỉ đã đăng ký</dt>
+          <dd className="text-lg font-semibold text-slate-900">{stats.summary.creditsAttempted}</dd>
+        </div>
+        <div className="rounded-xl border border-gray-200 px-3 py-2">
+          <dt className="text-xs text-slate-500">Môn tính CPA</dt>
+          <dd className="text-lg font-semibold text-slate-900">{stats.summary.countedSubjects}</dd>
+        </div>
+        <div className="rounded-xl border border-gray-200 px-3 py-2">
+          <dt className="text-xs text-slate-500">Học phí ngành này</dt>
+          <dd className="text-lg font-semibold text-slate-900">
+            {stats.tuitionTotal.toLocaleString('vi-VN')} {stats.tuitionCurrency}
+          </dd>
+        </div>
+      </dl>
+
+      {plannedCredits > 0 ? (
+        <div>
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>Tiến độ chương trình</span>
+            <span>
+              {completedCredits}/{plannedCredits} tín chỉ
+            </span>
+          </div>
+          <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-brand-500"
+              style={{ width: `${Math.min(100, Math.round((completedCredits / plannedCredits) * 100))}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {stats.tuition.length === 0 ? (
+        <p className="text-sm text-slate-500">Chưa có tín chỉ nào được đăng ký trong ngành này.</p>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-gray-200">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-3 py-2 font-medium">Học kỳ</th>
+                <th className="px-3 py-2 text-right font-medium">GPA kỳ</th>
+                <th className="px-3 py-2 text-right font-medium">Tín chỉ</th>
+                <th className="px-3 py-2 text-right font-medium">Học phí</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {stats.tuition.map((row) => {
+                const semester = semestersByName.get(row.semester);
+                return (
+                  <tr key={`${row.semester}-${row.majorId ?? 'all'}`}>
+                    <td className="px-3 py-2 font-medium text-slate-900">{row.semester}</td>
+                    <td className="px-3 py-2 text-right text-slate-700">
+                      {semester ? formatNumber(semester.gpa) : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right text-slate-700">{row.credits}</td>
+                    <td className="px-3 py-2 text-right text-slate-900">
+                      {row.feePerCredit === null
+                        ? 'Chưa cấu hình'
+                        : `${row.amount.toLocaleString('vi-VN')} ${row.currency}`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

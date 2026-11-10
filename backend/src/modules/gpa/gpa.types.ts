@@ -20,6 +20,11 @@ export interface AttemptInput {
   grade4: number | null;
   /** Per-major flag: false means the subject only tracks tuition, not CPA. */
   calculateGrade?: boolean;
+  /**
+   * True when the subject belongs to one of the student's training programmes.
+   * Used to build the per-major statistics; the combined CPA ignores it.
+   */
+  inCurriculum?: boolean;
 }
 
 export type CountReason =
