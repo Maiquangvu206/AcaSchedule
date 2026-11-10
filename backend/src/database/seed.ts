@@ -71,10 +71,10 @@ async function seedGradeScales(client: PoolClient): Promise<void> {
     await client.query(
       `INSERT INTO grade_scales (min_score_10, letter_grade, grade_4, is_pass)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (min_score_10) DO UPDATE
-         SET letter_grade = EXCLUDED.letter_grade,
-             grade_4 = EXCLUDED.grade_4,
-             is_pass = EXCLUDED.is_pass`,
+       ON CONFLICT (letter_grade) DO UPDATE
+       SET min_score_10 = EXCLUDED.min_score_10,
+           grade_4 = EXCLUDED.grade_4,
+           is_pass = EXCLUDED.is_pass`,
       [scale.minScore, scale.letter, scale.grade4, scale.isPass],
     );
   }
