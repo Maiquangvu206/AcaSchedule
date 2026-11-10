@@ -107,7 +107,7 @@ curriculumRouter.get('/majors/:majorId/subjects', asyncHandler(async (req, res) 
     SELECT s.id, s.code, s.name, s.credits, s.knowledge_block AS "knowledgeBlock",
            s.managing_unit AS "managingUnit",
            cs.is_required AS "isRequired", cs.semester_no AS "semesterNo", cs.calculate_grade AS "calculateGrade",
-           cs.process_weight AS "processWeight", cs.final_weight AS "finalWeight"
+           cs.process_weight::float8 AS "processWeight", cs.final_weight::float8 AS "finalWeight"
     FROM curriculum_subjects cs
     JOIN subjects s ON s.id = cs.subject_id
     WHERE cs.major_id = $1
@@ -123,7 +123,7 @@ curriculumRouter.post('/majors/:majorId/subjects', asyncHandler(async (req, res)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
     ON CONFLICT (major_id, subject_id)
     DO UPDATE SET is_required = EXCLUDED.is_required, semester_no = EXCLUDED.semester_no, calculate_grade = EXCLUDED.calculate_grade, process_weight = EXCLUDED.process_weight, final_weight = EXCLUDED.final_weight
-    RETURNING major_id AS "majorId", subject_id AS "subjectId", is_required AS "isRequired", semester_no AS "semesterNo", calculate_grade AS "calculateGrade", process_weight AS "processWeight", final_weight AS "finalWeight"
+    RETURNING major_id AS "majorId", subject_id AS "subjectId", is_required AS "isRequired", semester_no AS "semesterNo", calculate_grade AS "calculateGrade", process_weight::float8 AS "processWeight", final_weight::float8 AS "finalWeight"
   `, [req.params.majorId, input.subjectId, input.isRequired, input.semesterNo ?? null, input.calculateGrade, input.processWeight, input.finalWeight]);
   res.status(201).json({ assignment: result.rows[0] });
 }));

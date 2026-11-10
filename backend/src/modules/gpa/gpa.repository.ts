@@ -58,14 +58,9 @@ const ATTEMPT_SELECT = `
          e.attempt_no,
          e.process_score,
          e.final_score,
-         CASE
-           WHEN e.process_score IS NULL OR e.final_score IS NULL THEN NULL
-           ELSE ROUND(
-             e.process_score * COALESCE(cc.process_weight, s.process_weight)
-             + e.final_score * COALESCE(cc.final_weight, s.final_weight), 2)
-         END AS total_score_10,
-         e.letter_grade,
-         e.grade_4,
+         totals.total_score_10,
+         COALESCE(scale.letter_grade, e.letter_grade) AS letter_grade,
+         COALESCE(scale.grade_4, e.grade_4) AS grade_4,
          COALESCE(cc.calculate_grade, true) AS calculate_grade
     FROM student_enrollments e
     JOIN subjects s ON s.id = e.subject_id
@@ -77,6 +72,22 @@ const ATTEMPT_SELECT = `
        ORDER BY um.is_primary DESC
        LIMIT 1
     ) cc ON true
+    LEFT JOIN LATERAL (
+      SELECT CASE
+               WHEN e.process_score IS NULL OR e.final_score IS NULL THEN NULL
+               ELSE ROUND(
+                 e.process_score * COALESCE(cc.process_weight, s.process_weight)
+                 + e.final_score * COALESCE(cc.final_weight, s.final_weight), 2)
+             END AS total_score_10
+    ) totals ON true
+    LEFT JOIN LATERAL (
+      SELECT gs.letter_grade, gs.grade_4
+        FROM grade_scales gs
+       WHERE totals.total_score_10 IS NOT NULL
+         AND gs.min_score_10 <= totals.total_score_10
+       ORDER BY gs.min_score_10 DESC
+       LIMIT 1
+    ) scale ON true
 `;
 
 function mapAttempt(row: AttemptRow): AttemptInput {

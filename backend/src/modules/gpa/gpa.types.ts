@@ -27,7 +27,8 @@ export type CountReason =
   | 'superseded'
   | 'not-passed'
   | 'no-credits'
-  | 'ungraded';
+  | 'ungraded'
+  | 'excluded';
 
 /**
  * How an attempt relates to the earlier attempts of the same subject:

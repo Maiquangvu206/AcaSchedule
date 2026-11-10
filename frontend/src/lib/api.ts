@@ -30,7 +30,7 @@ export interface TranscriptAttempt {
   grade4: number | null;
   passed: boolean;
   countedInCpa: boolean;
-  reason: 'counted' | 'superseded' | 'not-passed' | 'no-credits' | 'ungraded';
+  reason: 'counted' | 'superseded' | 'not-passed' | 'no-credits' | 'ungraded' | 'excluded';
   attemptKind: AttemptKind;
   isRetake: boolean;
 }

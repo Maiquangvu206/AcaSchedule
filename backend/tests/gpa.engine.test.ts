@@ -187,6 +187,47 @@ describe('calculateGpa', () => {
   });
 });
 
+describe('calculateGpa with per-major grade configuration', () => {
+  it('excludes "tuition only" subjects from CPA, credits and semester GPA', () => {
+    const result = calculateGpa([
+      attempt({ id: 'a1', subjectId: 's1', credits: 3, grade4: 4.0, letterGrade: 'A' }),
+      attempt({
+        id: 'b1',
+        subjectId: 's2',
+        subjectCode: 'SUB102',
+        credits: 2,
+        grade4: 0.5,
+        letterGrade: 'F',
+        calculateGrade: false,
+      }),
+    ]);
+
+    expect(result.cpa).toBe(4);
+    expect(result.creditsAttempted).toBe(3);
+    expect(result.creditsEarned).toBe(3);
+    expect(result.countedSubjects).toBe(1);
+    expect(result.attempts.find((item) => item.id === 'b1')?.counted).toBe(false);
+    expect(result.attempts.find((item) => item.id === 'b1')?.reason).toBe('excluded');
+    expect(result.subjects.find((item) => item.subjectId === 's2')?.countedAttemptId).toBeNull();
+    expect(result.semesters[0]?.credits).toBe(3);
+    expect(result.semesters[0]?.gpa).toBe(4);
+  });
+
+  it('honours the curriculumSubjects argument when attempts carry no flag', () => {
+    const result = calculateGpa(
+      [
+        attempt({ id: 'a1', subjectId: 's1', grade4: 3.0 }),
+        attempt({ id: 'b1', subjectId: 's2', subjectCode: 'SUB102', grade4: 2.0 }),
+      ],
+      [{ subjectId: 's2', calculateGrade: false }],
+    );
+
+    expect(result.cpa).toBe(3);
+    expect(result.creditsAttempted).toBe(3);
+    expect(result.attempts.find((item) => item.id === 'b1')?.reason).toBe('excluded');
+  });
+});
+
 describe('forecastCpa', () => {
   it('computes the required average for the next credits', () => {
     const result = forecastCpa({ cpa: 3.0, credits: 30, targetCpa: 3.2, additionalCredits: 15 });

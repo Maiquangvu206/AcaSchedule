@@ -137,9 +137,12 @@ export function calculateGpa(
       const kind = attemptKind(attempt, ordered.slice(0, index));
       return {
         ...attempt,
+        calculateGrade: shouldCalculateGrade,
         counted: counted?.id === attempt.id,
         passed: isPassed(attempt),
-        reason: attemptReason(attempt, counted?.id ?? null, hasPassing),
+        reason: shouldCalculateGrade
+          ? attemptReason(attempt, counted?.id ?? null, hasPassing)
+          : 'excluded',
         attemptKind: kind,
         isRetake: kind === 'retake',
       };
@@ -199,6 +202,8 @@ function buildSemesterSummaries(attempts: CalculatedAttempt[]): SemesterCalculat
   // Semester GPA reflects every graded attempt taken in that semester (including
   // an F later replaced for CPA), so a retake semester is not silently dropped.
   for (const attempt of attempts) {
+    // Subjects configured as "tuition only" never affect semester GPA either.
+    if (attempt.calculateGrade === false) continue;
     if (attempt.credits <= 0 || attempt.grade4 === null) continue;
     const group = groups.get(attempt.semester) ?? [];
     group.push(attempt);

@@ -26,7 +26,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: CORS_ORIGIN
-        value: https://acaschedule-frontend.onrender.com
+        value: https://acaschedule-frontend-ax5x.onrender.com
       - key: DATABASE_URL
         fromDatabase:
           name: acaschedule-db
@@ -37,12 +37,14 @@ services:
         generateValue: true
       - key: SEED_ADMIN_EMAIL
         value: admin@acaschedule.local
+      # Set this in the Render dashboard. A generated value would be unknown to
+      # the operator, making the seeded admin account impossible to log into.
       - key: SEED_ADMIN_PASSWORD
-        generateValue: true
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: AI_SERVICE_URL
-        value: https://acaschedule-ai.onrender.com
+        value: https://acaschedule-ai-quju.onrender.com
       # Mail (Render free blocks SMTP ports — Resend HTTPS API is preferred)
       - key: RESEND_API_KEY
         sync: false
