@@ -155,7 +155,7 @@ export function AdminMajorsPage() {
                 </header>
                 <table className="w-full min-w-[640px] text-left text-sm">
                   <thead className="border-b bg-white text-xs uppercase text-slate-500">
-                    <tr><th className="px-4 py-2">Mã môn</th><th className="px-4 py-2">Tên môn</th><th className="px-4 py-2">Học kỳ</th><th className="px-4 py-2">Bộ môn quản lý</th><th className="px-4 py-2 text-right">Thao tác</th></tr>
+                    <tr><th className="px-4 py-2">Mã môn</th><th className="px-4 py-2">Tên môn</th><th className="px-4 py-2">Học kỳ</th><th className="px-4 py-2">Bộ môn quản lý</th><th className="px-4 py-2">Tính điểm</th><th className="px-4 py-2">Tỉ lệProcess</th><th className="px-4 py-2">Tỉ lệFinal</th><th className="px-4 py-2 text-right">Thao tác</th></tr>
                   </thead>
                   <tbody className="divide-y">
                     {subjects.map((subject) => (
@@ -170,6 +170,11 @@ export function AdminMajorsPage() {
                             placeholder="Tên bộ môn"
                             className="w-full min-w-[180px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
                           />
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={subject.calculateGrade ? 'text-slate-600' : 'text-rose-600'}>
+                            {subject.calculateGrade ? 'Tính điểm' : 'Chỉ học phí'}
+                          </span>
                         </td>
                         <td className="px-4 py-2 text-right">
                           <button

@@ -21,15 +21,6 @@ interface GradeScaleSeed {
 }
 
 const GRADE_SCALES: GradeScaleSeed[] = [
-  { minScore: 9.0, letter: 'A+', grade4: 4.0, isPass: true },
-  { minScore: 8.5, letter: 'A', grade4: 4.0, isPass: true },
-  { minScore: 8.0, letter: 'B+', grade4: 3.5, isPass: true },
-  { minScore: 7.0, letter: 'B', grade4: 3.0, isPass: true },
-  { minScore: 6.5, letter: 'C+', grade4: 2.5, isPass: true },
-  { minScore: 5.5, letter: 'C', grade4: 2.0, isPass: true },
-  { minScore: 5.0, letter: 'D+', grade4: 1.5, isPass: true },
-  { minScore: 4.0, letter: 'D', grade4: 1.0, isPass: true },
-  { minScore: 0.0, letter: 'F', grade4: 0.0, isPass: false },
 ];
 
 interface PeriodSlotSeed {
@@ -40,18 +31,6 @@ interface PeriodSlotSeed {
 }
 
 const PERIOD_SLOTS: PeriodSlotSeed[] = [
-  { period: 1, startTime: '07:00', endTime: '07:50', label: 'Tiết 1' },
-  { period: 2, startTime: '07:55', endTime: '08:45', label: 'Tiết 2' },
-  { period: 3, startTime: '08:50', endTime: '09:40', label: 'Tiết 3' },
-  { period: 4, startTime: '09:55', endTime: '10:45', label: 'Tiết 4' },
-  { period: 5, startTime: '10:50', endTime: '11:40', label: 'Tiết 5' },
-  { period: 6, startTime: '12:30', endTime: '13:20', label: 'Tiết 6' },
-  { period: 7, startTime: '13:25', endTime: '14:15', label: 'Tiết 7' },
-  { period: 8, startTime: '14:20', endTime: '15:10', label: 'Tiết 8' },
-  { period: 9, startTime: '15:25', endTime: '16:15', label: 'Tiết 9' },
-  { period: 10, startTime: '16:20', endTime: '17:10', label: 'Tiết 10' },
-  { period: 11, startTime: '17:30', endTime: '18:20', label: 'Tiết 11' },
-  { period: 12, startTime: '18:25', endTime: '19:15', label: 'Tiết 12' },
 ];
 
 /** Reference data: keep default period times available on any database. */

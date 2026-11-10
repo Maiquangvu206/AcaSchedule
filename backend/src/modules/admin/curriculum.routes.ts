@@ -18,6 +18,9 @@ const assignmentSchema = z.object({
   subjectId: z.string().uuid(),
   isRequired: z.boolean().default(true),
   semesterNo: z.number().int().min(1).max(20).nullable().optional(),
+  calculateGrade: z.boolean().default(true),
+  processWeight: z.number().min(0).max(1).default(0.4),
+  finalWeight: z.number().min(0).max(1).default(0.6),
 });
 
 export const curriculumRouter = Router();
@@ -51,7 +54,8 @@ curriculumRouter.get('/majors', asyncHandler(async (_req, res) => {
   const result = await pool.query(`
     SELECT m.id, m.code, m.name, m.department_id AS "departmentId",
            d.code AS "departmentCode", d.name AS "departmentName",
-           count(cs.subject_id)::int AS "subjectCount"
+           count(cs.subject_id)::int AS "subjectCount",
+           count(cs.id) FILTER (WHERE cs.calculate_grade)::int AS "gradedSubjectCount"
     FROM majors m
     LEFT JOIN departments d ON d.id = m.department_id
     LEFT JOIN curriculum_subjects cs ON cs.major_id = m.id
@@ -102,7 +106,8 @@ curriculumRouter.get('/majors/:majorId/subjects', asyncHandler(async (req, res) 
   const result = await pool.query(`
     SELECT s.id, s.code, s.name, s.credits, s.knowledge_block AS "knowledgeBlock",
            s.managing_unit AS "managingUnit",
-           cs.is_required AS "isRequired", cs.semester_no AS "semesterNo"
+           cs.is_required AS "isRequired", cs.semester_no AS "semesterNo", cs.calculate_grade AS "calculateGrade",
+           cs.process_weight AS "processWeight", cs.final_weight AS "finalWeight"
     FROM curriculum_subjects cs
     JOIN subjects s ON s.id = cs.subject_id
     WHERE cs.major_id = $1
@@ -114,12 +119,12 @@ curriculumRouter.get('/majors/:majorId/subjects', asyncHandler(async (req, res) 
 curriculumRouter.post('/majors/:majorId/subjects', asyncHandler(async (req, res) => {
   const input = assignmentSchema.parse(req.body);
   const result = await pool.query(`
-    INSERT INTO curriculum_subjects (major_id, subject_id, is_required, semester_no)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO curriculum_subjects (major_id, subject_id, is_required, semester_no, calculate_grade, process_weight, final_weight)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     ON CONFLICT (major_id, subject_id)
-    DO UPDATE SET is_required = EXCLUDED.is_required, semester_no = EXCLUDED.semester_no
-    RETURNING major_id AS "majorId", subject_id AS "subjectId", is_required AS "isRequired", semester_no AS "semesterNo"
-  `, [req.params.majorId, input.subjectId, input.isRequired, input.semesterNo ?? null]);
+    DO UPDATE SET is_required = EXCLUDED.is_required, semester_no = EXCLUDED.semester_no, calculate_grade = EXCLUDED.calculate_grade, process_weight = EXCLUDED.process_weight, final_weight = EXCLUDED.final_weight
+    RETURNING major_id AS "majorId", subject_id AS "subjectId", is_required AS "isRequired", semester_no AS "semesterNo", calculate_grade AS "calculateGrade", process_weight AS "processWeight", final_weight AS "finalWeight"
+  `, [req.params.majorId, input.subjectId, input.isRequired, input.semesterNo ?? null, input.calculateGrade, input.processWeight, input.finalWeight]);
   res.status(201).json({ assignment: result.rows[0] });
 }));
 

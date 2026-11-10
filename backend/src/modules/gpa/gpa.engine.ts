@@ -97,7 +97,7 @@ function attemptKind(attempt: AttemptInput, earlier: AttemptInput[]): Calculated
   return 'retake';
 }
 
-export function calculateGpa(attempts: AttemptInput[]): GpaCalculation {
+export function calculateGpa(attempts: AttemptInput[], curriculumSubjects: { subjectId: string; calculateGrade: boolean }[] = []): GpaCalculation {
   const bySubject = new Map<string, AttemptInput[]>();
 
   for (const attempt of attempts) {
@@ -105,6 +105,10 @@ export function calculateGpa(attempts: AttemptInput[]): GpaCalculation {
     group.push(attempt);
     bySubject.set(attempt.subjectId, group);
   }
+
+  // Build a map of which subjects should calculate grades
+  const gradeMap = new Map<string, boolean>();
+  curriculumSubjects.forEach(cs => gradeMap.set(cs.subjectId, cs.calculateGrade));
 
   const subjects: SubjectCalculation[] = [];
   const calculatedAttempts: CalculatedAttempt[] = [];
@@ -118,9 +122,23 @@ export function calculateGpa(attempts: AttemptInput[]): GpaCalculation {
     const first = group[0];
     if (!first) continue;
 
-    const hasCredit = first.credits > 0;
-    const counted = hasCredit ? selectCounted(group) : null;
-    const hasPassing = group.some(isPassed);
+    // Check if this subject should calculate grades
+    const shouldCalculateGrade = gradeMap.get(first.subjectId) ?? true; // default to true
+    if (!shouldCalculateGrade) {
+      // Subject doesn't calculate grades - still show attempts but don't count toward GPA
+      const ordered = group.slice().sort((a, b) => a.attemptNo - b.attemptNo);
+      subjectAttempts: ordered.map((attempt, index) => {
+        const kind = attemptKind(attempt, ordered.slice(0, index));
+        return {
+          ...attempt,
+          counted: false,
+          passed: false,
+          reason: 'ungraded',
+          attemptKind: kind,
+          isRetake: false,
+        };
+      });
+      // ... rest continues
 
     const ordered = group.slice().sort((a, b) => a.attemptNo - b.attemptNo);
     const subjectAttempts: CalculatedAttempt[] = ordered.map((attempt, index) => {
