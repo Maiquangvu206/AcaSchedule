@@ -87,7 +87,7 @@ services:
       - key: MINIO_SECRET_KEY
         sync: false
       - key: MINIO_BUCKET
-        value: acaschedule-documents
+        value: acaschedule
       - key: MINIO_REGION
         value: auto
 
