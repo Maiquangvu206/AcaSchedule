@@ -38,6 +38,11 @@ const envSchema = z.object({
 
   GEMINI_API_KEY: z.string().optional().default(''),
   AI_SERVICE_URL: z.string().url().default('http://localhost:8001'),
+  // Secret used to encrypt AI provider keys stored in PostgreSQL (AES-256-GCM).
+  // Leave empty to disable key management from the admin UI (env keys still work).
+  AI_KEYS_SECRET: z.string().optional().default(''),
+  // Shared secret for the AI service → backend config endpoint (/api/internal/ai).
+  AI_INTERNAL_TOKEN: z.string().optional().default(''),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),

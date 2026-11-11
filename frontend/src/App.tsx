@@ -14,6 +14,7 @@ import { AdminEnrollmentsPage } from './pages/AdminEnrollments';
 import { AdminSemestersPage } from './pages/AdminSemesters';
 import { AdminRoute } from './auth/AdminRoute';
 import { AdminActivityPage } from './pages/AdminActivity';
+import { AdminAiPage } from './pages/AdminAi';
 import { AdminUsersPage } from './pages/AdminUsers';
 import { AdminSubjectsPage } from './pages/AdminSubjects';
 import { AdminTuitionPage } from './pages/AdminTuition';
@@ -54,6 +55,7 @@ export default function App() {
                 <Route path="admin/grade-scales" element={<AdminGradeScalesPage />} />
                 <Route path="admin/documents" element={<AdminDocumentsPage />} />
                 <Route path="admin/activity" element={<AdminActivityPage />} />
+                <Route path="admin/ai" element={<AdminAiPage />} />
               </Route>
             </Route>
           </Route>

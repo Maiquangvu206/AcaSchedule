@@ -244,11 +244,18 @@ export function DocumentsPage() {
       });
 
       setUploadStep('Đang tải tệp trực tiếp lên MinIO…');
-      const uploadResponse = await fetch(ticket.uploadUrl, {
-        method: ticket.method,
-        headers: ticket.requiredHeaders,
-        body: file,
-      });
+      let uploadResponse: Response;
+      try {
+        uploadResponse = await fetch(ticket.uploadUrl, {
+          method: ticket.method,
+          headers: ticket.requiredHeaders,
+          body: file,
+        });
+      } catch {
+        throw new Error(
+          'Không kết nối được kho lưu trữ (MinIO). Kiểm tra cấu hình MINIO_* và CORS của bucket.',
+        );
+      }
       if (!uploadResponse.ok) {
         throw new Error(`Tải tệp lên kho thất bại (HTTP ${uploadResponse.status})`);
       }

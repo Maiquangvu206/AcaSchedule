@@ -457,36 +457,74 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+const NETWORK_ERROR_MESSAGE =
+  'Không kết nối được máy chủ. Hệ thống có thể đang khởi động lại — vui lòng thử lại sau 10–30 giây.';
+
+/**
+ * `fetch` wrapper that turns browser-level failures ("Failed to fetch") into a
+ * readable ApiError. Idempotent GET requests are retried a couple of times so a
+ * Render cold start does not surface as an error banner.
+ */
+async function safeFetch(url: string, init: RequestInit, retry: boolean): Promise<Response> {
+  const attempts = retry ? 3 : 1;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      lastError = error;
+      if (attempt + 1 < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+      }
+    }
+  }
+
+  if (lastError instanceof DOMException && lastError.name === 'AbortError') {
+    throw new ApiError(0, 'Yêu cầu đã bị huỷ.', 'Aborted');
+  }
+  throw new ApiError(0, NETWORK_ERROR_MESSAGE, 'NetworkError');
+}
+
+function buildRequestInit(
+  method: string,
+  body: unknown,
+  token: string | null,
+): RequestInit {
+  return {
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  };
+}
+
 async function apiRequest<T>(
   path: string,
   options: { method?: string; body?: unknown; token?: string | null } = {},
 ): Promise<T> {
   const { method = 'GET', body, token } = options;
   const currentToken = token || authStorage.getAccessToken();
+  const url = `${API_BASE}/api${path}`;
 
-  const response = await fetch(`${API_BASE}/api${path}`, {
-    method,
-    headers: {
-      Accept: 'application/json',
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  const response = await safeFetch(
+    url,
+    buildRequestInit(method, body, currentToken),
+    method === 'GET',
+  );
 
   // Nếu nhận 401 và có token, thử refresh và retry
   if (response.status === 401 && currentToken) {
     const newToken = await refreshAccessToken();
     if (newToken) {
-      const retryResponse = await fetch(`${API_BASE}/api${path}`, {
-        method,
-        headers: {
-          Accept: 'application/json',
-          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-          Authorization: `Bearer ${newToken}`,
-        },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
+      const retryResponse = await safeFetch(
+        url,
+        buildRequestInit(method, body, newToken),
+        false,
+      );
       return parseResponse<T>(retryResponse);
     }
     // Refresh failed, clear auth
@@ -1146,4 +1184,176 @@ export async function saveTuitionFee(
     token,
     body: input,
   });
+}
+
+/* ── Admin · AI providers, keys & usage ─────────────────────────────── */
+
+export type AiProvider = 'gemini' | 'openrouter';
+
+export interface AdminAiSettings {
+  isEnabled: boolean;
+  providerOrder: string;
+  geminiModel: string;
+  openrouterModel: string;
+  dailyLimit: number;
+  updatedAt: string;
+}
+
+export interface AdminAiKey {
+  id: string;
+  provider: AiProvider;
+  label: string;
+  hint: string;
+  isActive: boolean;
+  priority: number;
+  lastUsedAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+}
+
+export interface AdminAiOverview {
+  settings: AdminAiSettings;
+  keys: Record<AiProvider, { total: number; active: number }>;
+  keyStorageConfigured: boolean;
+  usage: {
+    today: number;
+    week: number;
+    month: number;
+    fallbackMonth: number;
+    avgLatencyMs: number;
+  };
+  providers: Array<{ provider: string; count: number; fallback: number }>;
+  series: Array<{ day: string; total: number; fallback: number }>;
+}
+
+export interface AdminAiUserUsage {
+  id: string;
+  email: string;
+  fullName: string | null;
+  studentCode: string | null;
+  dailyLimit: number | null;
+  today: number;
+  week: number;
+  total: number;
+  fallback: number;
+  lastUsedAt: string | null;
+  avgLatencyMs: number;
+}
+
+export interface AdminAiLog {
+  id: string;
+  endpoint: string;
+  provider: string;
+  usedFallback: boolean;
+  latencyMs: number;
+  statusCode: number | null;
+  createdAt: string;
+  email: string | null;
+  fullName: string | null;
+}
+
+export interface AiHealth {
+  status?: string;
+  gemini_configured?: boolean;
+  gemini_keys?: number;
+  openrouter_configured?: boolean;
+  openrouter_keys?: number;
+  model?: string;
+  openrouter_model?: string;
+  provider_order?: string[];
+  remote_config?: boolean;
+}
+
+export async function fetchAdminAiOverview(token: string, days = 14): Promise<AdminAiOverview> {
+  return apiRequest<AdminAiOverview>(`/admin/ai/overview?days=${days}`, { token });
+}
+
+export async function fetchAdminAiUsage(
+  token: string,
+  days = 30,
+  search = '',
+): Promise<AdminAiUserUsage[]> {
+  const query = `days=${days}${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+  const result = await apiRequest<{ users: AdminAiUserUsage[] }>(`/admin/ai/usage?${query}`, {
+    token,
+  });
+  return result.users;
+}
+
+export async function fetchAdminAiLogs(token: string, limit = 100): Promise<AdminAiLog[]> {
+  const result = await apiRequest<{ logs: AdminAiLog[] }>(`/admin/ai/logs?limit=${limit}`, {
+    token,
+  });
+  return result.logs;
+}
+
+export async function fetchAdminAiKeys(
+  token: string,
+): Promise<{ keys: AdminAiKey[]; keyStorageConfigured: boolean }> {
+  return apiRequest<{ keys: AdminAiKey[]; keyStorageConfigured: boolean }>('/admin/ai/keys', {
+    token,
+  });
+}
+
+export async function createAdminAiKey(
+  token: string,
+  input: { provider: AiProvider; label: string; key: string; priority: number },
+): Promise<AdminAiKey> {
+  const result = await apiRequest<{ key: AdminAiKey }>('/admin/ai/keys', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+  return result.key;
+}
+
+export async function updateAdminAiKey(
+  token: string,
+  id: string,
+  input: { label?: string; key?: string; isActive?: boolean; priority?: number },
+): Promise<AdminAiKey> {
+  const result = await apiRequest<{ key: AdminAiKey }>(`/admin/ai/keys/${id}`, {
+    method: 'PATCH',
+    token,
+    body: input,
+  });
+  return result.key;
+}
+
+export async function deleteAdminAiKey(token: string, id: string): Promise<void> {
+  await apiRequest(`/admin/ai/keys/${id}`, { method: 'DELETE', token });
+}
+
+export async function updateAdminAiSettings(
+  token: string,
+  input: Partial<{
+    isEnabled: boolean;
+    providerOrder: string;
+    geminiModel: string;
+    openrouterModel: string;
+    dailyLimit: number;
+  }>,
+): Promise<AdminAiSettings> {
+  const result = await apiRequest<{ settings: AdminAiSettings }>('/admin/ai/settings', {
+    method: 'PATCH',
+    token,
+    body: input,
+  });
+  return result.settings;
+}
+
+export async function setAdminAiUserLimit(
+  token: string,
+  userId: string,
+  dailyLimit: number | null,
+): Promise<void> {
+  await apiRequest(`/admin/ai/users/${userId}/limit`, {
+    method: 'PATCH',
+    token,
+    body: { dailyLimit },
+  });
+}
+
+export async function fetchAiHealth(token: string): Promise<AiHealth> {
+  return apiRequest<AiHealth>('/ai/status', { token });
 }

@@ -1,4 +1,4 @@
-"""Unit tests for the Gemini client's graceful degradation."""
+"""Unit tests for the Gemini client: key rotation and graceful degradation."""
 
 import asyncio
 
@@ -15,13 +15,30 @@ class FakeResponse:
         return self._payload
 
 
-def test_quota_error_never_escapes(monkeypatch):
-    """HTTP 429 from Gemini must degrade to the local fallback, not propagate."""
+OK_PAYLOAD = {
+    "candidates": [
+        {
+            "content": {"parts": [{"text": "Lời khuyên"}]},
+            "finishReason": "STOP",
+        }
+    ]
+}
 
-    async def fake_post(_payload):
+
+def use_keys(monkeypatch, *keys: str) -> None:
+    """Configure the cached settings object with a key pool."""
+    gemini.reset_rotation_state()
+    monkeypatch.setattr(gemini.get_settings(), "gemini_api_keys", ",".join(keys))
+
+
+def test_quota_error_never_escapes(monkeypatch):
+    """HTTP 429 from every key must degrade to the local fallback, not propagate."""
+
+    async def fake_post(_payload, _key):
         raise gemini.GeminiError("Gemini returned HTTP 429", 429)
 
-    monkeypatch.setattr(gemini, "_post", fake_post)
+    use_keys(monkeypatch, "k1")
+    monkeypatch.setattr(gemini, "_post_with_key", fake_post)
 
     text, used_fallback = asyncio.run(gemini.generate_or_fallback("prompt", "fallback text"))
 
@@ -30,21 +47,11 @@ def test_quota_error_never_escapes(monkeypatch):
 
 
 def test_successful_call_is_not_fallback(monkeypatch):
-    async def fake_post(_payload):
-        return FakeResponse(
-            200,
-            {
-                "candidates": [
-                    {
-                        "content": {"parts": [{"text": "Lời khuyên"}]},
-                        "finishReason": "STOP",
-                    }
-                ]
-            },
-        )
+    async def fake_post(_payload, _key):
+        return FakeResponse(200, OK_PAYLOAD)
 
-    monkeypatch.setattr(gemini, "_post", fake_post)
-    monkeypatch.setattr(gemini.get_settings(), "gemini_api_key", "test-key")
+    use_keys(monkeypatch, "k1")
+    monkeypatch.setattr(gemini, "_post_with_key", fake_post)
 
     text, used_fallback = asyncio.run(gemini.generate_or_fallback("prompt", "fallback"))
 
@@ -52,13 +59,94 @@ def test_successful_call_is_not_fallback(monkeypatch):
     assert text == "Lời khuyên"
 
 
+def test_exhausted_key_rotates_to_next_key(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_post(_payload, key):
+        calls.append(key)
+        if key == "k1":
+            return FakeResponse(429)
+        return FakeResponse(200, OK_PAYLOAD)
+
+    use_keys(monkeypatch, "k1", "k2")
+    monkeypatch.setattr(gemini, "_post_with_key", fake_post)
+
+    text, used_fallback = asyncio.run(gemini.generate_or_fallback("prompt", "fallback"))
+
+    assert used_fallback is False
+    assert text == "Lời khuyên"
+    assert calls == ["k1", "k2"]
+
+
+def test_cooldown_skips_exhausted_key_on_next_request(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_post(_payload, key):
+        calls.append(key)
+        if key == "k1":
+            return FakeResponse(429)
+        return FakeResponse(200, OK_PAYLOAD)
+
+    use_keys(monkeypatch, "k1", "k2")
+    monkeypatch.setattr(gemini, "_post_with_key", fake_post)
+
+    asyncio.run(gemini.generate_or_fallback("prompt", "fallback"))
+    asyncio.run(gemini.generate_or_fallback("prompt", "fallback"))
+
+    # Second request must not touch the cooled-down key again.
+    assert calls == ["k1", "k2", "k2"]
+
+
+def test_invalid_key_is_parked(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_post(_payload, key):
+        calls.append(key)
+        if key == "bad":
+            return FakeResponse(403)
+        return FakeResponse(200, OK_PAYLOAD)
+
+    use_keys(monkeypatch, "bad", "good")
+    monkeypatch.setattr(gemini, "_post_with_key", fake_post)
+
+    asyncio.run(gemini.generate_or_fallback("prompt", "fallback"))
+    asyncio.run(gemini.generate_or_fallback("prompt", "fallback"))
+
+    assert calls == ["bad", "good", "good"]
+
+
+def test_bad_request_does_not_rotate(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_post(_payload, key):
+        calls.append(key)
+        return FakeResponse(400)
+
+    use_keys(monkeypatch, "k1", "k2")
+    monkeypatch.setattr(gemini, "_post_with_key", fake_post)
+
+    text, used_fallback = asyncio.run(gemini.generate_or_fallback("prompt", "fallback"))
+
+    # 400 = bad request/unknown model: rotating keys cannot help.
+    assert used_fallback is True
+    assert text == "fallback"
+    assert calls == ["k1"]
+
+
 def test_missing_api_key_uses_fallback(monkeypatch):
-    monkeypatch.setattr(gemini.get_settings(), "gemini_api_key", "")
+    use_keys(monkeypatch, "")
 
     text, used_fallback = asyncio.run(gemini.generate_or_fallback("prompt", "fallback"))
 
     assert used_fallback is True
     assert text == "fallback"
+
+
+def test_key_pool_parsing(monkeypatch):
+    monkeypatch.setattr(gemini.get_settings(), "gemini_api_keys", " a , b ,, a ")
+    monkeypatch.setattr(gemini.get_settings(), "gemini_api_key", "c")
+
+    assert gemini.get_settings().gemini_key_pool == ["a", "b", "c"]
 
 
 def test_retry_delay_honours_retry_after():

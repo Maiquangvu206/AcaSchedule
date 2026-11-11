@@ -1,5 +1,6 @@
 import { Router, Request } from 'express';
 import { env } from '../../config/env';
+import { pool } from '../../database/pool';
 import { asyncHandler, AppError } from '../../lib/errors';
 import { getCalculation } from '../gpa/gpa.service';
 import { getRedis } from '../../lib/redis';
@@ -12,8 +13,8 @@ import { createHash } from 'node:crypto';
  *
  * The `/advice` endpoint no longer trusts the client for grade data: it loads the
  * authenticated student's transcript from PostgreSQL, redacts PII, and caches
- * answers in Redis before forwarding to the AI service. There is intentionally
- * no per-user request quota: students may ask the AI as often as needed.
+ * answers in Redis before forwarding to the AI service. Every request is logged
+ * in `ai_usage_logs` and checked against the admin-configured daily quota.
  * Other routes (`/documents/summarize`, `/qa`) pass through with PII redaction and
  * sanitized logging.
  */
@@ -24,6 +25,94 @@ const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
 const CACHE_VERSION = 'v4';
 /** Delay before a single retry when the AI upstream reports 429/503. */
 const AI_RETRY_DELAY_MS = 1500;
+/** Start of "today" in Vietnam time (quotas reset at local midnight). */
+const VN_DAY_START =
+  "(date_trunc('day', now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh')";
+
+interface AiUsageEvent {
+  userId: string;
+  endpoint: string;
+  provider: string;
+  usedFallback: boolean;
+  latencyMs: number;
+  statusCode: number | null;
+}
+
+/**
+ * Persist one AI request for the admin dashboard. Best-effort: a logging
+ * failure (e.g. 024 not migrated yet) must never break the student's request.
+ */
+async function recordAiUsage(event: AiUsageEvent): Promise<void> {
+  try {
+    await pool.query(
+      `INSERT INTO ai_usage_logs
+         (user_id, endpoint, provider, used_fallback, latency_ms, status_code)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        event.userId,
+        event.endpoint,
+        event.provider,
+        event.usedFallback,
+        event.latencyMs,
+        event.statusCode,
+      ],
+    );
+  } catch (error) {
+    logger.warn({ err: error, endpoint: event.endpoint }, 'Failed to record AI usage');
+  }
+}
+
+/**
+ * Reject when the admin disabled the AI or the student exhausted today's quota.
+ * Fails open when the schema is missing or the database is unreachable so an
+ * unmigrated environment keeps working exactly as before.
+ */
+async function assertAiAllowed(userId: string): Promise<void> {
+  try {
+    const result = await pool.query<{
+      is_enabled: boolean;
+      daily_limit_per_user: number;
+      user_limit: number | null;
+    }>(
+      `SELECT s.is_enabled, s.daily_limit_per_user, u.ai_daily_limit AS user_limit
+         FROM ai_settings s
+         JOIN users u ON u.id = $1
+        WHERE s.id = 1`,
+      [userId],
+    );
+
+    const row = result.rows[0];
+    if (!row) return;
+    if (!row.is_enabled) {
+      throw new AppError(
+        503,
+        'AIDisabled',
+        'Trợ lý AI đang tạm tắt để bảo trì. Vui lòng quay lại sau.',
+      );
+    }
+
+    const limit = row.user_limit ?? row.daily_limit_per_user;
+    if (limit <= 0) return;
+
+    const counted = await pool.query<{ total: number }>(
+      `SELECT count(*)::int AS total
+         FROM ai_usage_logs
+        WHERE user_id = $1 AND created_at >= ${VN_DAY_START}`,
+      [userId],
+    );
+
+    if ((counted.rows[0]?.total ?? 0) >= limit) {
+      throw new AppError(
+        429,
+        'AIQuotaExceeded',
+        `Bạn đã dùng hết ${limit} lượt trợ lý AI hôm nay. Hạn mức sẽ được đặt lại vào 0 giờ ngày mai.`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    logger.warn({ err: error, userId }, 'AI quota check skipped (database unavailable)');
+  }
+}
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -76,12 +165,25 @@ async function setCached<T>(key: string, value: T): Promise<void> {
   }
 }
 
+/** Read the provider that answered from a raw AI service JSON payload. */
+function providerFromBody(bodyText: string): { provider: string; usedFallback: boolean } {
+  try {
+    const parsed = JSON.parse(bodyText) as { model?: string; used_fallback?: boolean };
+    return {
+      provider: parsed.model ?? 'fallback',
+      usedFallback: parsed.used_fallback ?? true,
+    };
+  } catch {
+    return { provider: 'fallback', usedFallback: true };
+  }
+}
+
 /**
  * POST /api/ai/advice
  *
  * Builds the advice request from the authenticated student's real transcript so the
- * client cannot forge grades. Applies PII redaction and Redis cache.
- * No request quota is enforced.
+ * client cannot forge grades. Applies PII redaction, Redis cache, daily quota and
+ * usage logging.
  */
 aiRouter.post(
   '/advice',
@@ -92,102 +194,127 @@ aiRouter.post(
       question?: string;
     };
 
-    // No per-user request quota: students may ask the AI as often as needed.
-    // Load real transcript data from PostgreSQL.
-    const calculation = await getCalculation(studentId);
+    await assertAiAllowed(studentId);
 
-    const grades = calculation.subjects.map((subject) => ({
-      subject: subject.subjectName || subject.subjectCode,
-      credits: subject.credits,
-      grade4: subject.countedGrade4 ?? 0,
-      is_counted_in_cpa: subject.countedAttemptId !== null,
-    }));
+    const startedAt = Date.now();
+    let provider = 'none';
+    let usedFallback = true;
 
-    const safeQuestion = question ? redactPii(question) : undefined;
-
-    const cacheKey = `ai:advice:${sha256(
-      `${CACHE_VERSION}|${studentId}|${stableGradesKey(grades)}|${targetCpa ?? ''}|${safeQuestion ?? ''}`,
-    )}`;
-
-    const cached = await getCached<{ advice: string; model: string; used_fallback: boolean }>(
-      cacheKey,
-    );
-    if (cached) {
-      logger.info({ studentId, cached: true }, 'AI advice served from cache');
-      res.json({ advice: cached.advice, model: cached.model, used_fallback: cached.used_fallback });
-      return;
-    }
-
-    const body = {
-      target_cpa: targetCpa ?? null,
-      grades,
-      question: safeQuestion,
-    };
-
-    // Log only metadata — never raw question or grades (PII).
-    logger.info(
-      { studentId, gradesCount: grades.length, hasQuestion: Boolean(safeQuestion) },
-      'Requesting AI advice',
-    );
-
-    let upstream = await proxyToAi('/advice', body);
-
-    // Gemini free-tier quota (429) and cold starts (503) are transient:
-    // give the AI service one more chance before degrading.
-    if (upstream.status === 429 || upstream.status === 503) {
-      logger.warn(
-        { studentId, status: upstream.status },
-        'AI upstream busy, retrying once',
-      );
-      await new Promise((resolve) => setTimeout(resolve, AI_RETRY_DELAY_MS));
-      upstream = await proxyToAi('/advice', body);
-    }
-
-    if (!upstream.ok) {
-      // Never leak a raw 429 (Gemini quota) to the browser: the UI would show
-      // "Yeu cau that bai (HTTP 429)" with no explanation.
-      logger.error(
-        { studentId, status: upstream.status },
-        'AI service failed after retry',
-      );
-      res.set('Retry-After', '60');
-      res.status(503).json({
-        error: 'AIUnavailable',
-        message:
-          'Trợ lý AI đang tạm quá tải hoặc đã hết hạn mức gọi Gemini. ' +
-          'Vui lòng thử lại sau 1–2 phút.',
-      });
-      return;
-    }
-
-    const bodyText = await upstream.text();
-    let parsed: { advice?: string; model?: string; used_fallback?: boolean };
     try {
-      parsed = bodyText ? JSON.parse(bodyText) : {};
-    } catch {
-      parsed = {};
-    }
+      // Load real transcript data from PostgreSQL.
+      const calculation = await getCalculation(studentId);
 
-    const result = {
-      advice: parsed.advice ?? '',
-      model: parsed.model ?? 'fallback',
-      used_fallback: parsed.used_fallback ?? true,
-    };
+      const grades = calculation.subjects.map((subject) => ({
+        subject: subject.subjectName || subject.subjectCode,
+        credits: subject.credits,
+        grade4: subject.countedGrade4 ?? 0,
+        is_counted_in_cpa: subject.countedAttemptId !== null,
+      }));
 
-    if (!result.advice.trim()) {
-      res.set('Retry-After', '60');
-      res.status(503).json({
-        error: 'AIUnavailable',
-        message: 'Trợ lý AI chưa trả về nội dung. Vui lòng thử lại sau ít phút.',
+      const safeQuestion = question ? redactPii(question) : undefined;
+
+      const cacheKey = `ai:advice:${sha256(
+        `${CACHE_VERSION}|${studentId}|${stableGradesKey(grades)}|${targetCpa ?? ''}|${safeQuestion ?? ''}`,
+      )}`;
+
+      const cached = await getCached<{ advice: string; model: string; used_fallback: boolean }>(
+        cacheKey,
+      );
+      if (cached) {
+        logger.info({ studentId, cached: true }, 'AI advice served from cache');
+        provider = 'cache';
+        usedFallback = false;
+        res.json({
+          advice: cached.advice,
+          model: cached.model,
+          used_fallback: cached.used_fallback,
+        });
+        return;
+      }
+
+      const body = {
+        target_cpa: targetCpa ?? null,
+        grades,
+        question: safeQuestion,
+      };
+
+      // Log only metadata — never raw question or grades (PII).
+      logger.info(
+        { studentId, gradesCount: grades.length, hasQuestion: Boolean(safeQuestion) },
+        'Requesting AI advice',
+      );
+
+      let upstream = await proxyToAi('/advice', body);
+
+      // Gemini free-tier quota (429) and cold starts (503) are transient:
+      // give the AI service one more chance before degrading.
+      if (upstream.status === 429 || upstream.status === 503) {
+        logger.warn(
+          { studentId, status: upstream.status },
+          'AI upstream busy, retrying once',
+        );
+        await new Promise((resolve) => setTimeout(resolve, AI_RETRY_DELAY_MS));
+        upstream = await proxyToAi('/advice', body);
+      }
+
+      if (!upstream.ok) {
+        // Never leak a raw 429 (Gemini quota) to the browser: the UI would show
+        // "Yeu cau that bai (HTTP 429)" with no explanation.
+        logger.error(
+          { studentId, status: upstream.status },
+          'AI service failed after retry',
+        );
+        res.set('Retry-After', '60');
+        res.status(503).json({
+          error: 'AIUnavailable',
+          message:
+            'Trợ lý AI đang tạm quá tải hoặc đã hết hạn mức gọi Gemini. ' +
+            'Vui lòng thử lại sau 1–2 phút.',
+        });
+        return;
+      }
+
+      const bodyText = await upstream.text();
+      let parsed: { advice?: string; model?: string; used_fallback?: boolean };
+      try {
+        parsed = bodyText ? JSON.parse(bodyText) : {};
+      } catch {
+        parsed = {};
+      }
+
+      const result = {
+        advice: parsed.advice ?? '',
+        model: parsed.model ?? 'fallback',
+        used_fallback: parsed.used_fallback ?? true,
+      };
+
+      provider = result.model;
+      usedFallback = result.used_fallback;
+
+      if (!result.advice.trim()) {
+        res.set('Retry-After', '60');
+        res.status(503).json({
+          error: 'AIUnavailable',
+          message: 'Trợ lý AI chưa trả về nội dung. Vui lòng thử lại sau ít phút.',
+        });
+        return;
+      }
+
+      if (!result.used_fallback) {
+        await setCached(cacheKey, result);
+      }
+
+      res.status(200).type('application/json').json(result);
+    } finally {
+      void recordAiUsage({
+        userId: studentId,
+        endpoint: '/advice',
+        provider,
+        usedFallback,
+        latencyMs: Date.now() - startedAt,
+        statusCode: res.statusCode,
       });
-      return;
     }
-
-    if (!result.used_fallback) {
-      await setCached(cacheKey, result);
-    }
-
-    res.status(200).type('application/json').json(result);
   }),
 );
 
@@ -209,34 +336,72 @@ aiRouter.get(
 aiRouter.post(
   '/documents/summarize',
   asyncHandler(async (req, res) => {
-    const body = req.body as { text?: string };
-    const safeBody = { ...body, text: redactPii(body.text ?? '') };
-    logger.info({ path: '/documents/summarize' }, 'Summarize request (text redacted)');
-    const upstream = await proxyToAi('/documents/summarize', safeBody);
-    const bodyText = await upstream.text();
-    res.status(upstream.status).type('application/json').send(bodyText);
+    const userId = req.user!.id;
+    await assertAiAllowed(userId);
+
+    const startedAt = Date.now();
+    let provider = 'none';
+    let usedFallback = true;
+
+    try {
+      const body = req.body as { text?: string };
+      const safeBody = { ...body, text: redactPii(body.text ?? '') };
+      logger.info({ path: '/documents/summarize' }, 'Summarize request (text redacted)');
+      const upstream = await proxyToAi('/documents/summarize', safeBody);
+      const bodyText = await upstream.text();
+      ({ provider, usedFallback } = providerFromBody(bodyText));
+      res.status(upstream.status).type('application/json').send(bodyText);
+    } finally {
+      void recordAiUsage({
+        userId,
+        endpoint: '/documents/summarize',
+        provider,
+        usedFallback,
+        latencyMs: Date.now() - startedAt,
+        statusCode: res.statusCode,
+      });
+    }
   }),
 );
 
 aiRouter.post(
   '/qa',
   asyncHandler(async (req, res) => {
-    const body = req.body as {
-      question?: string;
-      documents?: Array<{ title?: string; text?: string }>;
-    };
-    const safeBody = {
-      ...body,
-      question: redactPii(body.question ?? ''),
-      documents: (body.documents ?? []).map((doc) => ({
-        ...doc,
-        text: redactPii(doc.text ?? ''),
-        title: redactPii(doc.title ?? ''),
-      })),
-    };
-    logger.info({ path: '/qa' }, 'QA request (text redacted)');
-    const upstream = await proxyToAi('/qa', safeBody);
-    const bodyText = await upstream.text();
-    res.status(upstream.status).type('application/json').send(bodyText);
+    const userId = req.user!.id;
+    await assertAiAllowed(userId);
+
+    const startedAt = Date.now();
+    let provider = 'none';
+    let usedFallback = true;
+
+    try {
+      const body = req.body as {
+        question?: string;
+        documents?: Array<{ title?: string; text?: string }>;
+      };
+      const safeBody = {
+        ...body,
+        question: redactPii(body.question ?? ''),
+        documents: (body.documents ?? []).map((doc) => ({
+          ...doc,
+          text: redactPii(doc.text ?? ''),
+          title: redactPii(doc.title ?? ''),
+        })),
+      };
+      logger.info({ path: '/qa' }, 'QA request (text redacted)');
+      const upstream = await proxyToAi('/qa', safeBody);
+      const bodyText = await upstream.text();
+      ({ provider, usedFallback } = providerFromBody(bodyText));
+      res.status(upstream.status).type('application/json').send(bodyText);
+    } finally {
+      void recordAiUsage({
+        userId,
+        endpoint: '/qa',
+        provider,
+        usedFallback,
+        latencyMs: Date.now() - startedAt,
+        statusCode: res.statusCode,
+      });
+    }
   }),
 );

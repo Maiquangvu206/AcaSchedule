@@ -65,7 +65,12 @@ WITH expected(tbl, col) AS (
     -- 023
     ('curriculum_subjects', 'calculate_grade'),
     ('curriculum_subjects', 'process_weight'),
-    ('curriculum_subjects', 'final_weight')
+    ('curriculum_subjects', 'final_weight'),
+    -- 024
+    ('users', 'ai_daily_limit'),
+    ('ai_settings', 'daily_limit_per_user'),
+    ('ai_provider_keys', 'encrypted_key'),
+    ('ai_usage_logs', 'provider')
 )
 SELECT e.tbl AS table_name, e.col AS missing_column
   FROM expected e

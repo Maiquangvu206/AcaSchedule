@@ -11,6 +11,7 @@ import { auditRequest } from './lib/audit';
 import { requestContext, requestLogger } from './lib/request-context';
 import { adminRouter } from './modules/admin';
 import { aiRouter } from './modules/ai';
+import { aiInternalRouter } from './modules/ai/internal.routes';
 import { semestersRouter, adminSemestersRouter } from './modules/semesters';
 import { authRouter } from './modules/auth/auth.routes';
 import { authenticate, requireRole } from './modules/auth/auth.middleware';
@@ -108,6 +109,9 @@ export function createApp() {
   // Public routes
   app.use('/api/health', healthRouter);
   app.use('/api/auth', auditRequest, authRouter);
+
+  // Server-to-server config feed for the Python AI service (shared-secret auth).
+  app.use('/api/internal/ai', aiInternalRouter);
 
   // Protected routes
   app.use('/api/admin', authenticate, requireRole('admin'), auditRequest, adminRouter);

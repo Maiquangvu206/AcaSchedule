@@ -222,7 +222,13 @@ export function AIPage() {
                   <div className="space-y-2">{formatMessage(message.content)}</div>
                   {message.role === 'assistant' ? (
                     <p className="mt-3 text-[10px] text-slate-400">
-                      {message.fallback ? 'Hệ thống dự phòng' : message.model === 'gemini' ? 'Gemini' : message.model}
+                      {message.fallback
+                        ? 'Hệ thống dự phòng'
+                        : message.model === 'gemini'
+                          ? 'Gemini'
+                          : message.model === 'openrouter'
+                            ? 'OpenRouter'
+                            : message.model}
                     </p>
                   ) : null}
                 </div>

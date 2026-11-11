@@ -11,7 +11,7 @@ from ..schemas import (
     SummarizeResponse,
 )
 from ..services import rag
-from ..services.gemini import generate_or_fallback
+from ..services.llm import generate_or_fallback_meta
 
 router = APIRouter()
 
@@ -26,11 +26,11 @@ async def summarize_document(payload: SummarizeRequest) -> SummarizeResponse:
         "Tóm tắt tài liệu học tập sau bằng tiếng Việt, giữ lại định nghĩa, công thức và ý chính. "
         f"Tối đa {payload.max_sentences} câu.\n\n---\n{text}\n---"
     )
-    summary, used_fallback = await generate_or_fallback(prompt, fallback)
+    summary, model, used_fallback = await generate_or_fallback_meta(prompt, fallback)
 
     return SummarizeResponse(
         summary=summary,
-        model="fallback" if used_fallback else "gemini",
+        model=model,
         used_fallback=used_fallback,
     )
 
@@ -66,7 +66,7 @@ async def qa(payload: QaRequest) -> QaResponse:
         "Nếu ngữ cảnh không đủ, nói rõ là không đủ thông tin.\n\n"
         f"Ngữ cảnh:\n{context}\n\nCâu hỏi: {payload.question}"
     )
-    answer, used_fallback = await generate_or_fallback(prompt, fallback)
+    answer, model, used_fallback = await generate_or_fallback_meta(prompt, fallback)
 
     sources = [
         QaSource(title=chunk.title, snippet=chunk.text[:300])
@@ -76,6 +76,6 @@ async def qa(payload: QaRequest) -> QaResponse:
     return QaResponse(
         answer=answer,
         sources=sources,
-        model="fallback" if used_fallback else "gemini",
+        model=model,
         used_fallback=used_fallback,
     )

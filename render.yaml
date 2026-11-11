@@ -61,6 +61,38 @@ services:
       - key: SMTP_FROM
         sync: false
 
+      # ── Object storage (Cloudflare R2 / Backblaze B2 — S3 compatible) ──────
+      # File tài liệu KHÔNG lưu trong Postgres. Toàn bộ file nằm ở bucket S3.
+      # Xem docs/r2-setup.md để biết cách lấy từng giá trị.
+      - key: MINIO_ENDPOINT
+        sync: false # <account-id>.r2.cloudflarestorage.com
+      - key: MINIO_PORT
+        value: 443
+      - key: MINIO_USE_SSL
+        value: true
+      - key: MINIO_PUBLIC_ENDPOINT
+        sync: false # thường trùng MINIO_ENDPOINT
+      - key: MINIO_PUBLIC_PORT
+        value: 443
+      - key: MINIO_PUBLIC_USE_SSL
+        value: true
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      - key: MINIO_BUCKET
+        value: acaschedule-documents
+      - key: MINIO_REGION
+        value: auto
+
+      # ── AI admin panel (key store + usage tracking) ──────────────────────
+      # Mã hoá API key lưu trong Postgres. Tạo: openssl rand -hex 32
+      - key: AI_KEYS_SECRET
+        sync: false
+      # Bí mật chia sẻ với AI service cho /api/internal/ai/config.
+      - key: AI_INTERNAL_TOKEN
+        sync: false
+
   # 3. AI Service (FastAPI / Python)
   - type: web
     name: acaschedule-ai
@@ -76,6 +108,25 @@ services:
         value: 3.11.9
       - key: GEMINI_API_KEY
         sync: false
+      # Xoay vòng nhiều key (mỗi key một project AI Studio → quota riêng).
+      # Cách nhau bằng dấu phẩy, ví dụ: key1,key2,key3
+      - key: GEMINI_API_KEYS
+        sync: false
+      # OpenRouter là nhà cung cấp AI thứ hai: khi Gemini hết quota, AI service
+      # tự chuyển sang OpenRouter. Mỗi key một tài khoản → quota riêng.
+      # Ví dụ: key1,key2,key3,key4,key5
+      - key: OPENROUTER_API_KEYS
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.0-flash-001
+      # Thứ tự ưu tiên, xoay vòng mỗi request: gemini,openrouter
+      - key: AI_PROVIDER_ORDER
+        value: gemini,openrouter
+      # Kéo key/model do admin cấu hình trên web (backend giữ key mã hoá).
+      - key: AI_INTERNAL_TOKEN
+        sync: false
+      - key: BACKEND_CONFIG_URL
+        value: https://acaschedule-backend.onrender.com/api/internal/ai/config
 
 databases:
   - name: acaschedule-db

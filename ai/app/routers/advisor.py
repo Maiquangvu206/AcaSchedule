@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from ..schemas import AdviceRequest, AdviceResponse, GradeItem
-from ..services.gemini import generate_or_fallback
+from ..services.llm import generate_or_fallback_meta
 
 router = APIRouter()
 
@@ -62,7 +62,8 @@ def _fallback(payload: AdviceRequest, cpa: float, credits: int) -> str:
 
     if payload.question:
         lines.append(
-            "Câu hỏi chi tiết cần Gemini: hãy cấu hình GEMINI_API_KEY để nhận tư vấn cá nhân hóa."
+            "Câu hỏi chi tiết cần AI: hãy cấu hình GEMINI_API_KEYS hoặc OPENROUTER_API_KEYS "
+            "để nhận tư vấn cá nhân hóa."
         )
 
     return "\n".join(lines)
@@ -97,10 +98,12 @@ def _prompt(payload: AdviceRequest, cpa: float, credits: int) -> str:
 async def advice(payload: AdviceRequest) -> AdviceResponse:
     cpa, credits = _weighted_cpa(payload.grades)
     fallback = _fallback(payload, cpa, credits)
-    text, used_fallback = await generate_or_fallback(_prompt(payload, cpa, credits), fallback)
+    text, model, used_fallback = await generate_or_fallback_meta(
+        _prompt(payload, cpa, credits), fallback
+    )
 
     return AdviceResponse(
         advice=text,
-        model="fallback" if used_fallback else "gemini",
+        model=model,
         used_fallback=used_fallback,
     )

@@ -96,7 +96,13 @@ export function ContextualAiPanel({ mode }: ContextualAiPanelProps) {
           <div className="mb-2 flex items-center justify-between gap-2">
             <h3 className="font-semibold text-slate-900">Gợi ý dành cho bạn</h3>
             <span className="text-[10px] text-slate-500">
-              {advice.used_fallback ? 'Hệ thống dự phòng' : 'Gemini'}
+              {advice.used_fallback
+                ? 'Hệ thống dự phòng'
+                : advice.model === 'gemini'
+                  ? 'Gemini'
+                  : advice.model === 'openrouter'
+                    ? 'OpenRouter'
+                    : advice.model}
             </span>
           </div>
           <div className="space-y-2">{renderAdvice(advice.advice)}</div>

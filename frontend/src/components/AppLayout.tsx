@@ -22,6 +22,7 @@ const ADMIN_NAV_ITEMS = [
   { to: '/admin/periods', label: 'Cấu hình tiết', end: false, protected: true },
   { to: '/admin/grade-scales', label: 'Thang điểm', end: false, protected: true },
   { to: '/admin/documents', label: 'Tài liệu', end: false, protected: true },
+  { to: '/admin/ai', label: 'AI & API', end: false, protected: true },
   { to: '/admin/activity', label: 'Hoạt động', end: false, protected: true },
 ];
 
