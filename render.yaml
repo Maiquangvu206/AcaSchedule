@@ -134,7 +134,7 @@ services:
       - key: AI_INTERNAL_TOKEN
         sync: false
       - key: BACKEND_CONFIG_URL
-        value: https://acaschedule-backend.onrender.com/api/internal/ai/config
+        value: https://acaschedule-backend-dbos.onrender.com/api/internal/ai/config
 
 databases:
   - name: acaschedule-db

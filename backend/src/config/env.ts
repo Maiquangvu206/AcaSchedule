@@ -2,6 +2,30 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 /**
+ * Normalize an object-storage host.
+ *
+ * Accepts `host`, `host:port`, `https://host/bucket` and returns just the
+ * host. The MinIO client only accepts a bare host name; a leftover path or
+ * scheme makes it throw `InvalidEndpointError` while the module is imported,
+ * which used to take the whole API down.
+ */
+export function normalizeStorageHost(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+
+  let host = value.trim();
+  if (!host) return host;
+
+  // Drop the scheme (https://, http://, s3://…).
+  host = host.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  // Drop everything after the host: path, bucket suffix, query string.
+  host = host.split('/')[0];
+  // Drop a trailing port — the client takes it as a separate option.
+  host = host.replace(/:\d+$/, '');
+
+  return host;
+}
+
+/**
  * Environment schema — fail fast at boot when a required value is invalid.
  * Defaults match .env.example so `npm run dev` works without a .env file.
  */
@@ -17,7 +41,12 @@ const envSchema = z.object({
     .default('postgresql://acaschedule:acaschedule@localhost:5432/acaschedule'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
-  MINIO_ENDPOINT: z.string().default('localhost'),
+  // Object storage host only — never a URL with a path.
+  // Cloudflare R2 is often pasted as
+  // `https://<account>.r2.cloudflarestorage.com/<bucket>`; the trailing
+  // bucket path is stripped here because MinIO rejects it with
+  // `InvalidEndpointError` (and that error used to crash the whole backend).
+  MINIO_ENDPOINT: z.preprocess(normalizeStorageHost, z.string().default('localhost')),
   MINIO_PORT: z.coerce.number().int().positive().default(9000),
   MINIO_USE_SSL: z
     .enum(['true', 'false'])
@@ -25,7 +54,10 @@ const envSchema = z.object({
     .transform((value) => value === 'true'),
   // Browser-facing endpoint used only to sign upload/download URLs.
   // In Docker the backend talks to `minio:9000` while the browser needs `localhost:9000`.
-  MINIO_PUBLIC_ENDPOINT: z.string().optional(),
+  MINIO_PUBLIC_ENDPOINT: z.preprocess(
+    (value) => (value === undefined || value === '' ? undefined : normalizeStorageHost(value)),
+    z.string().optional(),
+  ),
   MINIO_PUBLIC_PORT: z.coerce.number().int().positive().optional(),
   MINIO_PUBLIC_USE_SSL: z
     .enum(['true', 'false'])
@@ -34,7 +66,19 @@ const envSchema = z.object({
   MINIO_ACCESS_KEY: z.string().default('minioadmin'),
   MINIO_SECRET_KEY: z.string().default('minioadmin'),
   MINIO_BUCKET: z.string().default('documents'),
-  MINIO_REGION: z.string().default('us-east-1'),
+  /**
+   * Storage region. Cloudflare R2 only accepts `auto`; any other value makes
+   * every presigned URL fail with 403 SignatureDoesNotMatch. When the endpoint
+   * points at R2 and no region is configured, fall back to `auto` instead of
+   * the generic default.
+   */
+  MINIO_REGION: z.preprocess(
+    (value) => {
+      if (typeof value === 'string' && value.trim()) return value.trim();
+      return undefined;
+    },
+    z.string().optional(),
+  ),
 
   GEMINI_API_KEY: z.string().optional().default(''),
   AI_SERVICE_URL: z.string().url().default('http://localhost:8001'),
@@ -78,6 +122,16 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 export type Env = typeof env;
+
+/**
+ * Effective storage region.
+ *
+ * R2 only signs with `auto`; the generic default would break every presigned
+ * URL, so derive it from the endpoint when the variable is not set.
+ */
+export const storageRegion =
+  env.MINIO_REGION ??
+  (/\.r2\.cloudflarestorage\.com$/i.test(env.MINIO_ENDPOINT) ? 'auto' : 'us-east-1');
 
 if (env.NODE_ENV === 'production') {
   // Fail hard on insecure defaults in production.
