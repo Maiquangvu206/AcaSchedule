@@ -1,5 +1,6 @@
 import { AppError } from '../../lib/errors';
 import { simulateSchedule } from './schedule.engine';
+import { isSectionActiveInWeek, parseDateOnly, weekRangeFor } from './schedule.range';
 import * as repository from './schedule.repository';
 import type {
   CourseSection,
@@ -139,12 +140,24 @@ export async function simulate(
       ? []
       : await repository.listScheduleItems(studentId, input.semester, input.weekStart);
 
+  // Chỉ các lớp đang diễn ra trong tuần đang xem mới gây xung đột.
+  // Lớp đã kết thúc (ngoài khoảng ngày bắt đầu – kết thúc) không xung đột
+  // với lớp khác ở những tuần sau.
+  const { start: weekStart, end: weekEnd } = input.weekStart
+    ? weekRangeFor(parseDateOnly(input.weekStart))
+    : { start: new Date(0), end: new Date(8640000000000000) };
+
+  const runningThisWeek = sections.filter((section) =>
+    isSectionActiveInWeek(section, weekStart, weekEnd),
+  );
+
   const meetings = [
-    ...sections.flatMap(sectionToMeetings),
+    ...runningThisWeek.flatMap(sectionToMeetings),
     ...savedItems.map(itemToMeeting),
   ];
   const result = simulateSchedule(meetings);
 
+  // Tín chỉ và số lớp tính theo cả học kỳ (đăng ký là cho cả kỳ).
   const activeSections = sections.filter((section) => !section.isCancelled);
   const credits = [...new Set(activeSections.map((section) => section.subjectId))].reduce(
     (sum, subjectId) =>
@@ -152,19 +165,24 @@ export async function simulate(
     0,
   );
 
+  // Lớp bị huỷ là trạng thái của cả học kỳ, không phụ thuộc tuần đang xem.
+  const cancelledSectionIds = sections
+    .filter((section) => section.isCancelled)
+    .map((section) => section.id);
+
   return {
     semester: input.semester,
     sections,
     items: savedItems,
     periods,
     conflicts: result.conflicts,
-    cancelledSectionIds: result.cancelledSectionIds,
+    cancelledSectionIds,
     summary: {
       sectionCount: activeSections.length,
       selectedCount: sections.length,
       credits,
       conflictCount: result.conflicts.length,
-      feasible: result.conflicts.length === 0 && result.cancelledSectionIds.length === 0,
+      feasible: result.conflicts.length === 0 && cancelledSectionIds.length === 0,
     },
   };
 }

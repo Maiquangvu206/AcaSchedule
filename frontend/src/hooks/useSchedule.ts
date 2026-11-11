@@ -119,7 +119,7 @@ export function useSchedule(initialSemester = '2025-2'): UseScheduleState {
     }
     let cancelled = false;
     setSimulating(true);
-    runScheduleSimulation(token, { semester, sectionIds: selectedIds })
+    runScheduleSimulation(token, { semester, sectionIds: selectedIds, weekStart: weekStartValue })
       .then((result) => {
         if (!cancelled) setSimulation(result);
       })
@@ -137,7 +137,7 @@ export function useSchedule(initialSemester = '2025-2'): UseScheduleState {
     return () => {
       cancelled = true;
     };
-  }, [token, semester, selectedIds]);
+  }, [token, semester, selectedIds, weekStartValue]);
 
   const createItem = useCallback(
     async (input: {

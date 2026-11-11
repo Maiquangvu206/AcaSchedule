@@ -17,6 +17,7 @@ import {
   type ScheduleItem,
   type ScheduleSimulation,
 } from '../lib/api';
+import { isSectionActiveInWeek } from '../lib/schedule-range';
 
 const DAYS = [
   { value: 2, label: 'Thứ 2' },
@@ -269,22 +270,50 @@ export function SchedulePage() {
   }, [conflicts]);
 
   const events = useMemo<CalendarEvent[]>(() => {
+    // Tuần đang xem: Thứ 2 → Chủ nhật.
+    const weekEnd = new Date(weekStart.getTime() + 6 * 86400000);
+
     const sectionEvents: CalendarEvent[] = (simulation?.sections ?? [])
       .filter((section) => !section.isCancelled)
-      .map((section) => ({
-        key: `section-${section.id}`,
-        kind: 'section' as const,
-        id: section.id,
-        code: section.sectionCode,
-        title: section.subjectName,
-        subtitle: `${section.subjectCode} · ${section.credits} TC`,
-        day: section.dayOfWeek,
-        start: section.startPeriod,
-        end: section.endPeriod,
-        room: section.room,
-        item: null,
-        conflict: conflictedSections.has(section.id),
-      }));
+      // Chỉ hiện lớp ở các tuần nằm trong khoảng ngày bắt đầu – kết thúc.
+      .filter((section) => isSectionActiveInWeek(section, weekStart, weekEnd))
+      .flatMap((section) => {
+        const base = {
+          kind: 'section' as const,
+          id: section.id,
+          code: section.sectionCode,
+          title: section.subjectName,
+          subtitle: `${section.subjectCode} · ${section.credits} TC`,
+          room: section.room,
+          item: null,
+          conflict: conflictedSections.has(section.id),
+        };
+
+        const first: CalendarEvent = {
+          ...base,
+          key: `section-${section.id}`,
+          day: section.dayOfWeek,
+          start: section.startPeriod,
+          end: section.endPeriod,
+        };
+
+        const hasSecond =
+          section.secondDayOfWeek !== null &&
+          section.secondStartPeriod !== null &&
+          section.secondEndPeriod !== null;
+
+        if (!hasSecond) return [first];
+
+        // Lớp học 2 buổi/tuần: hiện thêm buổi 2 ở đúng thứ.
+        const second: CalendarEvent = {
+          ...base,
+          key: `section-${section.id}-2`,
+          day: section.secondDayOfWeek as number,
+          start: section.secondStartPeriod as number,
+          end: section.secondEndPeriod as number,
+        };
+        return [first, second];
+      });
 
     const itemEvents: CalendarEvent[] = items.map((item) => ({
       key: `item-${item.id}`,
@@ -306,7 +335,7 @@ export function SchedulePage() {
       if (left.start !== right.start) return left.start - right.start;
       return left.kind.localeCompare(right.kind);
     });
-  }, [simulation, items, conflictedSections, conflictedItems]);
+  }, [simulation, items, conflictedSections, conflictedItems, weekStart]);
 
   const toggleSection = (sectionId: string) => {
     setSelected((current) =>
@@ -546,6 +575,12 @@ export function SchedulePage() {
                   <div className="space-y-1.5">
                     {group.sections.map((section) => {
                       const checked = selected.includes(section.id);
+                      const activeThisWeek = isSectionActiveInWeek(
+                        section,
+                        weekStart,
+                        new Date(weekStart.getTime() + 6 * 86400000),
+                      );
+                      const hasRange = Boolean(section.startDate || section.endDate);
                       return (
                         <label
                           key={section.id}
@@ -555,7 +590,7 @@ export function SchedulePage() {
                               : checked
                                 ? 'border-brand-400/40 bg-brand-500/10 text-slate-900'
                                 : 'border-gray-200/50 bg-gray-100/40 text-slate-600 hover:border-gray-300/50'
-                          }`}
+                          } ${hasRange && !activeThisWeek ? 'opacity-45' : ''}`}
                         >
                           <input
                             type="checkbox"
@@ -578,6 +613,19 @@ export function SchedulePage() {
                               <br />
                               {formatTimeRange(periods, section.startPeriod, section.endPeriod)}
                               {section.room ? ` · ${section.room}` : ''}
+                              {section.secondDayOfWeek ? (
+                                <>
+                                  <br />
+                                  {dayLabel(section.secondDayOfWeek)} · Tiết {section.secondStartPeriod}–{section.secondEndPeriod}
+                                </>
+                              ) : null}
+                              {hasRange ? (
+                                <>
+                                  <br />
+                                  {section.startDate || '…'} → {section.endDate || '…'}
+                                  {!activeThisWeek ? ' (ngoài tuần này)' : ''}
+                                </>
+                              ) : null}
                             </span>
                           </span>
                         </label>
