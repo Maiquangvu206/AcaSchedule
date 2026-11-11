@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { Combobox } from '../components/Combobox';
 import {
   assignCurriculumSubject, createAdminSubject, fetchAdminMajors, fetchAdminSubjects,
   fetchCurriculumSubjects, removeCurriculumSubject, type AdminMajor, type AdminSubject, type CurriculumSubject,
@@ -37,6 +38,18 @@ export function AdminSubjectsPage() {
     if (token && selectedMajor) fetchCurriculumSubjects(token, selectedMajor).then(setAssigned)
       .catch(() => setError('Không tải được chương trình đào tạo.'));
   }, [token, selectedMajor]);
+  /** Combo box data: tìm nhanh theo mã hoặc tên môn. */
+  const subjectOptions = useMemo(
+    () =>
+      subjects.map((subject) => ({
+        value: subject.id,
+        label: `${subject.code} - ${subject.name}`,
+        keywords: `${subject.code} ${subject.name}`,
+        hint: `${subject.credits} tín chỉ`,
+      })),
+    [subjects],
+  );
+
 
   const assignSubject = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -94,7 +107,17 @@ export function AdminSubjectsPage() {
         <select value={selectedMajor} onChange={(e) => setSelectedMajor(e.target.value)} className="ml-3 rounded-lg border border-slate-200 px-3 py-2 text-sm">{majors.map((major) => <option key={major.id} value={major.id}>{major.code} - {major.name} ({major.subjectCount} môn)</option>)}</select>
       </div>
       <form onSubmit={assignSubject} className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-5 md:grid-cols-[1.5fr_0.7fr_0.8fr_auto] md:items-end">
-        <label className="text-sm font-medium text-slate-700">Môn học<select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">Chọn môn học</option>{subjects.map((item) => <option key={item.id} value={item.id}>{item.code} - {item.name}</option>)}</select></label>
+        <label className="text-sm font-medium text-slate-700">
+          Môn học
+          <Combobox
+            options={subjectOptions}
+            value={subjectId}
+            onChange={setSubjectId}
+            placeholder="Nhập mã hoặc tên môn…"
+            emptyLabel="— Chọn môn học —"
+            className="mt-1"
+          />
+        </label>
         <label className="text-sm font-medium text-slate-700">Học kỳ<input type="number" min="1" max="20" value={semesterNo} onChange={(e) => setSemesterNo(e.target.value)} placeholder="1" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="flex items-center gap-2 pb-2 text-sm text-slate-600"><input type="checkbox" checked={isRequired} onChange={(e) => setIsRequired(e.target.checked)} /> Bắt buộc</label>
         <button disabled={!selectedMajor} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Lưu cấu hình</button>

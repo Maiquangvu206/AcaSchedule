@@ -20,6 +20,7 @@ import {
   type DocumentItem,
   type DocumentSubject,
 } from '../lib/api';
+import { Combobox } from '../components/Combobox';
 import { ContextualAiPanel } from '../components/ContextualAiPanel';
 
 const MAX_FILE_SIZE_MB = 100;
@@ -107,12 +108,23 @@ export function DocumentsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
-
   const [votingId, setVotingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const [viewer, setViewer] = useState<{ document: DocumentItem; url: string | null } | null>(null);
   const [viewerError, setViewerError] = useState<string | null>(null);
+
+  /** Combo box data: tìm nhanh theo mã hoặc tên môn. */
+  const subjectOptions = useMemo(
+    () =>
+      subjects.map((subject) => ({
+        value: subject.id,
+        label: `${subject.code} — ${subject.name}`,
+        keywords: `${subject.code} ${subject.name}`,
+        hint: `${subject.credits} tín chỉ · ${subject.documentCount} tài liệu`,
+      })),
+    [subjects],
+  );
 
   const handleAuthError = useCallback(
     (caught: unknown, fallback: string) => {
@@ -376,18 +388,14 @@ export function DocumentsPage() {
           <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white p-4">
             <label className="block min-w-44 flex-1 space-y-1 text-xs font-medium text-slate-600">
               Môn học
-              <select
+              <Combobox
+                options={subjectOptions}
                 value={selectedSubject}
-                onChange={(event) => setSelectedSubject(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
-              >
-                <option value="">Tất cả môn đã đăng ký</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.code} — {subject.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedSubject}
+                placeholder="Nhập mã hoặc tên môn…"
+                emptyLabel="— Tất cả môn đã đăng ký —"
+                inputClassName="rounded-xl border border-gray-200 text-slate-900 placeholder:text-slate-400"
+              />
             </label>
             <label className="block min-w-48 flex-[1.4] space-y-1 text-xs font-medium text-slate-600">
               Tìm kiếm
@@ -504,18 +512,13 @@ export function DocumentsPage() {
             <form onSubmit={handleUpload} className="mt-4 space-y-3">
               <label className="block space-y-1 text-xs font-medium text-slate-600">
                 Môn học
-                <select
-                  required
+                <Combobox
+                  options={subjectOptions}
                   value={uploadSubject}
-                  onChange={(event) => setUploadSubject(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400/60"
-                >
-                  {subjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.code} — {subject.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setUploadSubject}
+                  placeholder="Nhập mã hoặc tên môn…"
+                  inputClassName="rounded-xl border border-gray-200 text-slate-900 placeholder:text-slate-400"
+                />
               </label>
 
               <label className="block space-y-1 text-xs font-medium text-slate-600">

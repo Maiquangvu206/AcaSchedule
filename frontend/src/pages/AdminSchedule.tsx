@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { Combobox } from '../components/Combobox';
 import {
   createAdminScheduleSection, deleteAdminScheduleSection, fetchAdminScheduleSections,
   fetchAdminSubjects, updateAdminScheduleSection,
-  fetchScheduleSemesters,
+  fetchAdminSemesters, fetchScheduleSemesters,
   type AdminCourseSection, type AdminCourseSectionInput, type AdminSubject,
+  type SemesterConfig,
 } from '../lib/api';
 import { AdminListPage } from './AdminUsers';
 
@@ -22,7 +24,7 @@ export function AdminSchedulePage() {
   const [sections, setSections] = useState<AdminCourseSection[]>([]);
   const [subjects, setSubjects] = useState<AdminSubject[]>([]);
   const [semester, setSemester] = useState('');
-  const [semesters, setSemesters] = useState<string[]>([]);
+  const [semesters, setSemesters] = useState<SemesterConfig[]>([]);
   const [form, setForm] = useState<AdminCourseSectionInput>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [hasPractical, setHasPractical] = useState(false);
@@ -44,20 +46,57 @@ export function AdminSchedulePage() {
 
   useEffect(() => {
     if (!token) return;
-    fetchScheduleSemesters(token).then((options) => {
-      setSemesters(options);
-      if (!semester && options[0]) {
-        setSemester(options[0]);
-        setForm((current) => ({ ...current, semester: options[0] }));
-      }
-    }).catch(() => setError('Không tải được danh sách học kỳ.'));
-  }, [token, semester]);
+    // Danh sách học kỳ lấy từ bảng `semesters` (dùng chung toàn hệ thống).
+    // Fallback sang danh sách kỳ đang có trong lịch học để không bị mất dữ liệu.
+    fetchAdminSemesters(token)
+      .then((catalogue) => {
+        if (catalogue.length) {
+          setSemesters(catalogue);
+          return null;
+        }
+        return fetchScheduleSemesters(token).then((options) => {
+          setSemesters(options.map((code) => ({
+            code, name: '', startDate: null, endDate: null, isActive: true, sortNo: 0,
+          })));
+        });
+      })
+      .catch(() => setError('Không tải được danh sách học kỳ.'));
+  }, [token]);
+
+  // Chọn học kỳ mặc định ngay khi danh sách vừa tải xong.
+  useEffect(() => {
+    if (semester || !semesters.length) return;
+    setSemester(semesters[0].code);
+    setForm((current) => ({ ...current, semester: current.semester || semesters[0].code }));
+  }, [semester, semesters]);
 
   useEffect(load, [token, semester]);
 
   const setField = <K extends keyof AdminCourseSectionInput>(key: K, value: AdminCourseSectionInput[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
+
+  /** Combo box data: tìm nhanh theo mã hoặc tên môn. */
+  const subjectOptions = useMemo(
+    () =>
+      subjects.map((subject) => ({
+        value: subject.id,
+        label: `${subject.code} - ${subject.name}`,
+        keywords: `${subject.code} ${subject.name}`,
+        hint: `${subject.credits} tín chỉ`,
+      })),
+    [subjects],
+  );
+
+  const semesterOptions = useMemo(
+    () =>
+      semesters.map((item) => ({
+        value: item.code,
+        label: item.name ? `${item.code} - ${item.name}` : item.code,
+        keywords: `${item.code} ${item.name}`,
+      })),
+    [semesters],
+  );
 
   const reset = () => {
     setForm({ ...emptyForm, semester });
@@ -120,25 +159,25 @@ export function AdminSchedulePage() {
       {error ? <p role="alert" className="m-5 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
       {message ? <p className="m-5 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</p> : null}
       <form onSubmit={submit} className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-5 md:grid-cols-4">
-        <label className="text-sm font-medium text-slate-700">Học kỳ<select value={form.semester} onChange={(e) => { setField('semester', e.target.value); setSemester(e.target.value); }} required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">Chọn học kỳ</option>{semesters.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
-        <label className="text-sm font-medium text-slate-700">Môn học<select value={form.subjectId} onChange={(e) => setField('subjectId', e.target.value)} required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">Chọn môn</option>{subjects.map((s) => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}</select></label>
+        <label className="text-sm font-medium text-slate-700">Học kỳ<Combobox options={semesterOptions} value={form.semester} onChange={(value) => { setField('semester', value); setSemester(value); }} placeholder="Chọn học kỳ" emptyLabel="— Chọn học kỳ —" className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700">Môn học<Combobox options={subjectOptions} value={form.subjectId} onChange={(value) => setField('subjectId', value)} placeholder="Nhập mã hoặc tên môn…" emptyLabel="— Chọn môn học —" className="mt-1" /></label>
         <label className="text-sm font-medium text-slate-700">Mã lớp<input value={form.sectionCode} onChange={(e) => setField('sectionCode', e.target.value)} placeholder="INT2208-01" required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Số buổi / tuần<select value={form.meetingCount} onChange={(e) => { const count = Number(e.target.value); setField('meetingCount', count); if (count === 2) setField('secondDayOfWeek', pairedDay[form.dayOfWeek] ?? 5); }} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value={1}>1 buổi</option><option value={2}>2 buổi</option></select></label>
         <label className="text-sm font-medium text-slate-700">Thứ<select value={form.dayOfWeek} onChange={(e) => { const day = Number(e.target.value); setField('dayOfWeek', day); if (form.meetingCount === 2) setField('secondDayOfWeek', pairedDay[day] ?? 5); }} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">{(form.meetingCount === 2 ? [2, 3, 4] : [2, 3, 4, 5, 6, 7]).map((day) => <option key={day} value={day}>{days[day]}</option>)}</select></label>
         <label className="text-sm font-medium text-slate-700">Tiết bắt đầu<input type="number" min="1" max="12" value={form.startPeriod} onChange={(e) => setField('startPeriod', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Tiết kết thúc<input type="number" min="1" max="12" value={form.endPeriod} onChange={(e) => setField('endPeriod', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
-        {form.meetingCount === 2 ?  <><label className="text-sm font-medium text-slate-700">Thứ buổi 2<select value={form.secondDayOfWeek ?? pairedDay[form.dayOfWeek] ?? 5} disabled className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm">{[2, 3, 4].map((day) => <option key={pairedDay[day]} value={pairedDay[day]}>{days[pairedDay[day] - 1]}</option>)}</select></label><label className="text-sm font-medium text-slate-700">Tiết buổi 2<input type="text" value={`${form.secondStartPeriod ?? 1}-${form.secondEndPeriod ?? 2}`} onChange={(e) => { const [start, end] = e.target.value.split('-').map(Number); if (start) setField('secondStartPeriod', start); if (end) setField('secondEndPeriod', end); }} placeholder="1-2" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label></> : null}
+        {form.meetingCount === 2 ?  <><label className="text-sm font-medium text-slate-700">Thứ buổi 2<select value={form.secondDayOfWeek ?? pairedDay[form.dayOfWeek] ?? 5} disabled className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm">{[2, 3, 4].map((day) => <option key={pairedDay[day]} value={pairedDay[day]}>{days[pairedDay[day] - 1]}</option>)}</select></label><label className="text-sm font-medium text-slate-700">Tiết bắt đầu buổi 2<input type="number" min="1" max="12" value={form.secondStartPeriod ?? 1} onChange={(e) => setField('secondStartPeriod', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label><label className="text-sm font-medium text-slate-700">Tiết kết thúc buổi 2<input type="number" min="1" max="12" value={form.secondEndPeriod ?? 2} onChange={(e) => setField('secondEndPeriod', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label></> : null}
         <label className="text-sm font-medium text-slate-700">Ngày bắt đầu<input type="date" value={form.startDate ?? ''} onChange={(e) => setField('startDate', e.target.value || null)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Ngày kết thúc<input type="date" value={form.endDate ?? ''} onChange={(e) => setField('endDate', e.target.value || null)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Phòng<input value={form.room ?? ''} onChange={(e) => setField('room', e.target.value || null)} placeholder="A101" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Giảng viên<input value={form.lecturer ?? ''} onChange={(e) => setField('lecturer', e.target.value || null)} placeholder="Nguyễn Văn A" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Sĩ số<input type="number" min="1" value={form.capacity ?? ''} onChange={(e) => setField('capacity', e.target.value ? Number(e.target.value) : null)} placeholder="40" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-600"><input type="checkbox" checked={hasPractical} onChange={(e) => setHasPractical(e.target.checked)} /> Tạo lớp thực hành liên kết</label>
-        {hasPractical ? <><label className="text-sm font-medium text-slate-700">Thứ thực hành<select value={practicalDay} onChange={(e) => setPracticalDay(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">{[2, 3, 4, 5, 6, 7].map((day) => <option key={day} value={day}>{days[day]}</option>)}</select></label><label className="text-sm font-medium text-slate-700">Tiết thực hành<input type="text" value={`${practicalStart}-${practicalEnd}`} onChange={(e) => { const [start, end] = e.target.value.split('-').map(Number); if (start) setPracticalStart(start); if (end) setPracticalEnd(end); }} placeholder="1-2" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label></> : null}
+        {hasPractical ? <><label className="text-sm font-medium text-slate-700">Thứ thực hành<select value={practicalDay} onChange={(e) => setPracticalDay(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">{[2, 3, 4, 5, 6, 7].map((day) => <option key={day} value={day}>{days[day]}</option>)}</select></label><label className="text-sm font-medium text-slate-700">Tiết bắt đầu thực hành<input type="number" min="1" max="12" value={practicalStart} onChange={(e) => setPracticalStart(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label><label className="text-sm font-medium text-slate-700">Tiết kết thúc thực hành<input type="number" min="1" max="12" value={practicalEnd} onChange={(e) => setPracticalEnd(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label></> : null}
         <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-600"><input type="checkbox" checked={form.isCancelled} onChange={(e) => setField('isCancelled', e.target.checked)} /> Tạm ngừng</label>
         <div className="flex items-end gap-2"><button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white">{editingId ? 'Lưu thay đổi' : 'Thêm lịch học'}</button>{editingId ? <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-4 py-2 text-sm">Hủy</button> : null}</div>
       </form>
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center"><label className="text-sm font-medium text-slate-700">Lọc theo học kỳ</label><input value={semester} onChange={(e) => setSemester(e.target.value)} placeholder="Để trống để xem tất cả" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" /></div>
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center"><label className="text-sm font-medium text-slate-700">Lọc theo học kỳ</label><Combobox options={semesterOptions} value={semester} onChange={setSemester} placeholder="Chọn học kỳ" emptyLabel="— Tất cả học kỳ —" className="w-72" /></div>
       <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b bg-white text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Học kỳ</th><th className="px-5 py-3">Môn / lớp</th><th className="px-5 py-3">Lịch học trong tuần</th><th className="px-5 py-3">Khoảng thời gian</th><th className="px-5 py-3">Phòng / GV</th><th className="px-5 py-3 text-right">Thao tác</th></tr></thead><tbody className="divide-y">{sections.map((item) => <tr key={item.id} className="hover:bg-slate-50"><td className="px-5 py-4">{item.semester}</td><td className="px-5 py-4"><p className="font-semibold">{item.subjectCode} - {item.subjectName}</p><p className="text-xs text-slate-500">{item.sectionCode} · {item.credits} tín chỉ · {item.classType === 'practical' ? 'Thực hành' : 'Lý thuyết'}</p></td><td className="px-5 py-4">{days[item.dayOfWeek]} · Tiết {item.startPeriod}-{item.endPeriod}{item.secondDayOfWeek ? <><br />{days[item.secondDayOfWeek]} · Tiết {item.secondStartPeriod}-{item.secondEndPeriod}</> : null}</td><td className="px-5 py-4">{item.startDate || 'Đầu kỳ'} → {item.endDate || 'Cuối kỳ'}</td><td className="px-5 py-4">{item.room || 'Chưa xếp phòng'}<p className="text-xs text-slate-500">{item.lecturer || 'Chưa có giảng viên'}</p></td><td className="px-5 py-4 text-right"><button type="button" onClick={() => edit(item)} className="mr-3 text-brand-600">Sửa</button><button type="button" onClick={() => remove(item.id)} className="text-rose-600">Xóa</button></td></tr>)}</tbody></table>{!sections.length ? <p className="p-10 text-center text-sm text-slate-500">Chưa có lịch học cho học kỳ này.</p> : null}</div>
     </AdminListPage>
   );

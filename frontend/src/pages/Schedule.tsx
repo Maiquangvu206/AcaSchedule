@@ -186,6 +186,7 @@ export function SchedulePage() {
 
   useEffect(() => {
     if (!token) return;
+    // Danh sách học kỳ lấy từ bảng `semesters` (dùng chung toàn hệ thống).
     fetchScheduleSemesters(token)
       .then((options) => {
         setSemesters(options);
