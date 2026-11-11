@@ -13,8 +13,9 @@ services:
         value: https://acaschedule-backend-dbos.onrender.com
 
   # 2. Backend (Express / Node.js)
+  # Tên phải khớp với service đang chạy thật (frontend trỏ tới *-dbos).
   - type: web
-    name: acaschedule-backend
+    name: acaschedule-backend-dbos
     env: node
     plan: free
     rootDir: backend
@@ -53,6 +54,9 @@ services:
         sync: false
       - key: AI_SERVICE_URL
         value: https://acaschedule-ai-quju.onrender.com
+      # Host của kho lưu trữ: KHÔNG kèm /bucket, KHÔNG có https://
+      # (đã có trong MINIO_ENDPOINT ở trên — giữ cho MINIO_PUBLIC_ENDPOINT
+      #  trỏ đúng host mà trình duyệt dùng để PUT file).
       # Mail (Render free blocks SMTP ports — Resend HTTPS API is preferred)
       - key: RESEND_API_KEY
         sync: false
