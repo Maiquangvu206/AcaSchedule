@@ -19,7 +19,9 @@ services:
     # The app is TypeScript: it must be compiled to dist/ before `npm start`.
     buildCommand: npm install --include=dev && npm run build
     # Migrations/seeds use the compiled JS so no dev-only tooling (tsx) is required at runtime.
-    startCommand: npm run migrate:compiled && npm run seed:compiled && npm start
+    # Migrations are mandatory; the seed only ensures reference data + the admin
+    # account, so a seed failure must never take the whole API offline.
+    startCommand: npm run migrate:compiled && (npm run seed:compiled || echo "seed failed - starting API anyway") && npm start
     # Liveness probe (Redis/MinIO are optional on Render, so do not require them).
     healthCheckPath: /api/health/live
     envVars:

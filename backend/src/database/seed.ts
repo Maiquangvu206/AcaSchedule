@@ -67,14 +67,20 @@ async function seedPeriodSlots(client: PoolClient): Promise<void> {
 }
 
 async function seedGradeScales(client: PoolClient): Promise<void> {
+  // Admins can customise the grading scale in the UI. Only install the
+  // defaults on a fresh database so a redeploy never overwrites their edits.
+  const existing = await client.query<{ total: number }>(
+    'SELECT count(*)::int AS total FROM grade_scales',
+  );
+  if ((existing.rows[0]?.total ?? 0) > 0) return;
+
   for (const scale of GRADE_SCALES) {
     await client.query(
+      // `min_score_10` is the only unique key on grade_scales (001_init.sql).
+      // Targeting `letter_grade` raised 42P10 and crashed the backend at boot.
       `INSERT INTO grade_scales (min_score_10, letter_grade, grade_4, is_pass)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (letter_grade) DO UPDATE
-       SET min_score_10 = EXCLUDED.min_score_10,
-           grade_4 = EXCLUDED.grade_4,
-           is_pass = EXCLUDED.is_pass`,
+       ON CONFLICT (min_score_10) DO NOTHING`,
       [scale.minScore, scale.letter, scale.grade4, scale.isPass],
     );
   }
