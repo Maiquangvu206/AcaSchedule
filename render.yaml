@@ -5,7 +5,7 @@ services:
     env: static
     rootDir: frontend
     # Không tự deploy khi push code: phải bấm Manual Deploy trong dashboard.
-    autoDeploy: false
+    autoDeploy: true
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
@@ -71,7 +71,7 @@ services:
       # File tài liệu KHÔNG lưu trong Postgres. Toàn bộ file nằm ở bucket S3.
       # Xem docs/r2-setup.md để biết cách lấy từng giá trị.
       - key: MINIO_ENDPOINT
-        value:d9ed49d5cba218cfcb946cc67a6bec19.r2.cloudflarestorage.com
+        sync: false # <account-id>.r2.cloudflarestorage.com
       - key: MINIO_PORT
         value: 443
       - key: MINIO_USE_SSL
