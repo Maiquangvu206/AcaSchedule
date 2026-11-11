@@ -366,8 +366,20 @@ export const authStorage = {
   },
 };
 
-async function parseResponse<T>(response: Response): Promise<T> {
-  const text = await response.text();
+/** Human-readable message when the server did not send one (e.g. proxy errors). */
+function defaultErrorMessage(response: Response): string {
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get('Retry-After') ?? '');
+    const wait =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? `Vui lòng thử lại sau ${Math.ceil(retryAfter)} giây.`
+        : 'Vui lòng thử lại sau ít phút.';
+    return `Hệ thống đang giới hạn số yêu cầu (HTTP 429). ${wait}`;
+  }
+  return `Yêu cầu thất bại (HTTP ${response.status})`;
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {  const text = await response.text();
   let body: T | ApiErrorBody | null = null;
   if (text) {
     try {
@@ -385,11 +397,13 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const errorBody = (body ?? {}) as ApiErrorBody;
-    throw new ApiError(
-      response.status,
-      errorBody.message ?? `Yêu cầu thất bại (HTTP ${response.status})`,
-      errorBody.error,
-    );
+    const baseMessage = errorBody.message ?? defaultErrorMessage(response);
+    // Surface the server request id so a 500 can be traced in the Render logs.
+    const message =
+      response.status >= 500 && errorBody.requestId
+        ? `${baseMessage} (mã lỗi: ${errorBody.requestId})`
+        : baseMessage;
+    throw new ApiError(response.status, message, errorBody.error);
   }
 
   return body as T;

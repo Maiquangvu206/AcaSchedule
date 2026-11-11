@@ -22,6 +22,8 @@ export const aiRouter = Router();
 const upstreamBase = () => env.AI_SERVICE_URL.replace(/\/+$/, '');
 const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
 const CACHE_VERSION = 'v4';
+/** Delay before a single retry when the AI upstream reports 429/503. */
+const AI_RETRY_DELAY_MS = 1500;
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -128,7 +130,36 @@ aiRouter.post(
       'Requesting AI advice',
     );
 
-    const upstream = await proxyToAi('/advice', body);
+    let upstream = await proxyToAi('/advice', body);
+
+    // Gemini free-tier quota (429) and cold starts (503) are transient:
+    // give the AI service one more chance before degrading.
+    if (upstream.status === 429 || upstream.status === 503) {
+      logger.warn(
+        { studentId, status: upstream.status },
+        'AI upstream busy, retrying once',
+      );
+      await new Promise((resolve) => setTimeout(resolve, AI_RETRY_DELAY_MS));
+      upstream = await proxyToAi('/advice', body);
+    }
+
+    if (!upstream.ok) {
+      // Never leak a raw 429 (Gemini quota) to the browser: the UI would show
+      // "Yeu cau that bai (HTTP 429)" with no explanation.
+      logger.error(
+        { studentId, status: upstream.status },
+        'AI service failed after retry',
+      );
+      res.set('Retry-After', '60');
+      res.status(503).json({
+        error: 'AIUnavailable',
+        message:
+          'Trợ lý AI đang tạm quá tải hoặc đã hết hạn mức gọi Gemini. ' +
+          'Vui lòng thử lại sau 1–2 phút.',
+      });
+      return;
+    }
+
     const bodyText = await upstream.text();
     let parsed: { advice?: string; model?: string; used_fallback?: boolean };
     try {
@@ -143,11 +174,20 @@ aiRouter.post(
       used_fallback: parsed.used_fallback ?? true,
     };
 
+    if (!result.advice.trim()) {
+      res.set('Retry-After', '60');
+      res.status(503).json({
+        error: 'AIUnavailable',
+        message: 'Trợ lý AI chưa trả về nội dung. Vui lòng thử lại sau ít phút.',
+      });
+      return;
+    }
+
     if (!result.used_fallback) {
       await setCached(cacheKey, result);
     }
 
-    res.status(upstream.status).type('application/json').json(result);
+    res.status(200).type('application/json').json(result);
   }),
 );
 

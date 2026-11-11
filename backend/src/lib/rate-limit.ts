@@ -25,6 +25,7 @@ export function rateLimit(
     res.set('X-RateLimit-Remaining', String(quota.remaining));
 
     if (!quota.allowed) {
+      res.set('Retry-After', String(ttlSeconds));
       throw new AppError(
         429,
         'TooManyRequests',
