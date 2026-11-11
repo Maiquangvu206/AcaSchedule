@@ -119,8 +119,17 @@ export function calculateGpa(
 
   let creditsAttempted = 0;
   let creditsEarned = 0;
+  let creditsStudied = 0;
   let weightedPoints = 0;
   let countedSubjects = 0;
+
+  // "Tín chỉ đã học": mọi lượt đã học đều được tính — kể cả môn trượt và
+  // môn học lại (mỗi lượt một lần). Đây cũng là cơ sở tính học phí.
+  for (const attempt of attempts) {
+    if (attempt.credits > 0) {
+      creditsStudied += attempt.credits;
+    }
+  }
 
   for (const group of bySubject.values()) {
     const first = group[0];
@@ -180,6 +189,7 @@ export function calculateGpa(
     cpa,
     creditsAttempted,
     creditsEarned,
+    creditsStudied,
     countedSubjects,
     totalAttempts: attempts.length,
     subjects,

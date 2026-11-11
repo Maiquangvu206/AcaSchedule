@@ -228,6 +228,71 @@ describe('calculateGpa with per-major grade configuration', () => {
   });
 });
 
+describe('creditsStudied', () => {
+  it('counts every attempt, including failed subjects and retakes', () => {
+    const result = calculateGpa([
+      attempt({ id: 'a1', subjectId: 's1', credits: 3, grade4: 0, letterGrade: 'F', attemptNo: 1 }),
+      attempt({ id: 'a2', subjectId: 's1', credits: 3, grade4: 2.5, attemptNo: 2 }),
+      attempt({ id: 'b1', subjectId: 's2', subjectCode: 'SUB102', credits: 4, grade4: 3.0 }),
+    ]);
+
+    // 3 (F) + 3 (retake) + 4 = 10
+    expect(result.creditsStudied).toBe(10);
+    // CPA still counts each subject once.
+    expect(result.creditsAttempted).toBe(7);
+    expect(result.creditsEarned).toBe(7);
+  });
+
+  it('counts a failed subject with no retake', () => {
+    const result = calculateGpa([
+      attempt({ id: 'a1', subjectId: 's1', credits: 3, grade4: 0, letterGrade: 'F' }),
+    ]);
+
+    expect(result.creditsStudied).toBe(3);
+    expect(result.creditsAttempted).toBe(3);
+    expect(result.creditsEarned).toBe(0);
+  });
+
+  it('counts an improvement attempt again', () => {
+    const result = calculateGpa([
+      attempt({ id: 'a1', subjectId: 's1', credits: 3, grade4: 3.0, attemptNo: 1 }),
+      attempt({ id: 'a2', subjectId: 's1', credits: 3, grade4: 3.5, attemptNo: 2 }),
+    ]);
+
+    expect(result.creditsStudied).toBe(6);
+    expect(result.creditsAttempted).toBe(3);
+    expect(result.creditsEarned).toBe(3);
+  });
+
+  it('includes "tuition only" subjects because they were studied', () => {
+    const result = calculateGpa([
+      attempt({ id: 'a1', subjectId: 's1', credits: 3, grade4: 4.0 }),
+      attempt({
+        id: 'b1',
+        subjectId: 's2',
+        subjectCode: 'SUB102',
+        credits: 2,
+        grade4: 0.5,
+        letterGrade: 'F',
+        calculateGrade: false,
+      }),
+    ]);
+
+    expect(result.creditsStudied).toBe(5);
+    expect(result.creditsAttempted).toBe(3);
+    expect(result.creditsEarned).toBe(3);
+  });
+
+  it('ignores zero-credit subjects', () => {
+    const result = calculateGpa([
+      attempt({ id: 'a1', subjectId: 's1', credits: 0, grade4: 4 }),
+      attempt({ id: 'b1', subjectId: 's2', credits: 3, grade4: 3 }),
+    ]);
+
+    expect(result.creditsStudied).toBe(3);
+  });
+});
+
 describe('forecastCpa', () => {
   it('computes the required average for the next credits', () => {
     const result = forecastCpa({ cpa: 3.0, credits: 30, targetCpa: 3.2, additionalCredits: 15 });

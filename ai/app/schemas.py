@@ -19,12 +19,25 @@ class GradeScaleItem(BaseModel):
     isPass: bool
 
 
+class SummaryItem(BaseModel):
+    """Aggregate figures computed by the backend (never recalculated by the model)."""
+
+    cpa: float = 0
+    credits_counted: int = 0
+    credits_earned: int = 0
+    credits_studied: int = 0
+    counted_subjects: int = 0
+    total_attempts: int = 0
+
+
 class AdviceRequest(BaseModel):
     student_name: str | None = None
     target_cpa: float | None = Field(default=None, ge=0, le=4)
     grades: list[GradeItem] = Field(default_factory=list)
     # Official, admin-editable grading scale (score 10 → letter → GPA4).
     grade_scale: list[GradeScaleItem] = Field(default_factory=list)
+    # Pre-computed totals so the answer matches the transcript page exactly.
+    summary: SummaryItem | None = None
     question: str | None = None
 
 

@@ -70,8 +70,20 @@ export interface SemesterCalculation {
 
 export interface GpaCalculation {
   cpa: number;
+  /**
+   * Credits of the attempts that count for CPA (one attempt per subject).
+   * This is the denominator of the CPA.
+   */
   creditsAttempted: number;
+  /**
+   * Accumulated credits: passed subjects that count for CPA, counted once.
+   */
   creditsEarned: number;
+  /**
+   * Credits of every attempt the student has taken — failed subjects and
+   * retakes are counted again (this is what tuition is charged on).
+   */
+  creditsStudied: number;
   countedSubjects: number;
   totalAttempts: number;
   subjects: SubjectCalculation[];

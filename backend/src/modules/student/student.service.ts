@@ -149,6 +149,7 @@ export async function createEnrollment(studentId: string, input: CreateEnrollmen
         cpa: calculation.cpa,
         creditsAttempted: calculation.creditsAttempted,
         creditsEarned: calculation.creditsEarned,
+        creditsStudied: calculation.creditsStudied,
       },
     };
   });
@@ -202,6 +203,7 @@ export async function createEnrollmentAdmin(
         cpa: calculation.cpa,
         creditsAttempted: calculation.creditsAttempted,
         creditsEarned: calculation.creditsEarned,
+        creditsStudied: calculation.creditsStudied,
       },
     };
   });
@@ -281,6 +283,7 @@ export async function updateEnrollmentById(
         cpa: calculation.cpa,
         creditsAttempted: calculation.creditsAttempted,
         creditsEarned: calculation.creditsEarned,
+        creditsStudied: calculation.creditsStudied,
       },
     };
   });
@@ -355,6 +358,7 @@ export interface Transcript {
     cpa: number;
     creditsAttempted: number;
     creditsEarned: number;
+    creditsStudied: number;
     countedSubjects: number;
     totalAttempts: number;
   };
@@ -376,6 +380,7 @@ export interface MajorStatistics {
     cpa: number;
     creditsAttempted: number;
     creditsEarned: number;
+    creditsStudied: number;
     countedSubjects: number;
     totalAttempts: number;
   };
@@ -566,6 +571,7 @@ async function buildMajorStatistics(
       cpa: calculation.cpa,
       creditsAttempted: calculation.creditsAttempted,
       creditsEarned: calculation.creditsEarned,
+      creditsStudied: calculation.creditsStudied,
       countedSubjects: calculation.countedSubjects,
       totalAttempts: inProgramme.length,
     },
@@ -632,6 +638,7 @@ export async function getTranscript(studentId: string): Promise<Transcript> {
       cpa: calculation.cpa,
       creditsAttempted: calculation.creditsAttempted,
       creditsEarned: calculation.creditsEarned,
+      creditsStudied: calculation.creditsStudied,
       countedSubjects: calculation.countedSubjects,
       totalAttempts: calculation.totalAttempts,
     },

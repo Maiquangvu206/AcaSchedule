@@ -124,7 +124,7 @@ export function Dashboard() {
   const { transcript } = useGPA();
   const semesters = transcript?.semesters ?? [];
   const creditsEarned = transcript?.summary.creditsEarned ?? 0;
-  const creditsAttempted = transcript?.summary.creditsAttempted ?? 0;
+  const creditsStudied = transcript?.summary.creditsStudied ?? 0;
   const countedSubjects = transcript?.summary.countedSubjects ?? 0;
   const cpa = transcript?.summary.cpa ?? 0;
 
@@ -173,14 +173,14 @@ export function Dashboard() {
       {/* Thống kê tín chỉ */}
       <section className="grid gap-6 lg:grid-cols-4">
         <div className="rounded-2xl border border-gray-200 bg-white p-6">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Tín chỉ đã học</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Tín chỉ tích lũy</p>
           <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{creditsEarned}</p>
-          <p className="text-[11px] text-slate-500">đã hoàn thành</p>
+          <p className="text-[11px] text-slate-500">môn đã đạt, tính CPA</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-6">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Tín chỉ đã đăng ký</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{creditsAttempted}</p>
-          <p className="text-[11px] text-slate-500">tổng cộng</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Tín chỉ đã học</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{creditsStudied}</p>
+          <p className="text-[11px] text-slate-500">gồm môn trượt và học lại</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-6">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Môn đã tính CPA</p>

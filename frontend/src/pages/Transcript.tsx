@@ -129,7 +129,7 @@ export function TranscriptPage() {
             />
             <SummaryCard
               label="Tín chỉ đã học"
-              value={String(transcript.summary.creditsAttempted)}
+              value={String(transcript.summary.creditsStudied)}
               suffix="tín chỉ"
             />
             <SummaryCard
@@ -443,7 +443,7 @@ function MajorStatsCard({ stats }: { stats: MajorStatistics }) {
 
       <dl className="grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-xl border border-gray-200 px-3 py-2">
-          <dt className="text-xs text-slate-500">Tín chỉ đã đạt</dt>
+          <dt className="text-xs text-slate-500">Tín chỉ tích lũy</dt>
           <dd className="text-lg font-semibold text-slate-900">
             {stats.summary.creditsEarned}
             {plannedCredits > 0 ? (
@@ -452,8 +452,8 @@ function MajorStatsCard({ stats }: { stats: MajorStatistics }) {
           </dd>
         </div>
         <div className="rounded-xl border border-gray-200 px-3 py-2">
-          <dt className="text-xs text-slate-500">Tín chỉ đã đăng ký</dt>
-          <dd className="text-lg font-semibold text-slate-900">{stats.summary.creditsAttempted}</dd>
+          <dt className="text-xs text-slate-500">Tín chỉ đã học</dt>
+          <dd className="text-lg font-semibold text-slate-900">{stats.summary.creditsStudied}</dd>
         </div>
         <div className="rounded-xl border border-gray-200 px-3 py-2">
           <dt className="text-xs text-slate-500">Môn tính CPA</dt>

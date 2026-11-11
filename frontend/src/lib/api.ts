@@ -87,8 +87,12 @@ export interface Transcript {
   };
   summary: {
     cpa: number;
+    /** Credits of the attempts counted for CPA (one attempt per subject). */
     creditsAttempted: number;
+    /** Accumulated credits: passed subjects counted for CPA. */
     creditsEarned: number;
+    /** Credits of every attempt taken, failed subjects and retakes included. */
+    creditsStudied: number;
     countedSubjects: number;
     totalAttempts: number;
   };

@@ -108,6 +108,22 @@ def _prompt(payload: AdviceRequest, cpa: float, credits: int) -> str:
 
     target = f"{payload.target_cpa:.2f}/4.0" if payload.target_cpa is not None else "chưa đặt"
 
+    # Khi backend gửi kèm số liệu tổng hợp thì dùng luôn, để câu trả lời khớp
+    # chính xác với trang bảng điểm (AI không tự tính lại).
+    summary = payload.summary
+    if summary is not None:
+        stats_block = (
+            f"CPA hiện tại: {summary.cpa:.2f}/4.0\n"
+            f"Tín chỉ tính CPA: {summary.credits_counted}\n"
+            f"Tín chỉ tích lũy (môn đã đạt): {summary.credits_earned}\n"
+            f"Tín chỉ đã học (gồm môn trượt và học lại): {summary.credits_studied}\n"
+            f"Số môn tính CPA: {summary.counted_subjects}/{summary.total_attempts} lượt"
+        )
+    else:
+        stats_block = (
+            f"CPA hiện tại: {cpa:.2f}/4.0 trên {credits} tín chỉ được tính"
+        )
+
     return (
         "Bạn là cố vấn học tập cho sinh viên đại học Việt Nam. "
         "Trả lời bằng tiếng Việt, ngắn gọn, thực tế và có hành động cụ thể. "
@@ -115,7 +131,7 @@ def _prompt(payload: AdviceRequest, cpa: float, credits: int) -> str:
         "Mỗi ý chính viết thành một dòng bắt đầu bằng dấu -; tối đa 5 ý, trả lời đầy đủ "
         "và luôn kết thúc ở cuối một câu.\n\n"
         f"Sinh viên: {payload.student_name or 'ẩn danh'}\n"
-        f"CPA hiện tại: {cpa:.2f}/4.0 trên {credits} tín chỉ\n"
+        f"{stats_block}\n"
         f"Mục tiêu CPA: {target}\n\n"
         "Thang điểm chính thức của trường (bắt buộc dùng đúng thang này khi đổi điểm hệ 10 "
         f"sang điểm chữ/hệ 4; không tự bịa ngưỡng khác):\n{scale_lines}\n\n"

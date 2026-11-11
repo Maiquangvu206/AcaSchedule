@@ -221,6 +221,17 @@ aiRouter.post(
         };
       });
 
+      // Số liệu tổng hợp gửi thẳng cho AI để câu trả lời khớp với
+      // trang bảng điểm (AI không tự tính lại từ danh sách môn).
+      const summary = {
+        cpa: calculation.cpa,
+        credits_counted: calculation.creditsAttempted,
+        credits_earned: calculation.creditsEarned,
+        credits_studied: calculation.creditsStudied,
+        counted_subjects: calculation.countedSubjects,
+        total_attempts: calculation.totalAttempts,
+      };
+
       const safeQuestion = question ? redactPii(question) : undefined;
 
       const cacheKey = `ai:advice:${sha256(
@@ -245,6 +256,7 @@ aiRouter.post(
       const body = {
         target_cpa: targetCpa ?? null,
         grades,
+        summary,
         grade_scale: gradeScale,
         question: safeQuestion,
       };

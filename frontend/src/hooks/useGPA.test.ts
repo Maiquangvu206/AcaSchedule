@@ -8,7 +8,14 @@ global.fetch = mockFetch;
 
 const mockTranscript = {
   student: { id: '1', email: 'test@test.com', fullName: 'Test User' },
-  summary: { cpa: 3.2, creditsAttempted: 30, creditsEarned: 30, countedSubjects: 6, totalAttempts: 6 },
+  summary: {
+    cpa: 3.2,
+    creditsAttempted: 30,
+    creditsEarned: 30,
+    creditsStudied: 33,
+    countedSubjects: 6,
+    totalAttempts: 6,
+  },
   semesters: [
     { semester: '2024-1', gpa: 3.0, credits: 15, earnedCredits: 15, attempts: [] },
     { semester: '2024-2', gpa: 3.5, credits: 15, earnedCredits: 15, attempts: [] },
