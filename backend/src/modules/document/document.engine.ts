@@ -1,4 +1,4 @@
-export const MAX_DOCUMENT_SIZE_BYTES = 20 * 1024 * 1024;
+export const MAX_DOCUMENT_SIZE_BYTES = 100 * 1024 * 1024;
 
 /** MIME type → allowed extensions. Anything outside this map is rejected. */
 export const ALLOWED_FILE_TYPES: Readonly<Record<string, readonly string[]>> = {

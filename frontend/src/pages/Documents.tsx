@@ -22,7 +22,8 @@ import {
 } from '../lib/api';
 import { ContextualAiPanel } from '../components/ContextualAiPanel';
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_FILE_SIZE_MB = 100;
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
 const ACCEPT = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg';
 
 const MIME_BY_EXTENSION: Record<string, string> = {
@@ -224,7 +225,7 @@ export function DocumentsPage() {
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError('Tệp vượt quá giới hạn 20 MB.');
+      setUploadError(`Tệp vượt quá giới hạn ${MAX_FILE_SIZE_MB} MB.`);
       return;
     }
 
@@ -479,7 +480,7 @@ export function DocumentsPage() {
           <section className="rounded-2xl border border-gray-200 bg-white p-5">
             <h2 className="text-lg font-semibold text-slate-900">Chia sẻ tài liệu</h2>
             <p className="mt-1 text-xs leading-5 text-slate-600">
-              Tối đa 20 MB. Hỗ trợ PDF, Office, văn bản và ảnh. Tệp thực thi bị chặn.
+              Tối đa {MAX_FILE_SIZE_MB} MB. Hỗ trợ PDF, Office, văn bản và ảnh. Tệp thực thi bị chặn.
             </p>
 
             <form onSubmit={handleUpload} className="mt-4 space-y-3">
