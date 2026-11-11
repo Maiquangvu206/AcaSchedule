@@ -251,9 +251,20 @@ export function DocumentsPage() {
           headers: ticket.requiredHeaders,
           body: file,
         });
-      } catch {
+      } catch (caught) {
+        // A blocked CORS preflight also surfaces here as a generic network
+        // error, so name the host the browser actually tried to reach.
+        const host = (() => {
+          try {
+            return new URL(ticket.uploadUrl).host;
+          } catch {
+            return 'kho lưu trữ';
+          }
+        })();
         throw new Error(
-          'Không kết nối được kho lưu trữ (MinIO). Kiểm tra cấu hình MINIO_* và CORS của bucket.',
+          `Không kết nối được kho lưu trữ (${host}). ` +
+            'Thường do CORS của bucket chưa cho phép origin của trang, ' +
+            'hoặc endpoint/sai vùng (R2 cần MINIO_REGION=auto).',
         );
       }
       if (!uploadResponse.ok) {
