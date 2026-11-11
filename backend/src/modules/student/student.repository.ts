@@ -253,6 +253,8 @@ export interface CurriculumSubjectRecord {
   isRequired: boolean;
   semesterNo: number | null;
   managingUnit: string;
+  /** False = môn chỉ tính học phí, không tính vào điểm. */
+  calculateGrade: boolean;
 }
 
 /** Personal study-plan semester overrides for a student. */
@@ -318,6 +320,7 @@ export async function listCurriculumSubjects(
     is_required: boolean;
     semester_no: number | null;
     managing_unit: string;
+    calculate_grade: boolean;
   }>(
     `SELECT s.id AS subject_id,
             s.code AS subject_code,
@@ -325,7 +328,8 @@ export async function listCurriculumSubjects(
             s.credits,
             cs.is_required,
             cs.semester_no,
-            s.managing_unit
+            s.managing_unit,
+            cs.calculate_grade
        FROM curriculum_subjects cs
        JOIN subjects s ON s.id = cs.subject_id
       WHERE cs.major_id = $1
@@ -340,6 +344,7 @@ export async function listCurriculumSubjects(
     isRequired: row.is_required,
     semesterNo: row.semester_no,
     managingUnit: row.managing_unit ?? '',
+    calculateGrade: row.calculate_grade,
   }));
 }
 

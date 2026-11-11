@@ -630,6 +630,39 @@ CREATE TRIGGER ai_provider_keys_set_updated_at
     BEFORE UPDATE ON ai_provider_keys
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+-- >>>>>>>>>>>>>>>>>>>> 025_major_minimum_credits.sql <<<<<<<<<<<<<<<<<<<<
+-- 025_major_minimum_credits.sql — số tín chỉ tối thiểu mỗi ngành yêu cầu.
+--
+-- Không phải ngành nào cũng bắt sinh viên học hết mọi môn trong chương trình
+-- đào tạo, nên mỗi ngành có một mốc tối thiểu do admin setup. Tiến độ trên
+-- trang Tổng quan so sánh số tín chỉ đã đạt (chỉ tính môn tính điểm) với mốc
+-- này — vượt mốc vẫn được.
+
+ALTER TABLE majors
+    ADD COLUMN IF NOT EXISTS minimum_credits integer;
+
+COMMENT ON COLUMN majors.minimum_credits IS
+  'Số tín chỉ tối thiểu sinh viên phải đạt để tốt nghiệp ngành này (NULL = dùng tổng tín chỉ chương trình)';
+
+-- Giá trị mặc định: tổng tín chỉ của các môn trong chương trình đào tạo.
+UPDATE majors m
+   SET minimum_credits = sub.total
+  FROM (
+    SELECT cs.major_id, sum(s.credits)::int AS total
+      FROM curriculum_subjects cs
+      JOIN subjects s ON s.id = cs.subject_id
+     WHERE cs.calculate_grade
+     GROUP BY cs.major_id
+  ) sub
+ WHERE m.minimum_credits IS NULL
+   AND m.id = sub.major_id;
+
+ALTER TABLE majors
+    DROP CONSTRAINT IF EXISTS majors_minimum_credits_check;
+ALTER TABLE majors
+    ADD CONSTRAINT majors_minimum_credits_check
+    CHECK (minimum_credits IS NULL OR minimum_credits >= 0);
+
 -- =====================================================================
 -- Danh dau da chay migration de buoc migrate cua backend khong chay lai.
 -- =====================================================================
@@ -663,3 +696,4 @@ INSERT INTO schema_migrations (name, checksum) VALUES ('021_subjects_managing_un
 INSERT INTO schema_migrations (name, checksum) VALUES ('022_semesters.sql', '5b83c7345fe6980391720d522da54bc8cac63f5ff4102b027af1dd2532bb282e') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
 INSERT INTO schema_migrations (name, checksum) VALUES ('023_curriculum_subject_weights.sql', 'db9b03d81d6cfac47c5b4a947b7404d9cdff5725563b1c13c1aca8eb95ccc505') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
 INSERT INTO schema_migrations (name, checksum) VALUES ('024_ai_admin.sql', 'f46396c36853c88344492ce0300e1a90d1477d3d90f42833c89895a18b58b5b9') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
+INSERT INTO schema_migrations (name, checksum) VALUES ('025_major_minimum_credits.sql', '36c334c2a118b04794337c8b8d37d729fd66427981d603f7b5fa94d1cacf2099') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;

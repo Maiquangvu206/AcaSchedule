@@ -7,6 +7,8 @@ const majorSchema = z.object({
   code: z.string().trim().min(1).max(30),
   name: z.string().trim().min(1).max(255),
   departmentId: z.string().uuid(),
+  /** Số tín chỉ tối thiểu sinh viên phải đạt; null = dùng tổng chương trình. */
+  minimumCredits: z.number().int().min(0).max(1000).nullable().optional(),
 });
 
 const departmentSchema = z.object({
@@ -54,11 +56,14 @@ curriculumRouter.get('/majors', asyncHandler(async (_req, res) => {
   const result = await pool.query(`
     SELECT m.id, m.code, m.name, m.department_id AS "departmentId",
            d.code AS "departmentCode", d.name AS "departmentName",
+           m.minimum_credits AS "minimumCredits",
            count(cs.subject_id)::int AS "subjectCount",
-           count(cs.subject_id) FILTER (WHERE cs.calculate_grade)::int AS "gradedSubjectCount"
+           count(cs.subject_id) FILTER (WHERE cs.calculate_grade)::int AS "gradedSubjectCount",
+           COALESCE(sum(s.credits) FILTER (WHERE cs.calculate_grade), 0)::int AS "programCredits"
     FROM majors m
     LEFT JOIN departments d ON d.id = m.department_id
     LEFT JOIN curriculum_subjects cs ON cs.major_id = m.id
+    LEFT JOIN subjects s ON s.id = cs.subject_id
     GROUP BY m.id, d.code, d.name
     ORDER BY m.code
   `);
@@ -69,8 +74,10 @@ curriculumRouter.post('/majors', asyncHandler(async (req, res) => {
   const input = majorSchema.parse(req.body);
   try {
     const result = await pool.query(
-      'INSERT INTO majors (code, name, department_id) VALUES ($1, $2, $3) RETURNING id, code, name, department_id AS "departmentId"',
-      [input.code, input.name, input.departmentId],
+      `INSERT INTO majors (code, name, department_id, minimum_credits)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, code, name, department_id AS "departmentId", minimum_credits AS "minimumCredits"`,
+      [input.code, input.name, input.departmentId, input.minimumCredits ?? null],
     );
     res.status(201).json({ major: { ...result.rows[0], subjectCount: 0, departmentCode: null, departmentName: null } });
   } catch (error) {
@@ -90,10 +97,18 @@ curriculumRouter.patch('/majors/:majorId', asyncHandler(async (req, res) => {
       SET code = COALESCE($1, code),
           name = COALESCE($2, name),
           department_id = COALESCE($3, department_id),
+          minimum_credits = CASE WHEN $5::boolean THEN $4 ELSE minimum_credits END,
           updated_at = now()
-      WHERE id = $4
-      RETURNING id, code, name, department_id AS "departmentId"
-    `, [input.code ?? null, input.name ?? null, input.departmentId ?? null, req.params.majorId]);
+      WHERE id = $6
+      RETURNING id, code, name, department_id AS "departmentId", minimum_credits AS "minimumCredits"
+    `, [
+      input.code ?? null,
+      input.name ?? null,
+      input.departmentId ?? null,
+      input.minimumCredits ?? null,
+      input.minimumCredits !== undefined,
+      req.params.majorId,
+    ]);
     if (!result.rowCount) throw AppError.notFound('Không tìm thấy ngành');
     res.json({ major: { ...result.rows[0], subjectCount: 0, departmentCode: null, departmentName: null } });
   } catch (error) {

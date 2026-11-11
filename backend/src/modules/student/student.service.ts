@@ -362,6 +362,8 @@ export interface Transcript {
     countedSubjects: number;
     totalAttempts: number;
   };
+  /** Tiến độ của ngành chính so với số tín chỉ tối thiểu. */
+  progress: MajorStatistics['progress'] | null;
   semesters: TranscriptSemester[];
   /** Study plan from the major's training programme, enriched with the student's attempts. */
   curriculum: TranscriptCurriculum | null;
@@ -383,6 +385,14 @@ export interface MajorStatistics {
     creditsStudied: number;
     countedSubjects: number;
     totalAttempts: number;
+  };
+  /** Tiến độ so với số tín chỉ tối thiểu của ngành (chỉ tính môn tính điểm). */
+  progress: {
+    requiredCredits: number;
+    earnedCredits: number;
+    programCredits: number;
+    percent: number;
+    isComplete: boolean;
   };
   semesters: TranscriptSemester[];
   tuition: TuitionRow[];
@@ -552,6 +562,18 @@ async function buildMajorStatistics(
   const calculation = calculateGpa(inProgramme);
   const curriculum = await buildCurriculum(studentId, calculation, major);
 
+  // Mốc tối thiểu do admin setup; nếu chưa setup thì lấy tổng tín chỉ của
+  // các môn TÍNH ĐIỂM trong chương trình (môn "chỉ học phí" không tính).
+  const curriculumSubjects = await listCurriculumSubjects(major.id);
+  const programCredits = curriculumSubjects
+    .filter((subject) => subject.calculateGrade)
+    .reduce((sum, subject) => sum + subject.credits, 0);
+  const requiredCredits = major.minimumCredits ?? programCredits;
+
+  // Tiến độ chỉ tính môn tính điểm đã đạt (creditsEarned đã loại môn
+  // "chỉ tính học phí" và môn trượt).
+  const earnedCredits = calculation.creditsEarned;
+
   // Tuition is charged on registered credits, so retakes are billed again.
   const tuition = buildTuitionRows(
     inProgramme.map((attempt) => ({
@@ -574,6 +596,13 @@ async function buildMajorStatistics(
       creditsStudied: calculation.creditsStudied,
       countedSubjects: calculation.countedSubjects,
       totalAttempts: inProgramme.length,
+    },
+    progress: {
+      requiredCredits,
+      earnedCredits,
+      programCredits,
+      percent: requiredCredits > 0 ? Math.round((earnedCredits / requiredCredits) * 100) : 0,
+      isComplete: earnedCredits >= requiredCredits,
     },
     semesters: buildSemesterViews(calculation),
     tuition,
@@ -632,6 +661,10 @@ export async function getTranscript(studentId: string): Promise<Transcript> {
     fees,
   );
 
+  // Tiến độ tổng hợp: tính theo ngành chính (ngành đầu tiên). Môn học chung
+  // giữa hai ngành chỉ tính một lần.
+  const primaryProgress = majorStatistics[0]?.progress ?? null;
+
   return {
     student,
     summary: {
@@ -642,6 +675,7 @@ export async function getTranscript(studentId: string): Promise<Transcript> {
       countedSubjects: calculation.countedSubjects,
       totalAttempts: calculation.totalAttempts,
     },
+    progress: primaryProgress,
     semesters: buildSemesterViews(calculation),
     curriculum,
     majors: majorStatistics,

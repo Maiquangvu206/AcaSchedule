@@ -15,6 +15,8 @@ export function AdminMajorsPage() {
   const [departmentName, setDepartmentName] = useState('');
   const [majorCode, setMajorCode] = useState('');
   const [majorName, setMajorName] = useState('');
+  const [minimumCreditsDraft, setMinimumCreditsDraft] = useState<Record<string, string>>({});
+  const [savingMajorId, setSavingMajorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [curriculumByMajor, setCurriculumByMajor] = useState<Map<string, CurriculumSubject[]>>(new Map());
   const [draftBySubject, setDraftBySubject] = useState<Record<string, string>>({});
@@ -79,6 +81,28 @@ export function AdminMajorsPage() {
       load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Không thể cập nhật khoa cho ngành.');
+    }
+  };
+
+  /** Lưu số tín chỉ tối thiểu của ngành (để trống = dùng tổng chương trình). */
+  const saveMinimumCredits = async (major: AdminMajor) => {
+    if (!token) return;
+    const raw = (minimumCreditsDraft[major.id] ?? '').trim();
+    if (raw !== '' && (!Number.isFinite(Number(raw)) || Number(raw) < 0)) {
+      setError('Số tín chỉ tối thiểu phải là số không âm (để trống = dùng tổng chương trình).');
+      return;
+    }
+    const value = raw === '' ? null : Math.trunc(Number(raw));
+    setSavingMajorId(major.id);
+    setError(null);
+    try {
+      const saved = await updateAdminMajor(token, major.id, { minimumCredits: value });
+      setMajors((items) => items.map((item) => (item.id === major.id ? { ...item, ...saved } : item)));
+      setMinimumCreditsDraft((prev) => ({ ...prev, [major.id]: value === null ? '' : String(value) }));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Không thể lưu số tín chỉ tối thiểu.');
+    } finally {
+      setSavingMajorId(null);
     }
   };
 
@@ -148,15 +172,50 @@ export function AdminMajorsPage() {
       </div>
       <div className="p-5">
         <h2 className="font-semibold text-slate-900">Cơ cấu khoa và ngành</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Không phải ngành nào cũng bắt học hết mọi môn trong chương trình, nên mỗi ngành có
+          thể đặt số tín chỉ tối thiểu riêng. Tiến độ trên trang Tổng quan so sánh số tín
+          chỉ đã đạt (chỉ tính môn tính điểm) với mốc này — vượt mốc vẫn được.
+        </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {departments.map((department) => (
             <section key={department.id} className="rounded-xl border border-slate-200 p-4">
               <div className="flex items-start justify-between"><div><p className="font-semibold text-slate-900">{department.code}</p><p className="text-sm text-slate-600">{department.name}</p></div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">{department.majorCount} ngành</span></div>
-              <div className="mt-3 space-y-2">{majors.filter((major) => major.departmentId === department.id).map((major) => <div key={major.id} className="rounded-lg bg-slate-50 px-3 py-2"><p className="text-sm font-medium text-slate-800">{major.code} - {major.name}</p><p className="text-xs text-slate-500">{major.subjectCount} môn trong chương trình</p></div>)}{!majors.some((major) => major.departmentId === department.id) ? <p className="text-sm text-slate-400">Chưa có ngành.</p> : null}</div>
+              <div className="mt-3 space-y-2">{majors.filter((major) => major.departmentId === department.id).map((major) => (
+                <div key={major.id} className="rounded-lg bg-slate-50 px-3 py-2">
+                  <p className="text-sm font-medium text-slate-800">{major.code} - {major.name}</p>
+                  <p className="text-xs text-slate-500">{major.subjectCount} môn trong chương trình</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="text-xs text-slate-600" htmlFor={`min-credits-${major.id}`}>
+                      Tín chỉ tối thiểu
+                    </label>
+                    <input
+                      id={`min-credits-${major.id}`}
+                      type="number"
+                      min="0"
+                      value={minimumCreditsDraft[major.id] ?? (major.minimumCredits === null ? '' : String(major.minimumCredits))}
+                      onChange={(event) => setMinimumCreditsDraft((prev) => ({ ...prev, [major.id]: event.target.value }))}
+                      placeholder={String(major.programCredits)}
+                      className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-sm"
+                    />
+                    <span className="text-[11px] text-slate-500">
+                      {major.programCredits} TC trong chương trình
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void saveMinimumCredits(major)}
+                      disabled={savingMajorId === major.id}
+                      className="ml-auto rounded-lg bg-brand-500 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                    >
+                      {savingMajorId === major.id ? 'Đang lưu…' : 'Lưu'}
+                    </button>
+                  </div>
+                </div>
+              ))}{!majors.some((major) => major.departmentId === department.id) ? <p className="text-sm text-slate-400">Chưa có ngành.</p> : null}</div>
             </section>
           ))}
         </div>
-        {majors.some((major) => !major.departmentId) ? <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4"><h3 className="font-semibold text-amber-900">Ngành chưa gán khoa</h3><div className="mt-3 space-y-2">{majors.filter((major) => !major.departmentId).map((major) => <div key={major.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"><span className="text-sm font-medium text-slate-800">{major.code} - {major.name}</span><select defaultValue="" onChange={(event) => attachMajor(major, event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Chọn khoa để gán</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.code} - {department.name}</option>)}</select></div>)}</div></section> : null}
+        {majors.some((major) => !major.departmentId) ? <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4"><h3 className="font-semibold text-amber-900">Ngành chưa gán khoa</h3><div className="mt-3 space-y-2">{majors.filter((major) => !major.departmentId).map((major) => <div key={major.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"><span className="text-sm font-medium text-slate-800">{major.code} - {major.name}</span><div className="flex items-center gap-2"><label className="text-xs text-slate-600">Tín chỉ tối thiểu</label><input type="number" min="0" value={minimumCreditsDraft[major.id] ?? (major.minimumCredits === null ? '' : String(major.minimumCredits))} onChange={(event) => setMinimumCreditsDraft((prev) => ({ ...prev, [major.id]: event.target.value }))} placeholder={String(major.programCredits)} className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-sm" /><button type="button" onClick={() => void saveMinimumCredits(major)} disabled={savingMajorId === major.id} className="rounded-lg bg-brand-500 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">{savingMajorId === major.id ? 'Đang lưu…' : 'Lưu'}</button><select defaultValue="" onChange={(event) => attachMajor(major, event.target.value)} className="rounded-lg border border-slate-200 px-3 py-1 text-sm"><option value="">Chọn khoa để gán</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.code} - {department.name}</option>)}</select></div></div>)}</div></section> : null}
         {!departments.length ? <p className="mt-4 text-sm text-slate-500">Chưa có khoa nào. Hãy tạo khoa trước.</p> : null}
       </div>
       <div className="border-t border-slate-100 p-5">

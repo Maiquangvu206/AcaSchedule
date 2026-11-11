@@ -133,6 +133,20 @@ export function Dashboard() {
   const majors = transcript?.majors ?? [];
   const [selectedMajorId, setSelectedMajorId] = useState<'all' | string>('all');
 
+  /**
+   * Thẻ tiến độ cho từng ngành: so sánh tín chỉ đã đạt (chỉ môn tính điểm)
+   * với mốc tối thiểu do admin setup. Vượt mốc vẫn hiện bình thường.
+   */
+  const progressCards = majors
+    .filter((major) => major.progress)
+    .map((major) => ({
+      majorId: major.majorId,
+      majorCode: major.majorCode,
+      majorName: major.majorName,
+      isPrimary: major.isPrimary,
+      ...major.progress,
+    }));
+
   const majorOptions = majors.map((major) => ({
     value: major.majorId,
     label: `${major.isPrimary ? 'Ngành chính' : 'Ngành phụ'} · ${major.majorCode} - ${major.majorName}`,
@@ -193,6 +207,55 @@ export function Dashboard() {
           <p className="text-[11px] text-slate-500">/ 4.00</p>
         </div>
       </section>
+
+      {/* Tiến độ tích lũy tín chỉ so với mốc tối thiểu của từng ngành */}
+      {progressCards.length ? (
+        <section className="rounded-2xl border border-gray-200 bg-white p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-slate-900">Tiến độ tích lũy tín chỉ</h2>
+            <p className="text-xs text-slate-500">
+              So với số tín chỉ tối thiểu của ngành — chỉ tính môn tính điểm đã đạt.
+            </p>
+          </div>
+          <div className="mt-4 space-y-4">
+            {progressCards.map((card) => (
+              <div key={card.majorId}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                  <span className="font-medium text-slate-800">
+                    {card.isPrimary ? 'Ngành chính' : 'Ngành phụ'} · {card.majorCode}
+                    <span className="ml-2 text-xs font-normal text-slate-500">{card.majorName}</span>
+                  </span>
+                  <span className="text-slate-600">
+                    <strong className="text-slate-900">{card.earnedCredits}</strong>
+                    {' / '}
+                    {card.requiredCredits} tín chỉ
+                    <span className="ml-2 text-xs text-slate-500">({card.percent}%)</span>
+                  </span>
+                </div>
+                <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full transition-all ${card.isComplete ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                    style={{ width: `${Math.min(100, card.percent)}%` }}
+                  />
+                </div>
+                {card.isComplete ? (
+                  <p className="mt-1 text-xs font-medium text-emerald-600">
+                    Đã đạt mốc tối thiểu
+                    {card.earnedCredits > card.requiredCredits
+                      ? ` (vượt ${card.earnedCredits - card.requiredCredits} tín chỉ)`
+                      : ''}
+                    .
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Còn thiếu {card.requiredCredits - card.earnedCredits} tín chỉ so với mốc tối thiểu.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Học phí theo từng kỳ */}
       <section className="rounded-2xl border border-gray-200 bg-white p-6">

@@ -70,7 +70,9 @@ WITH expected(tbl, col) AS (
     ('users', 'ai_daily_limit'),
     ('ai_settings', 'daily_limit_per_user'),
     ('ai_provider_keys', 'encrypted_key'),
-    ('ai_usage_logs', 'provider')
+    ('ai_usage_logs', 'provider'),
+    -- 025
+    ('majors', 'minimum_credits')
 )
 SELECT e.tbl AS table_name, e.col AS missing_column
   FROM expected e

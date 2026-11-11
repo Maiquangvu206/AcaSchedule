@@ -467,6 +467,29 @@ function MajorStatsCard({ stats }: { stats: MajorStatistics }) {
         </div>
       </dl>
 
+      {stats.progress.requiredCredits > 0 ? (
+        <div>
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>Tiến độ so với mốc tối thiểu</span>
+            <span>
+              {stats.progress.earnedCredits}/{stats.progress.requiredCredits} tín chỉ (
+              {stats.progress.percent}%)
+            </span>
+          </div>
+          <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full ${stats.progress.isComplete ? 'bg-emerald-500' : 'bg-brand-500'}`}
+              style={{ width: `${Math.min(100, stats.progress.percent)}%` }}
+            />
+          </div>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {stats.progress.isComplete
+              ? `Đã đạt mốc tối thiểu${stats.progress.earnedCredits > stats.progress.requiredCredits ? ` (vượt ${stats.progress.earnedCredits - stats.progress.requiredCredits} tín chỉ)` : ''}.`
+              : `Còn thiếu ${stats.progress.requiredCredits - stats.progress.earnedCredits} tín chỉ.`}
+          </p>
+        </div>
+      ) : null}
+
       {plannedCredits > 0 ? (
         <div>
           <div className="flex items-center justify-between text-xs text-slate-500">

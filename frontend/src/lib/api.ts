@@ -96,6 +96,14 @@ export interface Transcript {
     countedSubjects: number;
     totalAttempts: number;
   };
+  /** Tiến độ của ngành chính so với số tín chỉ tối thiểu. */
+  progress?: {
+    requiredCredits: number;
+    earnedCredits: number;
+    programCredits: number;
+    percent: number;
+    isComplete: boolean;
+  } | null;
   semesters: TranscriptSemester[];
   curriculum: TranscriptCurriculum | null;
   /** One block per training programme (2 for dual-major students). */
@@ -127,6 +135,14 @@ export interface MajorStatistics {
   majorName: string;
   isPrimary: boolean;
   summary: Transcript['summary'];
+  /** Tiến độ so với số tín chỉ tối thiểu của ngành (chỉ tính môn tính điểm). */
+  progress: {
+    requiredCredits: number;
+    earnedCredits: number;
+    programCredits: number;
+    percent: number;
+    isComplete: boolean;
+  };
   semesters: TranscriptSemester[];
   tuition: TuitionRow[];
   tuitionTotal: number;
@@ -958,6 +974,10 @@ export interface AdminMajor {
   code: string;
   name: string;
   subjectCount: number;
+  /** Số tín chỉ tối thiểu của ngành; null = dùng tổng tín chỉ chương trình. */
+  minimumCredits: number | null;
+  /** Tổng tín chỉ của các môn tính điểm trong chương trình. */
+  programCredits: number;
   departmentId: string | null;
   departmentCode: string | null;
   departmentName: string | null;
@@ -993,14 +1013,21 @@ export async function fetchAdminMajors(token: string): Promise<AdminMajor[]> {
   return result.majors;
 }
 
-export async function createAdminMajor(token: string, input: { code: string; name: string; departmentId: string }): Promise<AdminMajor> {
+export async function createAdminMajor(
+  token: string,
+  input: { code: string; name: string; departmentId: string; minimumCredits?: number | null },
+): Promise<AdminMajor> {
   const result = await apiRequest<{ major: AdminMajor }>('/admin/curriculum/majors', {
     method: 'POST', token, body: input,
   });
   return result.major;
 }
 
-export async function updateAdminMajor(token: string, id: string, input: { code?: string; name?: string; departmentId?: string }): Promise<AdminMajor> {
+export async function updateAdminMajor(
+  token: string,
+  id: string,
+  input: { code?: string; name?: string; departmentId?: string; minimumCredits?: number | null },
+): Promise<AdminMajor> {
   const result = await apiRequest<{ major: AdminMajor }>(`/admin/curriculum/majors/${id}`, { method: 'PATCH', token, body: input });
   return result.major;
 }

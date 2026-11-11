@@ -39,6 +39,8 @@ export interface StudentMajorRow {
   code: string;
   name: string;
   isPrimary: boolean;
+  /** Minimum credits the student must earn in this programme (null = whole programme). */
+  minimumCredits: number | null;
 }
 
 /** Every major a student is enrolled in, primary programme first. */
@@ -46,8 +48,14 @@ export async function listStudentMajors(
   studentId: string,
   db: Queryable = pool,
 ): Promise<StudentMajorRow[]> {
-  const result = await db.query<{ id: string; code: string; name: string; is_primary: boolean }>(
-    `SELECT m.id, m.code, m.name, um.is_primary
+  const result = await db.query<{
+    id: string;
+    code: string;
+    name: string;
+    is_primary: boolean;
+    minimum_credits: number | null;
+  }>(
+    `SELECT m.id, m.code, m.name, um.is_primary, m.minimum_credits
        FROM user_majors um
        JOIN majors m ON m.id = um.major_id
       WHERE um.user_id = $1
@@ -59,6 +67,7 @@ export async function listStudentMajors(
     code: row.code,
     name: row.name,
     isPrimary: row.is_primary,
+    minimumCredits: row.minimum_credits,
   }));
 }
 
