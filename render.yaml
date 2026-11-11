@@ -4,11 +4,13 @@ services:
     name: acaschedule-frontend
     env: static
     rootDir: frontend
+    # Không tự deploy khi push code: phải bấm Manual Deploy trong dashboard.
+    autoDeploy: false
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://acaschedule-backend.onrender.com
+        value: https://acaschedule-backend-dbos.onrender.com
 
   # 2. Backend (Express / Node.js)
   - type: web
@@ -16,6 +18,8 @@ services:
     env: node
     plan: free
     rootDir: backend
+    # Không tự deploy khi push code, không tự áp render.yaml (phải bấm Sync/Deploy).
+    autoDeploy: false
     # The app is TypeScript: it must be compiled to dist/ before `npm start`.
     buildCommand: npm install --include=dev && npm run build
     # Migrations/seeds use the compiled JS so no dev-only tooling (tsx) is required at runtime.
@@ -38,7 +42,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: SEED_ADMIN_EMAIL
-        value: admin@acaschedule.local
+        value: itacaschedule@gmail.com
       # Set this in the Render dashboard. A generated value would be unknown to
       # the operator, making the seeded admin account impossible to log into.
       - key: SEED_ADMIN_PASSWORD
@@ -67,7 +71,7 @@ services:
       # File tài liệu KHÔNG lưu trong Postgres. Toàn bộ file nằm ở bucket S3.
       # Xem docs/r2-setup.md để biết cách lấy từng giá trị.
       - key: MINIO_ENDPOINT
-        sync: false # <account-id>.r2.cloudflarestorage.com
+        value:d9ed49d5cba218cfcb946cc67a6bec19.r2.cloudflarestorage.com
       - key: MINIO_PORT
         value: 443
       - key: MINIO_USE_SSL
@@ -101,6 +105,8 @@ services:
     env: python
     plan: free
     rootDir: ai
+    # Không tự deploy khi push code: phải bấm Manual Deploy trong dashboard.
+    autoDeploy: false
     buildCommand: pip install -r requirements.txt
     # FastAPI app lives in ai/app/main.py (package `app`, module `main`).
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT

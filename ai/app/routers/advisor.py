@@ -2,10 +2,43 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ..schemas import AdviceRequest, AdviceResponse, GradeItem
+from ..schemas import AdviceRequest, AdviceResponse, GradeItem, GradeScaleItem
 from ..services.llm import generate_or_fallback_meta
 
 router = APIRouter()
+
+
+def _scale_lines(scales: list[GradeScaleItem]) -> str:
+    """Official grading scale, highest threshold first."""
+    if not scales:
+        return (
+            "- (Chưa cấu hình thang điểm. Dùng quy ước phổ biến: A+ >= 9.0, A >= 8.5, "
+            "B+ >= 8.0, B >= 7.0, C+ >= 6.5, C >= 5.5, D+ >= 5.0, D >= 4.0, F < 4.0)"
+        )
+
+    ordered = sorted(scales, key=lambda item: item.minScore10, reverse=True)
+    return "\n".join(
+        f"- Từ {item.minScore10:.1f} điểm hệ 10: {item.letterGrade} = "
+        f"{item.grade4:.1f}/4 ({'đạt' if item.isPass else 'không đạt'})"
+        for item in ordered
+    )
+
+
+def _grade_lines(grades: list[GradeItem]) -> str:
+    lines: list[str] = []
+    for grade in grades:
+        score = (
+            f"{grade.score10:.1f}/10"
+            if grade.score10 is not None
+            else "chưa có điểm hệ 10"
+        )
+        letter = f" ({grade.letter})" if grade.letter else ""
+        counted = "được tính" if grade.is_counted_in_cpa else "không tính"
+        lines.append(
+            f"- {grade.subject}: {score}{letter} = {grade.grade4:.1f}/4, "
+            f"{grade.credits} tín chỉ, {counted} vào CPA"
+        )
+    return "\n".join(lines) or "- (chưa có dữ liệu điểm)"
 
 
 def _counted(grades: list[GradeItem]) -> list[GradeItem]:
@@ -70,11 +103,8 @@ def _fallback(payload: AdviceRequest, cpa: float, credits: int) -> str:
 
 
 def _prompt(payload: AdviceRequest, cpa: float, credits: int) -> str:
-    grade_lines = "\n".join(
-        f"- {grade.subject}: {grade.grade4}/4, {grade.credits} tín chỉ, "
-        f"{'được tính' if grade.is_counted_in_cpa else 'không tính'} vào CPA"
-        for grade in payload.grades
-    ) or "- (chưa có dữ liệu điểm)"
+    grade_lines = _grade_lines(payload.grades)
+    scale_lines = _scale_lines(payload.grade_scale)
 
     target = f"{payload.target_cpa:.2f}/4.0" if payload.target_cpa is not None else "chưa đặt"
 
@@ -86,9 +116,13 @@ def _prompt(payload: AdviceRequest, cpa: float, credits: int) -> str:
         "và luôn kết thúc ở cuối một câu.\n\n"
         f"Sinh viên: {payload.student_name or 'ẩn danh'}\n"
         f"CPA hiện tại: {cpa:.2f}/4.0 trên {credits} tín chỉ\n"
-        f"Mục tiêu CPA: {target}\n"
-        f"Bảng điểm:\n{grade_lines}\n"
+        f"Mục tiêu CPA: {target}\n\n"
+        "Thang điểm chính thức của trường (bắt buộc dùng đúng thang này khi đổi điểm hệ 10 "
+        f"sang điểm chữ/hệ 4; không tự bịa ngưỡng khác):\n{scale_lines}\n\n"
+        f"Bảng điểm của sinh viên:\n{grade_lines}\n\n"
         f"Câu hỏi: {payload.question or 'Hãy phân tích và đề xuất kế hoạch cải thiện điểm.'}\n\n"
+        "Khi nhắc đến điểm của một môn, ghi kèm cả điểm hệ 10 (nếu có), điểm chữ và điểm hệ 4 "
+        "theo thang điểm trên. Mọi con số CPA/mục tiêu phải dùng đúng số liệu đã cung cấp. "
         "Lưu ý quy chế: học lại thay thế cờ CPA của lượt F cũ; học cải thiện chỉ tính lượt cao nhất; "
         "tín chỉ tích lũy chỉ đếm một lần."
     )

@@ -3,6 +3,7 @@ import { env } from '../../config/env';
 import { pool } from '../../database/pool';
 import { asyncHandler, AppError } from '../../lib/errors';
 import { getCalculation } from '../gpa/gpa.service';
+import { listGradeScales } from '../gpa/gpa.repository';
 import { getRedis } from '../../lib/redis';
 import { redactPii } from '../../lib/pii';
 import { logger } from '../../lib/logger';
@@ -22,7 +23,7 @@ export const aiRouter = Router();
 
 const upstreamBase = () => env.AI_SERVICE_URL.replace(/\/+$/, '');
 const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 /** Delay before a single retry when the AI upstream reports 429/503. */
 const AI_RETRY_DELAY_MS = 1500;
 /** Start of "today" in Vietnam time (quotas reset at local midnight). */
@@ -203,13 +204,22 @@ aiRouter.post(
     try {
       // Load real transcript data from PostgreSQL.
       const calculation = await getCalculation(studentId);
+      // The admin-managed grading scale (score 10 → letter → GPA4) must be part
+      // of the prompt, otherwise the model invents thresholds that disagree
+      // with the transcript page.
+      const gradeScale = await listGradeScales();
 
-      const grades = calculation.subjects.map((subject) => ({
-        subject: subject.subjectName || subject.subjectCode,
-        credits: subject.credits,
-        grade4: subject.countedGrade4 ?? 0,
-        is_counted_in_cpa: subject.countedAttemptId !== null,
-      }));
+      const grades = calculation.subjects.map((subject) => {
+        const counted = subject.attempts.find((attempt) => attempt.id === subject.countedAttemptId);
+        return {
+          subject: subject.subjectName || subject.subjectCode,
+          credits: subject.credits,
+          grade4: subject.countedGrade4 ?? 0,
+          score10: counted?.totalScore10 ?? null,
+          letter: counted?.letterGrade ?? null,
+          is_counted_in_cpa: subject.countedAttemptId !== null,
+        };
+      });
 
       const safeQuestion = question ? redactPii(question) : undefined;
 
@@ -235,6 +245,7 @@ aiRouter.post(
       const body = {
         target_cpa: targetCpa ?? null,
         grades,
+        grade_scale: gradeScale,
         question: safeQuestion,
       };
 

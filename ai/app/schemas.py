@@ -5,13 +5,26 @@ class GradeItem(BaseModel):
     subject: str
     credits: int = Field(ge=0, le=30)
     grade4: float = Field(ge=0, le=4)
+    # Score on the 10-point scale and the matching letter, as configured by the
+    # admin. Optional so older payloads keep working.
+    score10: float | None = Field(default=None, ge=0, le=10)
+    letter: str | None = None
     is_counted_in_cpa: bool = True
+
+
+class GradeScaleItem(BaseModel):
+    minScore10: float = Field(ge=0, le=10)
+    letterGrade: str
+    grade4: float = Field(ge=0, le=4)
+    isPass: bool
 
 
 class AdviceRequest(BaseModel):
     student_name: str | None = None
     target_cpa: float | None = Field(default=None, ge=0, le=4)
     grades: list[GradeItem] = Field(default_factory=list)
+    # Official, admin-editable grading scale (score 10 → letter → GPA4).
+    grade_scale: list[GradeScaleItem] = Field(default_factory=list)
     question: str | None = None
 
 

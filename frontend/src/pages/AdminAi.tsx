@@ -324,23 +324,30 @@ export function AdminAiPage() {
             Độ trễ trung bình 30 ngày: <strong>{overview?.usage.avgLatencyMs ?? 0} ms</strong>
           </p>
         </div>
-        <div className="mt-6 flex h-44 items-end gap-1.5">
+        <div className="mt-6 flex h-44 items-stretch gap-1.5">
           {(overview?.series ?? []).map((point) => (
-            <div key={point.day} className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-              <span className="hidden text-[10px] text-slate-500 group-hover:block">{point.total}</span>
-              <div
-                className="relative w-full overflow-hidden rounded-t bg-brand-500/90"
-                style={{ height: `${Math.max(3, (point.total / maxSeries) * 100)}%` }}
-                title={`${point.day}: ${point.total} lượt, ${point.fallback} dự phòng`}
-              >
-                {point.fallback > 0 ? (
-                  <span
-                    className="absolute inset-x-0 bottom-0 bg-amber-400"
-                    style={{ height: `${(point.fallback / Math.max(point.total, 1)) * 100}%` }}
-                  />
-                ) : null}
+            <div
+              key={point.day}
+              className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
+            >
+              <span className="text-[10px] leading-none text-slate-500">
+                {point.total > 0 ? point.total : ''}
+              </span>
+              <div className="flex w-full flex-1 items-end">
+                <div
+                  className="relative w-full overflow-hidden rounded-t bg-brand-500/90"
+                  style={{ height: `${Math.max(2, (point.total / maxSeries) * 100)}%` }}
+                  title={`${point.day}: ${point.total} lượt, ${point.fallback} dự phòng`}
+                >
+                  {point.fallback > 0 ? (
+                    <span
+                      className="absolute inset-x-0 bottom-0 bg-amber-400"
+                      style={{ height: `${(point.fallback / Math.max(point.total, 1)) * 100}%` }}
+                    />
+                  ) : null}
+                </div>
               </div>
-              <span className="text-[9px] text-slate-400">{point.day.slice(5)}</span>
+              <span className="text-[9px] leading-none text-slate-400">{point.day.slice(5)}</span>
             </div>
           ))}
           {!overview?.series.length ? (
