@@ -277,6 +277,8 @@ export function SchedulePage() {
       .filter((section) => !section.isCancelled)
       // Chỉ hiện lớp ở các tuần nằm trong khoảng ngày bắt đầu – kết thúc.
       .filter((section) => isSectionActiveInWeek(section, weekStart, weekEnd))
+      // Lớp nghỉ ở tuần này → không hiện.
+      .filter((section) => !(section.skippedWeekDates ?? []).includes(dateValue(weekStart)))
       .flatMap((section) => {
         const base = {
           kind: 'section' as const,
@@ -548,7 +550,7 @@ export function SchedulePage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[330px_1fr]">
-        <aside className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
+        <aside className="min-w-0 space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-slate-900">Lớp học phần</h2>
             <span className="text-xs text-slate-500">{sections.length} lớp</span>
@@ -581,6 +583,9 @@ export function SchedulePage() {
                         new Date(weekStart.getTime() + 6 * 86400000),
                       );
                       const hasRange = Boolean(section.startDate || section.endDate);
+                      const skippedThisWeek = (section.skippedWeekDates ?? []).includes(
+                        dateValue(weekStart),
+                      );
                       return (
                         <label
                           key={section.id}
@@ -590,7 +595,7 @@ export function SchedulePage() {
                               : checked
                                 ? 'border-brand-400/40 bg-brand-500/10 text-slate-900'
                                 : 'border-gray-200/50 bg-gray-100/40 text-slate-600 hover:border-gray-300/50'
-                          } ${hasRange && !activeThisWeek ? 'opacity-45' : ''}`}
+                          } ${(hasRange && !activeThisWeek) || skippedThisWeek ? 'opacity-45' : ''}`}
                         >
                           <input
                             type="checkbox"
@@ -605,6 +610,11 @@ export function SchedulePage() {
                               {section.isCancelled ? (
                                 <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-600 ring-1 ring-inset ring-rose-500/30">
                                   Đã huỷ
+                                </span>
+                              ) : null}
+                              {skippedThisWeek ? (
+                                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-700 ring-1 ring-inset ring-amber-500/30">
+                                  Nghỉ tuần này
                                 </span>
                               ) : null}
                             </span>
@@ -638,7 +648,7 @@ export function SchedulePage() {
           )}
         </aside>
 
-        <section className="space-y-3">
+        <section className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-900">Lịch tuần</h2>

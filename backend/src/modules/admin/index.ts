@@ -9,6 +9,8 @@ import { curriculumRouter } from './curriculum.routes';
 import { adminScheduleRouter } from './schedule.routes';
 import { adminEnrollmentsRouter } from './enrollments.routes';
 import { adminAiRouter } from './ai.routes';
+import { adminDocumentsRouter } from './documents.routes';
+import { adminDataRouter } from './data-io/routes';
 
 /**
  * Admin module — grade scales, subject catalogue and user listing.
@@ -23,6 +25,8 @@ adminRouter.use('/curriculum', curriculumRouter);
 adminRouter.use('/schedule', adminScheduleRouter);
 adminRouter.use('/enrollments', adminEnrollmentsRouter);
 adminRouter.use('/ai', adminAiRouter);
+adminRouter.use('/documents', adminDocumentsRouter);
+adminRouter.use('/data', adminDataRouter);
 adminRouter.use('/stats', statsRouter);
 adminRouter.get('/activity', asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit ?? 100);

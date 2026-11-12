@@ -1,6 +1,6 @@
 import { AppError } from '../../lib/errors';
 import { simulateSchedule } from './schedule.engine';
-import { isSectionActiveInWeek, parseDateOnly, weekRangeFor } from './schedule.range';
+import { isSectionActiveInWeek, formatDateOnly, parseDateOnly, weekRangeFor } from './schedule.range';
 import * as repository from './schedule.repository';
 import type {
   CourseSection,
@@ -40,7 +40,52 @@ export async function listSections(filters: {
   subjectId?: string;
   includeCancelled?: boolean;
 }) {
-  return repository.listCourseSections(filters);
+  const sections = await repository.listCourseSections(filters);
+  const semesterStarts = await repository.listSemesterStartDates(
+    [...new Set(sections.map((section) => section.semester))],
+  );
+  return sections.map((section) => ({
+    ...section,
+    skippedWeekDates: skippedWeekDates(section, semesterStarts.get(section.semester)),
+  }));
+}
+
+/**
+ * Monday of the first week of a semester. Used to convert week numbers
+ * ("tuần 3") into concrete dates so the calendar can skip them.
+ *
+ * Mốc tuần 1 = tuần chứa ngày bắt đầu học kỳ; nếu học kỳ chưa có ngày bắt đầu
+ * thì lấy ngày bắt đầu của chính lớp đó.
+ */
+function semesterStartMonday(
+  startDate: string | null | undefined,
+  fallback?: string | null,
+): Date | null {
+  const raw = startDate ?? fallback ?? null;
+  if (!raw) return null;
+  const date = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  const day = date.getDay();
+  date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
+  return date;
+}
+
+/** Dates (YYYY-MM-DD) of the weeks the class does not meet. */
+function skippedWeekDates(
+  section: CourseSection,
+  semesterStart: string | null | undefined,
+): string[] {
+  if (!section.skippedWeeks?.length) return [];
+  const monday = semesterStartMonday(semesterStart, section.startDate);
+  if (!monday) return [];
+
+  return section.skippedWeeks
+    .map((week) => {
+      const date = new Date(monday);
+      date.setDate(date.getDate() + (week - 1) * 7);
+      return formatDateOnly(date);
+    })
+    .sort();
 }
 
 function sectionToMeeting(section: CourseSection, suffix = ''): ScheduleMeeting {
@@ -146,8 +191,24 @@ export async function simulate(
     ? weekRangeFor(parseDateOnly(input.weekStart))
     : { start: new Date(0), end: new Date(8640000000000000) };
 
-  const runningThisWeek = sections.filter((section) =>
-    isSectionActiveInWeek(section, weekStart, weekEnd),
+  // Lớp nghỉ ở tuần đang xem cũng không gây xung đột.
+  const semesterStarts = await repository.listSemesterStartDates(
+    [...new Set(sections.map((section) => section.semester))],
+  );
+  const skippedThisWeek = new Set(
+    sections
+      .filter((section) =>
+        skippedWeekDates(section, semesterStarts.get(section.semester)).includes(
+          input.weekStart ?? '',
+        ),
+      )
+      .map((section) => section.id),
+  );
+
+  const runningThisWeek = sections.filter(
+    (section) =>
+      !skippedThisWeek.has(section.id) &&
+      isSectionActiveInWeek(section, weekStart, weekEnd),
   );
 
   const meetings = [
@@ -171,7 +232,11 @@ export async function simulate(
 
   return {
     semester: input.semester,
-    sections,
+    // Kèm ngày của các tuần nghỉ để lịch tuần biết lớp nào đang nghỉ.
+    sections: sections.map((section) => ({
+      ...section,
+      skippedWeekDates: skippedWeekDates(section, semesterStarts.get(section.semester)),
+    })),
     items: savedItems,
     periods,
     conflicts: result.conflicts,

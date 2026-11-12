@@ -273,6 +273,10 @@ export interface CourseSection {
   secondDayOfWeek: number | null;
   secondStartPeriod: number | null;
   secondEndPeriod: number | null;
+  /** Tuần (1-based từ tuần đầu học kỳ) mà lớp không học. */
+  skippedWeeks: number[];
+  /** Ngày cụ thể (YYYY-MM-DD) của các tuần bị nghỉ. */
+  skippedWeekDates: string[];
   room: string | null;
   lecturer: string | null;
   capacity: number | null;
@@ -795,6 +799,92 @@ export async function fetchDocuments(
   return result.documents;
 }
 
+/** Toàn bộ tài liệu trong hệ thống (dành cho trang quản lý của admin). */
+export async function fetchAdminDocuments(
+  token: string,
+  input: { subjectId?: string; q?: string; sort?: 'rank' | 'newest' } = {},
+): Promise<DocumentItem[]> {
+  const query = new URLSearchParams();
+  if (input.subjectId) query.set('subjectId', input.subjectId);
+  if (input.q) query.set('q', input.q);
+  if (input.sort) query.set('sort', input.sort);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const result = await apiRequest<{ documents: DocumentItem[] }>(`/admin/documents${suffix}`, { token });
+  return result.documents;
+}
+
+/* ── Nhập / xuất dữ liệu hàng loạt ─────────────────────────────────── */
+
+export interface ImportIssue {
+  row: number;
+  message: string;
+}
+
+export interface ImportReport {
+  total: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  skipped: number;
+  errors: ImportIssue[];
+  warnings: ImportIssue[];
+}
+
+/** Tải file CSV từ server (bảng điểm hoặc chương trình đào tạo). */
+export async function downloadCsv(
+  token: string,
+  path: string,
+  filename: string,
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/api${path}`, {
+    headers: { Accept: 'text/csv', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message =
+      (body as { error?: { message?: string } } | null)?.error?.message ??
+      'Không tải được file CSV.';
+    throw new ApiError(response.status, message, 'ExportFailed');
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function importTranscriptCsv(
+  token: string,
+  csv: string,
+  dryRun = false,
+): Promise<ImportReport> {
+  const result = await apiRequest<{ report: ImportReport }>('/admin/data/import/transcript', {
+    method: 'POST',
+    token,
+    body: { csv, dryRun },
+  });
+  return result.report;
+}
+
+export async function importCurriculumCsv(
+  token: string,
+  csv: string,
+  dryRun = false,
+): Promise<ImportReport> {
+  const result = await apiRequest<{ report: ImportReport }>('/admin/data/import/curriculum', {
+    method: 'POST',
+    token,
+    body: { csv, dryRun },
+  });
+  return result.report;
+}
+
 export async function presignDocumentUpload(
   token: string,
   input: { subjectId: string; fileName: string; mimeType: string; sizeBytes: number },
@@ -882,6 +972,10 @@ export interface AdminStats {
   subjects: number;
   documents: number;
   accounts: number;
+  majors: number;
+  departments: number;
+  courseSections: number;
+  enrollments: number;
 }
 
 export async function fetchAdminStats(token: string): Promise<AdminStats> {
@@ -1136,7 +1230,10 @@ export async function fetchAdminScheduleSections(token: string, semester?: strin
   return result.sections;
 }
 
-export type AdminCourseSectionInput = Omit<AdminCourseSection, 'id' | 'subjectCode' | 'subjectName' | 'credits'>;
+export type AdminCourseSectionInput = Omit<
+  AdminCourseSection,
+  'id' | 'subjectCode' | 'subjectName' | 'credits' | 'skippedWeekDates'
+>;
 
 export async function createAdminScheduleSection(token: string, input: AdminCourseSectionInput): Promise<AdminCourseSection> {
   const result = await apiRequest<{ section: AdminCourseSection }>('/admin/schedule/sections', { method: 'POST', token, body: input });

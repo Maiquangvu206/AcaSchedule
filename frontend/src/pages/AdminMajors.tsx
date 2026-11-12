@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { Combobox } from '../components/Combobox';
 import {
   assignCurriculumSubject, createAdminDepartment, createAdminMajor, fetchAdminDepartments, fetchAdminMajors, fetchCurriculumSubjects, updateAdminMajor, updateAdminSubject,
   type AdminDepartment, type AdminMajor, type CurriculumSubject,
@@ -16,6 +17,10 @@ export function AdminMajorsPage() {
   const [majorCode, setMajorCode] = useState('');
   const [majorName, setMajorName] = useState('');
   const [minimumCreditsDraft, setMinimumCreditsDraft] = useState<Record<string, string>>({});
+  // Khoa đang được tra cứu — mặc định ẩn toàn bộ cơ cấu.
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  // Ngành đang được tra cứu — bảng môn mặc định ẩn.
+  const [majorFilter, setMajorFilter] = useState('');
   const [savingMajorId, setSavingMajorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [curriculumByMajor, setCurriculumByMajor] = useState<Map<string, CurriculumSubject[]>>(new Map());
@@ -23,6 +28,46 @@ export function AdminMajorsPage() {
   const [weightDraft, setWeightDraft] = useState<Record<string, { process: string; final: string }>>({});
   const [calculateDraft, setCalculateDraft] = useState<Record<string, boolean>>({});
   const [savingSubjectId, setSavingSubjectId] = useState<string | null>(null);
+
+  /** Combo box: tra cứu khoa theo tên hoặc mã. */
+  const departmentOptions = useMemo(
+    () =>
+      departments.map((department) => ({
+        value: department.id,
+        label: `${department.code} - ${department.name}`,
+        keywords: `${department.code} ${department.name}`,
+        hint: `${department.majorCount} ngành`,
+      })),
+    [departments],
+  );
+
+  const selectedDepartment =
+    departments.find((department) => department.id === departmentFilter) ?? null;
+
+  const majorsOfDepartment = useMemo(
+    () =>
+      selectedDepartment
+        ? majors.filter((major) => major.departmentId === selectedDepartment.id)
+        : [],
+    [majors, selectedDepartment],
+  );
+
+  /** Combo box: tra cứu ngành theo tên hoặc mã (giới hạn theo khoa đang chọn). */
+  const majorOptions = useMemo(
+    () =>
+      majorsOfDepartment.map((major) => ({
+        value: major.id,
+        label: `${major.code} - ${major.name}`,
+        keywords: `${major.code} ${major.name}`,
+        hint: `${major.subjectCount} môn trong chương trình`,
+      })),
+    [majorsOfDepartment],
+  );
+
+  const selectedMajor = majors.find((major) => major.id === majorFilter) ?? null;
+  const selectedMajorSubjects = selectedMajor
+    ? curriculumByMajor.get(selectedMajor.id) ?? []
+    : [];
 
   const load = () => {
     if (!token) return;
@@ -177,15 +222,49 @@ export function AdminMajorsPage() {
           thể đặt số tín chỉ tối thiểu riêng. Tiến độ trên trang Tổng quan so sánh số tín
           chỉ đã đạt (chỉ tính môn tính điểm) với mốc này — vượt mốc vẫn được.
         </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {departments.map((department) => (
-            <section key={department.id} className="rounded-xl border border-slate-200 p-4">
-              <div className="flex items-start justify-between"><div><p className="font-semibold text-slate-900">{department.code}</p><p className="text-sm text-slate-600">{department.name}</p></div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">{department.majorCount} ngành</span></div>
-              <div className="mt-3 space-y-2">{majors.filter((major) => major.departmentId === department.id).map((major) => (
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="text-sm font-medium text-slate-700">
+            Tra cứu khoa
+            <Combobox
+              options={departmentOptions}
+              value={departmentFilter}
+              onChange={setDepartmentFilter}
+              placeholder="Nhập tên hoặc mã khoa…"
+              className="mt-1 w-full sm:w-80"
+            />
+          </label>
+          {selectedDepartment ? (
+            <button
+              type="button"
+              onClick={() => setDepartmentFilter('')}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              Xoá lọc
+            </button>
+          ) : null}
+        </div>
+
+        {selectedDepartment ? (
+          <section className="mt-4 rounded-xl border border-slate-200 p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="font-semibold text-slate-900">{selectedDepartment.code}</p>
+                <p className="text-sm text-slate-600">{selectedDepartment.name}</p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
+                {majorsOfDepartment.length} ngành
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {majorsOfDepartment.map((major) => (
                 <div key={major.id} className="rounded-lg bg-slate-50 px-3 py-2">
-                  <p className="text-sm font-medium text-slate-800">{major.code} - {major.name}</p>
-                  <p className="text-xs text-slate-500">{major.subjectCount} môn trong chương trình</p>
-                  <div className="mt-2 flex items-center gap-2">
+                  <p className="text-sm font-medium text-slate-800">
+                    {major.code} - {major.name}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {major.subjectCount} môn trong chương trình
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <label className="text-xs text-slate-600" htmlFor={`min-credits-${major.id}`}>
                       Tín chỉ tối thiểu
                     </label>
@@ -211,10 +290,17 @@ export function AdminMajorsPage() {
                     </button>
                   </div>
                 </div>
-              ))}{!majors.some((major) => major.departmentId === department.id) ? <p className="text-sm text-slate-400">Chưa có ngành.</p> : null}</div>
-            </section>
-          ))}
-        </div>
+              ))}
+              {!majorsOfDepartment.length ? (
+                <p className="text-sm text-slate-400">Khoa này chưa có ngành nào.</p>
+              ) : null}
+            </div>
+          </section>
+        ) : (
+          <p className="mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+            Tra cứu một khoa để xem các ngành thuộc khoa đó.
+          </p>
+        )}
         {majors.some((major) => !major.departmentId) ? <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4"><h3 className="font-semibold text-amber-900">Ngành chưa gán khoa</h3><div className="mt-3 space-y-2">{majors.filter((major) => !major.departmentId).map((major) => <div key={major.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"><span className="text-sm font-medium text-slate-800">{major.code} - {major.name}</span><div className="flex items-center gap-2"><label className="text-xs text-slate-600">Tín chỉ tối thiểu</label><input type="number" min="0" value={minimumCreditsDraft[major.id] ?? (major.minimumCredits === null ? '' : String(major.minimumCredits))} onChange={(event) => setMinimumCreditsDraft((prev) => ({ ...prev, [major.id]: event.target.value }))} placeholder={String(major.programCredits)} className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-sm" /><button type="button" onClick={() => void saveMinimumCredits(major)} disabled={savingMajorId === major.id} className="rounded-lg bg-brand-500 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">{savingMajorId === major.id ? 'Đang lưu…' : 'Lưu'}</button><select defaultValue="" onChange={(event) => attachMajor(major, event.target.value)} className="rounded-lg border border-slate-200 px-3 py-1 text-sm"><option value="">Chọn khoa để gán</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.code} - {department.name}</option>)}</select></div></div>)}</div></section> : null}
         {!departments.length ? <p className="mt-4 text-sm text-slate-500">Chưa có khoa nào. Hãy tạo khoa trước.</p> : null}
       </div>
@@ -224,101 +310,133 @@ export function AdminMajorsPage() {
           Thiết lập bộ môn phụ trách từng môn học trong chương trình đào tạo.
           Nội dung này hiển thị trên trang Chương trình đào tạo và Lộ trình học của sinh viên.
         </p>
-        <div className="mt-4 space-y-4">
-          {majors.map((major) => {
-            const subjects = curriculumByMajor.get(major.id) ?? [];
-            return (
-              <section key={major.id} className="overflow-x-auto rounded-xl border border-slate-200">
-                <header className="border-b bg-slate-50/70 px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-900">{major.code} - {major.name}</p>
-                  <p className="text-xs text-slate-500">{subjects.length} môn trong chương trình</p>
-                </header>
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead className="border-b bg-white text-xs uppercase text-slate-500">
-                    <tr><th className="px-4 py-2">Mã môn</th><th className="px-4 py-2">Tên môn</th><th className="px-4 py-2">Học kỳ</th><th className="px-4 py-2">Bộ môn quản lý</th><th className="px-4 py-2">Tính điểm</th><th className="px-4 py-2">Tỉ lệ Process</th><th className="px-4 py-2">Tỉ lệ Final</th><th className="px-4 py-2 text-right">Thao tác</th></tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {subjects.map((subject) => (
-                      <tr key={subject.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-2 font-semibold">{subject.code}</td>
-                        <td className="px-4 py-2">{subject.name}</td>
-                        <td className="px-4 py-2 text-slate-600">{subject.semesterNo ? `Học kỳ ${subject.semesterNo}` : 'Chưa xếp kỳ'}</td>
-                        <td className="px-4 py-2">
-                          <input
-                            value={draftBySubject[subject.id] ?? subject.managingUnit ?? ''}
-                            onChange={(event) => setDraftBySubject((prev) => ({ ...prev, [subject.id]: event.target.value }))}
-                            placeholder="Tên bộ môn"
-                            className="w-full min-w-[180px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
-                          />
-                        </td>
-                        <td className="px-4 py-2">
-                          <label className="flex items-center gap-2 text-xs">
-                            <input
-                              type="checkbox"
-                              checked={calculateDraft[subject.id] ?? subject.calculateGrade}
-                              onChange={(event) => setCalculateDraft((prev) => ({ ...prev, [subject.id]: event.target.checked }))}
-                              className="h-4 w-4 rounded border-slate-300"
-                            />
-                            <span className={(calculateDraft[subject.id] ?? subject.calculateGrade) ? 'text-slate-600' : 'text-rose-600'}>
-                              {(calculateDraft[subject.id] ?? subject.calculateGrade) ? 'Tính điểm' : 'Chỉ học phí'}
-                            </span>
-                          </label>
-                        </td>
-                        <td className="px-4 py-2">
-                          <input
-                            value={weightDraft[subject.id]?.process ?? String(subject.processWeight)}
-                            onChange={(event) => setWeightDraft((prev) => ({
-                              ...prev,
-                              [subject.id]: {
-                                process: event.target.value,
-                                final: prev[subject.id]?.final ?? String(subject.finalWeight),
-                              },
-                            }))}
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            className="w-full min-w-[90px] rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                          />
-                        </td>
-                        <td className="px-4 py-2">
-                          <input
-                            value={weightDraft[subject.id]?.final ?? String(subject.finalWeight)}
-                            onChange={(event) => setWeightDraft((prev) => ({
-                              ...prev,
-                              [subject.id]: {
-                                process: prev[subject.id]?.process ?? String(subject.processWeight),
-                                final: event.target.value,
-                              },
-                            }))}
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            className="w-full min-w-[90px] rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                          />
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => void saveManagingUnit(major, subject)}
-                            disabled={savingSubjectId === subject.id}
-                            className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                          >
-                            {savingSubjectId === subject.id ? 'Đang lưu…' : 'Lưu'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {!subjects.length ? <p className="px-4 py-6 text-center text-sm text-slate-500">Ngành này chưa có môn trong chương trình. Hãy gán môn ở tab Môn học.</p> : null}
-              </section>
-            );
-          })}
-          {!majors.length ? <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">Chưa có ngành nào.</p> : null}
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="text-sm font-medium text-slate-700">
+            Tra cứu ngành
+            <Combobox
+              options={majorOptions}
+              value={majorFilter}
+              onChange={setMajorFilter}
+              placeholder="Nhập tên hoặc mã ngành…"
+              className="mt-1 w-full sm:w-80"
+            />
+          </label>
+          {selectedMajor ? (
+            <button
+              type="button"
+              onClick={() => setMajorFilter('')}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              Xoá lọc
+            </button>
+          ) : null}
         </div>
-      </div>
+
+        {selectedMajor ? (
+          <section className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+            <header className="border-b bg-slate-50/70 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">
+                {selectedMajor.code} - {selectedMajor.name}
+              </p>
+              <p className="text-xs text-slate-500">
+                {selectedMajorSubjects.length} môn trong chương trình
+              </p>
+            </header>
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b bg-white text-xs uppercase text-slate-500">
+                <tr><th className="px-4 py-2">Mã môn</th><th className="px-4 py-2">Tên môn</th><th className="px-4 py-2">Học kỳ</th><th className="px-4 py-2">Bộ môn quản lý</th><th className="px-4 py-2">Tính điểm</th><th className="px-4 py-2">Tỉ lệ Process</th><th className="px-4 py-2">Tỉ lệ Final</th><th className="px-4 py-2 text-right">Thao tác</th></tr>
+              </thead>
+              <tbody className="divide-y">
+                {selectedMajorSubjects.map((subject) => (
+                  <tr key={subject.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-2 font-semibold">{subject.code}</td>
+                    <td className="px-4 py-2">{subject.name}</td>
+                    <td className="px-4 py-2 text-slate-600">
+                      {subject.semesterNo ? `Học kỳ ${subject.semesterNo}` : 'Chưa xếp kỳ'}
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={draftBySubject[subject.id] ?? subject.managingUnit ?? ''}
+                        onChange={(event) => setDraftBySubject((prev) => ({ ...prev, [subject.id]: event.target.value }))}
+                        placeholder="Tên bộ môn"
+                        className="w-full min-w-[180px] rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={calculateDraft[subject.id] ?? subject.calculateGrade}
+                          onChange={(event) => setCalculateDraft((prev) => ({ ...prev, [subject.id]: event.target.checked }))}
+                          className="h-4 w-4 rounded border-slate-300"
+                        />
+                        <span className={(calculateDraft[subject.id] ?? subject.calculateGrade) ? 'text-slate-600' : 'text-rose-600'}>
+                          {(calculateDraft[subject.id] ?? subject.calculateGrade) ? 'Tính điểm' : 'Chỉ học phí'}
+                        </span>
+                      </label>
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={weightDraft[subject.id]?.process ?? String(subject.processWeight)}
+                        onChange={(event) => setWeightDraft((prev) => ({
+                          ...prev,
+                          [subject.id]: {
+                            process: event.target.value,
+                            final: prev[subject.id]?.final ?? String(subject.finalWeight),
+                          },
+                        }))}
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        className="w-full min-w-[90px] rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={weightDraft[subject.id]?.final ?? String(subject.finalWeight)}
+                        onChange={(event) => setWeightDraft((prev) => ({
+                          ...prev,
+                          [subject.id]: {
+                            process: prev[subject.id]?.process ?? String(subject.processWeight),
+                            final: event.target.value,
+                          },
+                        }))}
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        className="w-full min-w-[90px] rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => void saveManagingUnit(selectedMajor, subject)}
+                        disabled={savingSubjectId === subject.id}
+                        className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {savingSubjectId === subject.id ? 'Đang lưu…' : 'Lưu'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!selectedMajorSubjects.length ? (
+              <p className="px-4 py-6 text-center text-sm text-slate-500">
+                Ngành này chưa có môn trong chương trình. Hãy gán môn ở tab Môn học.
+              </p>
+            ) : null}
+          </section>
+        ) : (
+          <p className="mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+            {selectedDepartment
+              ? 'Chọn một ngành của khoa này để xem bảng môn.'
+              : 'Tra cứu một ngành để xem và thiết lập bộ môn quản lý.'}
+          </p>
+        )}
+        </div>
     </AdminListPage>
   );
 }

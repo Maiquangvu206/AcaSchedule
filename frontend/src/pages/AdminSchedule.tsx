@@ -17,6 +17,7 @@ const emptyForm: AdminCourseSectionInput = {
   subjectId: '', semester: '', sectionCode: '', dayOfWeek: 2, startPeriod: 1, endPeriod: 2,
   classType: 'lecture', meetingCount: 1, linkedSectionId: null, startDate: null, endDate: null, secondDayOfWeek: 5,
   secondStartPeriod: 1, secondEndPeriod: 2, room: null, lecturer: null, capacity: null, isCancelled: false,
+  skippedWeeks: [],
 };
 
 export function AdminSchedulePage() {
@@ -31,6 +32,13 @@ export function AdminSchedulePage() {
   const [practicalDay, setPracticalDay] = useState(6);
   const [practicalStart, setPracticalStart] = useState(1);
   const [practicalEnd, setPracticalEnd] = useState(2);
+  // Lớp thực hành có thể học 1 hoặc 2 buổi mỗi tuần.
+  const [practicalMeetingCount, setPracticalMeetingCount] = useState(1);
+  const [practicalSecondDay, setPracticalSecondDay] = useState(7);
+  const [practicalSecondStart, setPracticalSecondStart] = useState(1);
+  const [practicalSecondEnd, setPracticalSecondEnd] = useState(2);
+  // Các tuần (1-based) mà lớp không học.
+  const [skippedWeeks, setSkippedWeeks] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -72,6 +80,24 @@ export function AdminSchedulePage() {
 
   useEffect(load, [token, semester]);
 
+  /** Ngày bắt đầu học kỳ dùng làm mốc đánh số tuần (tuần 1 = tuần chứa ngày này). */
+  const semesterStart = useMemo(
+    () =>
+      semesters.find((item) => item.code === form.semester)?.startDate ??
+      form.startDate ??
+      null,
+    [semesters, form.semester, form.startDate],
+  );
+
+  /**
+   * Danh sách tuần có thể chọn nghỉ. Tuần 1 là tuần chứa ngày bắt đầu học kỳ
+   * (nếu chưa có thì dùng ngày bắt đầu của lớp).
+   */
+  const weekOptions = useMemo(() => {
+    const total = 20;
+    return Array.from({ length: total }, (_, index) => index + 1);
+  }, [semesterStart]);
+
   const setField = <K extends keyof AdminCourseSectionInput>(key: K, value: AdminCourseSectionInput[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
@@ -101,28 +127,34 @@ export function AdminSchedulePage() {
   const reset = () => {
     setForm({ ...emptyForm, semester });
     setEditingId(null);
+    setSkippedWeeks([]);
+    setPracticalMeetingCount(1);
+    setPracticalSecondDay(7);
+    setPracticalSecondStart(1);
+    setPracticalSecondEnd(2);
   };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!token) return;
     try {
+      const payload: AdminCourseSectionInput = { ...form, skippedWeeks };
       const saved = editingId
-        ? await updateAdminScheduleSection(token, editingId, form)
-        : await createAdminScheduleSection(token, form);
+        ? await updateAdminScheduleSection(token, editingId, payload)
+        : await createAdminScheduleSection(token, payload);
       setSections((items) => editingId ? items.map((item) => item.id === saved.id ? saved : item) : [saved, ...items]);
       if (!editingId && hasPractical) {
         await createAdminScheduleSection(token, {
-          ...form,
+          ...payload,
           classType: 'practical',
-          meetingCount: 1,
+          meetingCount: practicalMeetingCount,
           sectionCode: `${form.sectionCode}-TH`,
           dayOfWeek: practicalDay,
           startPeriod: practicalStart,
           endPeriod: practicalEnd,
-          secondDayOfWeek: null,
-          secondStartPeriod: null,
-          secondEndPeriod: null,
+          secondDayOfWeek: practicalMeetingCount === 2 ? practicalSecondDay : null,
+          secondStartPeriod: practicalMeetingCount === 2 ? practicalSecondStart : null,
+          secondEndPeriod: practicalMeetingCount === 2 ? practicalSecondEnd : null,
           linkedSectionId: saved.id,
         });
         load();
@@ -144,6 +176,7 @@ export function AdminSchedulePage() {
       secondDayOfWeek: section.secondDayOfWeek, secondStartPeriod: section.secondStartPeriod,
       secondEndPeriod: section.secondEndPeriod,
       room: section.room, lecturer: section.lecturer, capacity: section.capacity, isCancelled: section.isCancelled,
+      skippedWeeks: section.skippedWeeks ?? [],
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -158,7 +191,7 @@ export function AdminSchedulePage() {
     <AdminListPage title="Lịch học theo kỳ" description="Cấu hình lớp học phần, ngày học và tiết học cho từng học kỳ.">
       {error ? <p role="alert" className="m-5 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
       {message ? <p className="m-5 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</p> : null}
-      <form onSubmit={submit} className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-5 md:grid-cols-4">
+      <form onSubmit={submit} className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-5 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-sm font-medium text-slate-700">Học kỳ<Combobox options={semesterOptions} value={form.semester} onChange={(value) => { setField('semester', value); setSemester(value); }} placeholder="Chọn học kỳ" emptyLabel="— Chọn học kỳ —" className="mt-1" /></label>
         <label className="text-sm font-medium text-slate-700">Môn học<Combobox options={subjectOptions} value={form.subjectId} onChange={(value) => setField('subjectId', value)} placeholder="Nhập mã hoặc tên môn…" emptyLabel="— Chọn môn học —" className="mt-1" /></label>
         <label className="text-sm font-medium text-slate-700">Mã lớp<input value={form.sectionCode} onChange={(e) => setField('sectionCode', e.target.value)} placeholder="INT2208-01" required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
@@ -173,12 +206,95 @@ export function AdminSchedulePage() {
         <label className="text-sm font-medium text-slate-700">Giảng viên<input value={form.lecturer ?? ''} onChange={(e) => setField('lecturer', e.target.value || null)} placeholder="Nguyễn Văn A" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Sĩ số<input type="number" min="1" value={form.capacity ?? ''} onChange={(e) => setField('capacity', e.target.value ? Number(e.target.value) : null)} placeholder="40" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-600"><input type="checkbox" checked={hasPractical} onChange={(e) => setHasPractical(e.target.checked)} /> Tạo lớp thực hành liên kết</label>
-        {hasPractical ? <><label className="text-sm font-medium text-slate-700">Thứ thực hành<select value={practicalDay} onChange={(e) => setPracticalDay(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">{[2, 3, 4, 5, 6, 7].map((day) => <option key={day} value={day}>{days[day]}</option>)}</select></label><label className="text-sm font-medium text-slate-700">Tiết bắt đầu thực hành<input type="number" min="1" max="12" value={practicalStart} onChange={(e) => setPracticalStart(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label><label className="text-sm font-medium text-slate-700">Tiết kết thúc thực hành<input type="number" min="1" max="12" value={practicalEnd} onChange={(e) => setPracticalEnd(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label></> : null}
-        <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-600"><input type="checkbox" checked={form.isCancelled} onChange={(e) => setField('isCancelled', e.target.checked)} /> Tạm ngừng</label>
+        {hasPractical ? (
+          <>
+            <label className="text-sm font-medium text-slate-700">
+              Số buổi thực hành / tuần
+              <select
+                value={practicalMeetingCount}
+                onChange={(e) => setPracticalMeetingCount(Number(e.target.value))}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value={1}>1 buổi</option>
+                <option value={2}>2 buổi</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Thứ thực hành
+              <select
+                value={practicalDay}
+                onChange={(e) => setPracticalDay(Number(e.target.value))}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              >
+                {[2, 3, 4, 5, 6, 7].map((day) => <option key={day} value={day}>{days[day]}</option>)}
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Tiết bắt đầu thực hành
+              <input type="number" min="1" max="12" value={practicalStart} onChange={(e) => setPracticalStart(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Tiết kết thúc thực hành
+              <input type="number" min="1" max="12" value={practicalEnd} onChange={(e) => setPracticalEnd(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+            </label>
+            {practicalMeetingCount === 2 ? (
+              <>
+                <label className="text-sm font-medium text-slate-700">
+                  Thứ thực hành buổi 2
+                  <select
+                    value={practicalSecondDay}
+                    onChange={(e) => setPracticalSecondDay(Number(e.target.value))}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                  >
+                    {[2, 3, 4, 5, 6, 7].map((day) => <option key={day} value={day}>{days[day]}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm font-medium text-slate-700">
+                  Tiết bắt đầu buổi 2
+                  <input type="number" min="1" max="12" value={practicalSecondStart} onChange={(e) => setPracticalSecondStart(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </label>
+                <label className="text-sm font-medium text-slate-700">
+                  Tiết kết thúc buổi 2
+                  <input type="number" min="1" max="12" value={practicalSecondEnd} onChange={(e) => setPracticalSecondEnd(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                </label>
+              </>
+            ) : null}
+          </>
+        ) : null}
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:col-span-2 lg:col-span-4">
+          <p className="text-sm font-medium text-slate-700">Tuần nghỉ (không học)</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            Tuần được đánh số từ tuần đầu của học kỳ
+            {semesterStart ? ` (bắt đầu ${semesterStart})` : ''}. Không chọn tuần nào nghĩa là học đều mọi tuần.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {weekOptions.map((week) => {
+              const active = skippedWeeks.includes(week);
+              return (
+                <button
+                  key={week}
+                  type="button"
+                  onClick={() =>
+                    setSkippedWeeks((current) =>
+                      active ? current.filter((item) => item !== week) : [...current, week].sort((a, b) => a - b),
+                    )
+                  }
+                  className={`h-8 w-9 rounded-lg border text-xs font-medium transition ${
+                    active
+                      ? 'border-brand-500 bg-brand-500 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {week}
+                </button>
+              );
+            })}
+          </div>
+        </div>        <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-600"><input type="checkbox" checked={form.isCancelled} onChange={(e) => setField('isCancelled', e.target.checked)} /> Tạm ngừng</label>
         <div className="flex items-end gap-2"><button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white">{editingId ? 'Lưu thay đổi' : 'Thêm lịch học'}</button>{editingId ? <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-4 py-2 text-sm">Hủy</button> : null}</div>
       </form>
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center"><label className="text-sm font-medium text-slate-700">Lọc theo học kỳ</label><Combobox options={semesterOptions} value={semester} onChange={setSemester} placeholder="Chọn học kỳ" emptyLabel="— Tất cả học kỳ —" className="w-72" /></div>
-      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b bg-white text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Học kỳ</th><th className="px-5 py-3">Môn / lớp</th><th className="px-5 py-3">Lịch học trong tuần</th><th className="px-5 py-3">Khoảng thời gian</th><th className="px-5 py-3">Phòng / GV</th><th className="px-5 py-3 text-right">Thao tác</th></tr></thead><tbody className="divide-y">{sections.map((item) => <tr key={item.id} className="hover:bg-slate-50"><td className="px-5 py-4">{item.semester}</td><td className="px-5 py-4"><p className="font-semibold">{item.subjectCode} - {item.subjectName}</p><p className="text-xs text-slate-500">{item.sectionCode} · {item.credits} tín chỉ · {item.classType === 'practical' ? 'Thực hành' : 'Lý thuyết'}</p></td><td className="px-5 py-4">{days[item.dayOfWeek]} · Tiết {item.startPeriod}-{item.endPeriod}{item.secondDayOfWeek ? <><br />{days[item.secondDayOfWeek]} · Tiết {item.secondStartPeriod}-{item.secondEndPeriod}</> : null}</td><td className="px-5 py-4">{item.startDate || 'Đầu kỳ'} → {item.endDate || 'Cuối kỳ'}</td><td className="px-5 py-4">{item.room || 'Chưa xếp phòng'}<p className="text-xs text-slate-500">{item.lecturer || 'Chưa có giảng viên'}</p></td><td className="px-5 py-4 text-right"><button type="button" onClick={() => edit(item)} className="mr-3 text-brand-600">Sửa</button><button type="button" onClick={() => remove(item.id)} className="text-rose-600">Xóa</button></td></tr>)}</tbody></table>{!sections.length ? <p className="p-10 text-center text-sm text-slate-500">Chưa có lịch học cho học kỳ này.</p> : null}</div>
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center"><label className="text-sm font-medium text-slate-700">Lọc theo học kỳ</label><Combobox options={semesterOptions} value={semester} onChange={setSemester} placeholder="Chọn học kỳ" emptyLabel="— Tất cả học kỳ —" className="w-full sm:w-72" /></div>
+      <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b bg-white text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Học kỳ</th><th className="px-5 py-3">Môn / lớp</th><th className="px-5 py-3">Lịch học trong tuần</th><th className="px-5 py-3">Khoảng thời gian</th><th className="px-5 py-3">Phòng / GV</th><th className="px-5 py-3 text-right">Thao tác</th></tr></thead><tbody className="divide-y">{sections.map((item) => <tr key={item.id} className="hover:bg-slate-50"><td className="px-5 py-4">{item.semester}</td><td className="px-5 py-4"><p className="font-semibold">{item.subjectCode} - {item.subjectName}</p><p className="text-xs text-slate-500">{item.sectionCode} · {item.credits} tín chỉ · {item.classType === 'practical' ? 'Thực hành' : 'Lý thuyết'}</p></td><td className="px-5 py-4">{days[item.dayOfWeek]} · Tiết {item.startPeriod}-{item.endPeriod}{item.secondDayOfWeek ? <><br />{days[item.secondDayOfWeek]} · Tiết {item.secondStartPeriod}-{item.secondEndPeriod}</> : null}</td><td className="px-5 py-4">{item.startDate || 'Đầu kỳ'} → {item.endDate || 'Cuối kỳ'}{item.skippedWeeks?.length ? <><p className="text-xs text-amber-600">Nghỉ tuần: {item.skippedWeeks.join(', ')}</p></> : null}</td><td className="px-5 py-4">{item.room || 'Chưa xếp phòng'}<p className="text-xs text-slate-500">{item.lecturer || 'Chưa có giảng viên'}</p></td><td className="px-5 py-4 text-right"><button type="button" onClick={() => edit(item)} className="mr-3 text-brand-600">Sửa</button><button type="button" onClick={() => remove(item.id)} className="text-rose-600">Xóa</button></td></tr>)}</tbody></table>{!sections.length ? <p className="p-10 text-center text-sm text-slate-500">Chưa có lịch học cho học kỳ này.</p> : null}</div>
     </AdminListPage>
   );
 }

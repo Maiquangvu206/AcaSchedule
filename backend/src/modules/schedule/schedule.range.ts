@@ -53,3 +53,16 @@ export function weekRangeFor(date: Date): { start: Date; end: Date } {
 
   return { start, end };
 }
+
+/**
+ * Format a date as `YYYY-MM-DD` in LOCAL time.
+ *
+ * `toISOString()` converts to UTC, which shifts the date back one day in
+ * Vietnam (UTC+7) — that would put every skipped week on the wrong day.
+ */
+export function formatDateOnly(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}

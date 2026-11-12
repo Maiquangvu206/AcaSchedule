@@ -30,6 +30,7 @@ interface CourseSectionRow {
   second_day_of_week: number | null;
   second_start_period: number | null;
   second_end_period: number | null;
+  skipped_weeks: number[];
   room: string | null;
   lecturer: string | null;
   capacity: number | null;
@@ -85,6 +86,8 @@ function mapSection(row: CourseSectionRow): CourseSection {
     secondDayOfWeek: row.second_day_of_week,
     secondStartPeriod: row.second_start_period,
     secondEndPeriod: row.second_end_period,
+    skippedWeeks: Array.isArray(row.skipped_weeks) ? row.skipped_weeks.map(Number) : [],
+    skippedWeekDates: [],
     room: row.room,
     lecturer: row.lecturer,
     capacity: row.capacity,
@@ -229,6 +232,7 @@ const SECTION_SELECT = `
          cs.second_day_of_week,
          cs.second_start_period,
          cs.second_end_period,
+         cs.skipped_weeks,
          cs.room,
          cs.lecturer,
          cs.capacity,
@@ -241,6 +245,23 @@ export interface SectionFilters {
   semester?: string;
   subjectId?: string;
   includeCancelled?: boolean;
+}
+
+/** Start date of every given semester (null when the admin has not set it). */
+export async function listSemesterStartDates(
+  semesters: string[],
+  db: Queryable = pool,
+): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>();
+  if (!semesters.length) return result;
+
+  const rows = await db.query<{ code: string; start_date: string | null }>(
+    `SELECT code, start_date FROM semesters WHERE code = ANY($1::varchar[])`,
+    [semesters],
+  );
+  for (const semester of semesters) result.set(semester, null);
+  for (const row of rows.rows) result.set(row.code, row.start_date);
+  return result;
 }
 
 export async function listCourseSections(

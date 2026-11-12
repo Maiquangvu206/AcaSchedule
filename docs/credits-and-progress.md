@@ -94,3 +94,37 @@ theo chuỗi ký tự. Hàm `semesterSortKey` (frontend) và `compareSemesters`
 | `<năm>-<k>` | `2024-1`, `2025-10` | `[2024, 1]`, `[2025, 10]` |
 
 Dạng `2025-10` được xử lý đúng (không bị nhầm thành `2025-1`).
+
+---
+
+## Tuần nghỉ của lớp học phần
+
+Không phải lớp nào cũng học đủ mọi tuần. Cả **lý thuyết** lẫn **thực hành**
+đều có thể nghỉ ở những tuần cụ thể.
+
+### Admin thiết lập ở đâu
+
+Trang **Lịch học theo kỳ** (`/admin/schedule`) → khối **"Tuần nghỉ (không học)"**
+trong form thêm/sửa lớp học phần.
+
+- Tuần được đánh số từ **1**, tính từ tuần chứa ngày bắt đầu học kỳ
+  (`semesters.start_date`, set ở trang *Học kỳ*). Nếu học kỳ chưa có ngày bắt
+  đầu thì lấy ngày bắt đầu của chính lớp đó.
+- Bấm vào số tuần để bật/tắt. Không chọn tuần nào = học đều mọi tuần.
+- Cột "Lịch học trong tuần" trong bảng bên dưới hiện `Nghỉ tuần: 3, 7`.
+
+### Số buổi mỗi tuần
+
+- **Lý thuyết**: 1 hoặc 2 buổi/tuần (cặp ngày được hỗ trợ: 2–5, 3–6, 4–7).
+- **Thực hành**: cũng 1 hoặc 2 buổi/tuần. Lớp thực hành liên kết được tạo
+  tự động từ lớp lý thuyết (`sectionCode` + `-TH`), nên khi bật "Tạo lớp thực
+  hành liên kết" thì chọn thêm số buổi và lịch buổi 2.
+
+### Sinh viên thấy gì
+
+- Lớp đang nghỉ ở tuần hiện tại **không xuất hiện** trên lịch tuần.
+- Trong danh sách lớp bên trái, lớp đó được làm mờ kèm nhãn **"Nghỉ tuần này"**
+  (vẫn chọn được để đăng ký cả học kỳ).
+- Lớp nghỉ **không gây xung đột** với lớp khác trong tuần đó.
+
+Dữ liệu lưu ở `course_sections.skipped_weeks` (JSONB, mảng số tuần).

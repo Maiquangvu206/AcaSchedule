@@ -112,7 +112,7 @@ export function AdminSemestersPage() {
 
       <form onSubmit={handleSubmit} className="border-b border-slate-100 bg-slate-50/70 p-5">
         <h2 className="font-semibold text-slate-900">{editingCode ? 'Chỉnh sửa học kỳ' : 'Thêm học kỳ'}</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1.4fr_1fr_1fr_0.6fr_auto] md:items-end">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_1fr_0.6fr_auto] lg:items-end">
           <label className="text-sm font-medium text-slate-700">
             Mã học kỳ
             <input
@@ -151,7 +151,7 @@ export function AdminSemestersPage() {
       </form>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b bg-white text-xs uppercase text-slate-500">
             <tr>
               <th className="px-5 py-3">Mã học kỳ</th>

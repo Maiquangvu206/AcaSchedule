@@ -61,6 +61,18 @@ export function AdminEnrollmentsPage() {
     [subjects],
   );
 
+  /** Combo box data: tra cứu sinh viên theo tên, email hoặc mã sinh viên. */
+  const studentOptions = useMemo(
+    () =>
+      students.map((user) => ({
+        value: user.id,
+        label: `${user.fullName} - ${user.email}`,
+        keywords: `${user.fullName} ${user.email} ${user.studentCode ?? ''}`,
+        hint: user.studentCode ? `MSSV ${user.studentCode}` : undefined,
+      })),
+    [students],
+  );
+
   const loadEnrollments = async (id: string) => {
     if (!token || !id) return;
     setLoading(true);
@@ -173,15 +185,17 @@ export function AdminEnrollmentsPage() {
       {message ? <p className="m-5 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</p> : null}
 
       <form onSubmit={addEnrollment} className="border-b border-slate-100 bg-slate-50/70 p-5">
-        <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_0.7fr_0.7fr_auto] md:items-end">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_0.7fr_0.7fr_auto] lg:items-end">
           <label className="text-sm font-medium text-slate-700">
             Sinh viên
-            <select value={studentId} onChange={(e) => setStudentId(e.target.value)} required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-              <option value="">Chọn sinh viên</option>
-              {students.map((user) => (
-                <option key={user.id} value={user.id}>{user.email} - {user.fullName}</option>
-              ))}
-            </select>
+            <Combobox
+              options={studentOptions}
+              value={studentId}
+              onChange={setStudentId}
+              placeholder="Nhập tên, email hoặc mã sinh viên…"
+              emptyLabel="— Chọn sinh viên —"
+              className="mt-1"
+            />
           </label>
           <label className="text-sm font-medium text-slate-700">
             Môn học

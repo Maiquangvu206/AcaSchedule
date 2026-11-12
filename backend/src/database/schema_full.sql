@@ -684,6 +684,27 @@ UPDATE ai_settings
        updated_at = now()
  WHERE openrouter_model = 'google/gemini-2.0-flash-001';
 
+-- >>>>>>>>>>>>>>>>>>>> 027_section_skipped_weeks.sql <<<<<<<<<<<<<<<<<<<<
+-- 027_section_skipped_weeks.sql — cho phép lớp học phần nghỉ ở những tuần cụ thể.
+--
+-- Không phải lớp nào cũng học đủ mọi tuần: thực hành có thể chỉ học 1 hoặc
+-- 2 buổi, và cả lý thuyết lẫn thực hành đều có thể nghỉ ở một vài tuần.
+--
+-- `skipped_weeks` lưu danh sách số tuần (1-based, tính từ tuần đầu của học kỳ)
+-- mà lớp KHÔNG học. Giá trị rỗng = học đều mọi tuần (hành vi cũ).
+
+ALTER TABLE course_sections
+    ADD COLUMN IF NOT EXISTS skipped_weeks jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+COMMENT ON COLUMN course_sections.skipped_weeks IS
+  'Danh sách số tuần (1-based từ tuần đầu học kỳ) mà lớp không học. Mảng rỗng = học đều.';
+
+ALTER TABLE course_sections
+    DROP CONSTRAINT IF EXISTS course_sections_skipped_weeks_check;
+ALTER TABLE course_sections
+    ADD CONSTRAINT course_sections_skipped_weeks_check
+    CHECK (jsonb_typeof(skipped_weeks) = 'array');
+
 -- =====================================================================
 -- Danh mau da chay migration de buoc migrate cua backend khong chay lai.
 -- =====================================================================
@@ -719,3 +740,4 @@ INSERT INTO schema_migrations (name, checksum) VALUES ('023_curriculum_subject_w
 INSERT INTO schema_migrations (name, checksum) VALUES ('024_ai_admin.sql', 'f46396c36853c88344492ce0300e1a90d1477d3d90f42833c89895a18b58b5b9') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
 INSERT INTO schema_migrations (name, checksum) VALUES ('025_major_minimum_credits.sql', '36c334c2a118b04794337c8b8d37d729fd66427981d603f7b5fa94d1cacf2099') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
 INSERT INTO schema_migrations (name, checksum) VALUES ('026_update_default_gemini_model.sql', '54c4837df7334d6912f24f86685cabcfe8d6b3d86ecb94050badeb2b7c876789') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
+INSERT INTO schema_migrations (name, checksum) VALUES ('027_section_skipped_weeks.sql', 'a70a2813c43920a484d93d319b62aa4f09c70f4e4089578e02d77ee6b4314dbb') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;

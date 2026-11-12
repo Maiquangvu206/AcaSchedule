@@ -77,7 +77,7 @@ export function AdminTuitionPage() {
           <h2 className="font-semibold text-slate-900">{editingId ? 'Cập nhật học phí' : 'Thêm cấu hình học phí'}</h2>
           <p className="mt-1 text-xs text-slate-500">Nhập mức thu cho một tín chỉ của từng học kỳ.</p>
         </div>
-        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-[1fr_1.2fr_1fr_0.5fr_auto] md:items-end">
+        <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1.2fr_1fr_0.5fr_auto] lg:items-end">
           <label className="text-sm font-medium text-slate-700">
             Khoa / ngành
             <select value={majorId} onChange={(event) => setMajorId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
@@ -124,7 +124,7 @@ export function AdminTuitionPage() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b bg-white text-xs uppercase text-slate-500">
             <tr><th className="px-5 py-3">Khoa / ngành</th><th className="px-5 py-3">Học kỳ</th><th className="px-5 py-3">Học phí / tín chỉ</th><th className="px-5 py-3">Cập nhật lần cuối</th><th className="px-5 py-3 text-right">Thao tác</th></tr>
           </thead>

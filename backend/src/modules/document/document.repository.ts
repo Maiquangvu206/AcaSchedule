@@ -175,6 +175,45 @@ export async function listDocuments(
   return result.rows.map(mapDocument);
 }
 
+/**
+ * Every document in the system — used by the admin management page, which must
+ * not be limited to the subjects the admin happens to be enrolled in.
+ */
+export async function listAllDocuments(
+  filters: ListDocumentFilters,
+  db: Queryable = pool,
+): Promise<DocumentView[]> {
+  const conditions: string[] = [];
+  // `$1` trong DOCUMENT_SELECT là user id cho bảng vote; admin không có vote
+  // nên truyền null (LEFT JOIN → my_vote = 0).
+  const values: unknown[] = [null];
+
+  if (filters.subjectId) {
+    values.push(filters.subjectId);
+    conditions.push(`d.subject_id = $${values.length}`);
+  }
+
+  if (filters.q) {
+    values.push(`%${filters.q}%`);
+    const param = `$${values.length}`;
+    conditions.push(
+      `(d.title ILIKE ${param}
+        OR d.original_name ILIKE ${param}
+        OR s.code ILIKE ${param}
+        OR s.name ILIKE ${param}
+        OR u.full_name ILIKE ${param})`,
+    );
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const result = await db.query<DocumentRow>(
+    `${DOCUMENT_SELECT} ${where} ORDER BY ${ORDER_BY[filters.sort]}`,
+    values,
+  );
+
+  return result.rows.map(mapDocument);
+}
+
 export async function findAccessibleDocument(
   studentId: string,
   documentId: string,

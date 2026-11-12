@@ -32,6 +32,10 @@ export interface CourseSection {
   secondDayOfWeek: number | null;
   secondStartPeriod: number | null;
   secondEndPeriod: number | null;
+  /** Weeks (1-based from the first week of the semester) the class does not meet. */
+  skippedWeeks: number[];
+  /** Concrete dates (YYYY-MM-DD) of the skipped weeks. */
+  skippedWeekDates: string[];
   room: string | null;
   lecturer: string | null;
   capacity: number | null;

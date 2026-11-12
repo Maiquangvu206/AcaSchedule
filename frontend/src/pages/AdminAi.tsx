@@ -255,7 +255,7 @@ export function AdminAiPage() {
   ] as const;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-7 px-6 py-10">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:gap-7 sm:px-6 sm:py-10">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-semibold text-brand-600">QUẢN TRỊ HỆ THỐNG</p>
@@ -497,7 +497,7 @@ export function AdminAiPage() {
           ) : null}
         </div>
 
-        <div className="grid gap-3 border-b border-slate-100 bg-slate-50/60 p-5 sm:grid-cols-[140px_1fr_1fr_90px_auto]">
+        <div className="grid gap-3 border-b border-slate-100 bg-slate-50/60 p-5 sm:grid-cols-2 lg:grid-cols-[140px_1fr_1fr_90px_auto]">
           <select
             value={newKey.provider}
             onChange={(event) =>

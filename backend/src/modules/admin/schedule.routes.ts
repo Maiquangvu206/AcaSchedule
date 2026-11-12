@@ -22,6 +22,8 @@ const sectionSchema = z.object({
   lecturer: z.string().trim().max(120).nullable().optional(),
   capacity: z.number().int().positive().nullable().optional(),
   isCancelled: z.boolean().optional().default(false),
+  /** Các tuần (1-based từ tuần đầu học kỳ) mà lớp không học. */
+  skippedWeeks: z.array(z.number().int().min(1).max(60)).optional().default([]),
 }).refine((value) => value.endPeriod >= value.startPeriod, {
   message: 'Tiết kết thúc phải lớn hơn hoặc bằng tiết bắt đầu',
   path: ['endPeriod'],
@@ -48,6 +50,7 @@ const selectSection = `
          cs.meeting_count AS "meetingCount", cs.linked_section_id AS "linkedSectionId",
          cs.second_day_of_week AS "secondDayOfWeek",
          cs.second_start_period AS "secondStartPeriod", cs.second_end_period AS "secondEndPeriod",
+         cs.skipped_weeks AS "skippedWeeks",
          cs.room, cs.lecturer, cs.capacity, cs.is_cancelled AS "isCancelled"
   FROM course_sections cs
   JOIN subjects s ON s.id = cs.subject_id
@@ -132,8 +135,8 @@ adminScheduleRouter.post('/sections', asyncHandler(async (req, res) => {
       `INSERT INTO course_sections
         (subject_id, semester, section_code, day_of_week, start_period, end_period, class_type,
          start_date, end_date, second_day_of_week, second_start_period, second_end_period,
-         room, lecturer, capacity, is_cancelled, meeting_count, linked_section_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+         room, lecturer, capacity, is_cancelled, meeting_count, linked_section_id, skipped_weeks)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb)
        RETURNING id`,
       [
         input.subjectId, input.semester, input.sectionCode, input.dayOfWeek,
@@ -141,6 +144,7 @@ adminScheduleRouter.post('/sections', asyncHandler(async (req, res) => {
         input.secondDayOfWeek ?? null, input.secondStartPeriod ?? null, input.secondEndPeriod ?? null,
         input.room ?? null, input.lecturer ?? null, input.capacity ?? null, input.isCancelled,
         input.meetingCount, input.linkedSectionId ?? null,
+        JSON.stringify(input.skippedWeeks ?? []),
       ],
     );
     const section = await pool.query(`${selectSection} WHERE cs.id = $1`, [result.rows[0].id]);
@@ -161,7 +165,7 @@ adminScheduleRouter.patch('/sections/:id', asyncHandler(async (req, res) => {
             start_period=$6, end_period=$7, class_type=$8, start_date=$9, end_date=$10,
             second_day_of_week=$11, second_start_period=$12, second_end_period=$13,
             room=$14, lecturer=$15, capacity=$16, is_cancelled=$17,
-            meeting_count=$18, linked_section_id=$19
+            meeting_count=$18, linked_section_id=$19, skipped_weeks=$20::jsonb
       WHERE id=$1 RETURNING id`,
     [
       req.params.id, input.subjectId, input.semester, input.sectionCode, input.dayOfWeek,
@@ -169,6 +173,7 @@ adminScheduleRouter.patch('/sections/:id', asyncHandler(async (req, res) => {
       input.secondDayOfWeek ?? null, input.secondStartPeriod ?? null, input.secondEndPeriod ?? null,
       input.room ?? null, input.lecturer ?? null, input.capacity ?? null, input.isCancelled,
       input.meetingCount, input.linkedSectionId ?? null,
+      JSON.stringify(input.skippedWeeks ?? []),
     ],
   );
   if (!result.rows[0]) throw AppError.notFound('Không tìm thấy lớp học phần');
