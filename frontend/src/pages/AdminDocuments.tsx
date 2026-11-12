@@ -118,38 +118,39 @@ export function AdminDocumentsPage() {
       description="Theo dõi, ẩn/khóa hoặc xóa tài liệu cộng đồng (sinh viên chỉ thấy tài liệu đang hiển thị và chưa bị khóa khi xem/tải)."
     >
       <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 bg-slate-50/70 p-5">
-        <label className="text-sm font-medium text-slate-700">
-          Tìm kiếm
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <span>Tìm kiếm</span>
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Tên tài liệu, tên người đăng, môn học…"
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm sm:w-72"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 sm:w-72"
           />
         </label>
-        <label className="text-sm font-medium text-slate-700">
-          Môn học
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <span>Môn học</span>
           <Combobox
             options={subjectOptions}
             value={subjectId}
             onChange={setSubjectId}
             placeholder="Tất cả môn học"
             emptyLabel="— Tất cả môn học —"
-            className="mt-1 w-full sm:w-64"
+            className="w-full sm:w-64"
+            inputClassName="h-10 py-0"
           />
         </label>
-        <label className="text-sm font-medium text-slate-700">
-          Sắp xếp
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <span>Sắp xếp</span>
           <select
             value={sort}
             onChange={(event) => setSort(event.target.value as 'rank' | 'newest')}
-            className="mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="h-10 min-w-[10rem] rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
           >
             <option value="newest">Mới nhất</option>
             <option value="rank">Điểm đánh giá</option>
           </select>
         </label>
-        <p className="pb-2 text-xs text-slate-500">
+        <p className="flex h-10 items-center text-xs text-slate-500">
           {loading ? 'Đang tải…' : `${documents.length} tài liệu`}
         </p>
         {search || subjectId ? (
@@ -159,7 +160,7 @@ export function AdminDocumentsPage() {
               setSearch('');
               setSubjectId('');
             }}
-            className="mb-0.5 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:bg-white"
+            className="flex h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 hover:bg-slate-50"
           >
             Xoá lọc
           </button>
@@ -176,16 +177,16 @@ export function AdminDocumentsPage() {
       ) : null}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] text-left text-sm">
+        <table className="w-full min-w-[1100px] text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-3">Tài liệu</th>
-              <th className="px-4 py-3">Môn học</th>
-              <th className="px-4 py-3">Điểm</th>
-              <th className="px-4 py-3">Người tải</th>
-              <th className="px-4 py-3">Ngày đăng</th>
-              <th className="px-4 py-3">Trạng thái</th>
-              <th className="px-4 py-3">Thao tác</th>
+              <th className="px-4 py-3 align-middle font-semibold">Tài liệu</th>
+              <th className="px-4 py-3 align-middle font-semibold">Môn học</th>
+              <th className="px-4 py-3 align-middle font-semibold whitespace-nowrap">Điểm</th>
+              <th className="px-4 py-3 align-middle font-semibold whitespace-nowrap">Người tải</th>
+              <th className="px-4 py-3 align-middle font-semibold whitespace-nowrap">Ngày đăng</th>
+              <th className="px-4 py-3 align-middle font-semibold whitespace-nowrap">Trạng thái</th>
+              <th className="px-4 py-3 align-middle font-semibold whitespace-nowrap">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -193,35 +194,35 @@ export function AdminDocumentsPage() {
               const busy = actingId === item.id;
               return (
                 <tr key={item.id} className={`hover:bg-slate-50 ${item.isHidden ? 'bg-slate-50/70 text-slate-500' : ''}`}>
-                  <td className="px-4 py-3">
-                    <p className={`font-medium ${item.isHidden ? 'text-slate-600' : 'text-slate-900'}`}>{item.title}</p>
+                  <td className="px-4 py-3 align-middle">
+                    <p className={`font-medium leading-snug ${item.isHidden ? 'text-slate-600' : 'text-slate-900'}`}>{item.title}</p>
                     {item.originalName ? (
-                      <p className="text-xs text-slate-500">{item.originalName}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{item.originalName}</p>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-700">{item.subjectCode}</p>
-                    <p className="text-xs text-slate-500">{item.subjectName}</p>
+                  <td className="px-4 py-3 align-middle">
+                    <p className="font-medium text-slate-700">{item.subjectCode}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{item.subjectName}</p>
                   </td>
-                  <td className="px-4 py-3">{item.score.toFixed(2)}</td>
-                  <td className="px-4 py-3">{item.uploaderName}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
+                  <td className="px-4 py-3 align-middle whitespace-nowrap text-slate-700">{item.score.toFixed(2)}</td>
+                  <td className="px-4 py-3 align-middle whitespace-nowrap text-slate-700">{item.uploaderName}</td>
+                  <td className="px-4 py-3 align-middle whitespace-nowrap text-xs text-slate-500">
                     {new Date(item.createdAt).toLocaleDateString('vi-VN')}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1.5">
+                  <td className="px-4 py-3 align-middle">
+                    <div className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                       {item.isHidden ? (
-                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700">Đã ẩn</span>
+                        <span className="inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700">Đã ẩn</span>
                       ) : (
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Hiển thị</span>
+                        <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Hiển thị</span>
                       )}
                       {item.isLocked ? (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Đã khóa</span>
+                        <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Đã khóa</span>
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
+                  <td className="px-4 py-3 align-middle">
+                    <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                       <button
                         type="button"
                         disabled={busy}
