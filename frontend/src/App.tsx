@@ -25,6 +25,7 @@ import { AdminSchedulePage } from './pages/AdminSchedule';
 import { AdminMajorsPage } from './pages/AdminMajors';
 import { AdminPeriodsPage } from './pages/AdminPeriods';
 import { AdminGradeScalesPage } from './pages/AdminGradeScales';
+import { AdminNotificationsPage } from './pages/AdminNotifications';
 import { ChangePasswordPage } from './pages/ChangePassword';
 
 export default function App() {
@@ -64,6 +65,7 @@ export default function App() {
               <Route path="admin/data" element={<AdminDataPage />} />
               <Route path="admin/activity" element={<AdminActivityPage />} />
               <Route path="admin/ai" element={<AdminAiPage />} />
+              <Route path="admin/notifications" element={<AdminNotificationsPage />} />
             </Route>
           </Route>
         </Routes>

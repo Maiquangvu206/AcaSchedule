@@ -14,7 +14,9 @@ Nền tảng quản trị học tập cho sinh viên và quản trị viên: tí
 - **Học phí:** admin cấu hình mức thu/tín chỉ theo học kỳ (chung hoặc theo ngành); sinh viên xem tổng theo tín chỉ đã học.
 - **Bộ môn quản lý:** mỗi môn học có bộ môn phụ trách, cấu hình ở tab **Ngành & khoa** (và show trên Chương trình đào tạo/Lộ trình học).
 - **Admin – Môn học theo kỳ:** thêm môn vào học kỳ cho từng sinh viên (có hoặc không kèm điểm), sửa điểm, xóa lượt học — tự đồng bộ CPA.
+- **Nhập & xuất CSV:** nhập/xuất hàng loạt **bảng điểm**, **chương trình đào tạo** và **cấu hình lịch học** từ trang Nhập & xuất — có nút "Kiểm tra trước (không ghi)". Xem [docs/data-import-export.md](docs/data-import-export.md).
 - **Tài liệu:** upload qua presigned URL lên MinIO, vote, tìm kiếm.
+- **Thông báo hệ thống:** admin gửi thông báo tới toàn bộ sinh viên; mỗi lần sinh viên đăng nhập sẽ hiện lớp thông báo (đóng bằng nút X), không hiện lại khi chuyển trang. Xem [docs/notifications.md](docs/notifications.md).
 - **AI:** tư vấn định hướng, tóm tắt tài liệu, Q&A — **không giới hạn lượt hỏi**, câu trả lời không bị cắt giữa câu (tự nối khi chạm giới hạn token).
 
 ## Chạy thử (local, Docker)

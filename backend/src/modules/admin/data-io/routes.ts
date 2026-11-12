@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { asyncHandler, AppError } from '../../../lib/errors';
 import { logger } from '../../../lib/logger';
 import { exportCurriculumCsv, importCurriculumCsv } from './curriculum';
+import { exportSectionsCsv, importSectionsCsv } from './sections';
 import { exportTranscriptCsv, importTranscriptCsv } from './transcript';
 
 /**
@@ -72,18 +73,42 @@ adminDataRouter.post(
   }),
 );
 
+/** Xuất cấu hình lịch học (CSV), có thể lọc theo học kỳ. */
+adminDataRouter.get(
+  '/export/sections.csv',
+  asyncHandler(async (req, res) => {
+    const semester = typeof req.query.semester === 'string' ? req.query.semester.trim() : undefined;
+    const csv = await exportSectionsCsv({ semester });
+    const suffix = semester ? `-${semester.replace(/[^\w.-]+/g, '_')}` : '';
+    csvResponse(res, csv, `lich-hoc${suffix}.csv`);
+  }),
+);
+
+/** Nhập cấu hình lịch học từ CSV. */
+adminDataRouter.post(
+  '/import/sections',
+  asyncHandler(async (req, res) => {
+    const input = importSchema.parse(req.body);
+    const report = await importSectionsCsv(input.csv, input.dryRun);
+    logger.info({ ...report, dryRun: input.dryRun }, 'Schedule sections CSV imported');
+    res.json({ report, dryRun: input.dryRun });
+  }),
+);
+
 /** Mẫu CSV để admin tải về làm mẫu nhập liệu. */
 adminDataRouter.get(
   '/template/:kind',
   asyncHandler(async (req, res) => {
     const kind = req.params.kind;
-    if (kind !== 'transcript' && kind !== 'curriculum') {
-      throw AppError.badRequest('Loại mẫu không hợp lệ (transcript | curriculum).');
+    if (kind !== 'transcript' && kind !== 'curriculum' && kind !== 'sections') {
+      throw AppError.badRequest('Loại mẫu không hợp lệ (transcript | curriculum | sections).');
     }
     const csv =
       kind === 'transcript'
         ? await exportTranscriptCsv({})
-        : await exportCurriculumCsv({});
+        : kind === 'sections'
+          ? await exportSectionsCsv({})
+          : await exportCurriculumCsv({});
     csvResponse(res, csv, `mau-${kind}.csv`);
   }),
 );

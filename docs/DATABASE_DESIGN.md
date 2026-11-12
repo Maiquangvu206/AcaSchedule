@@ -245,6 +245,25 @@ Ràng buộc/index:
 - `INDEX (student_id, semester, day_of_week)`
 - Xung đột được tính động bằng engine (không lưu cột `conflict`).
 
+### `system_notifications`
+
+Thông báo hệ thống admin gửi cho toàn bộ sinh viên; hiện trong lớp thông báo mỗi lần sinh viên vào trang.
+
+| Cột | Kiểu | Ghi chú |
+| --- | --- | --- |
+| id | uuid PK | |
+| title | text | NOT NULL, không rỗng |
+| message | text | NOT NULL, không rỗng |
+| level | text | `info` / `success` / `warning` / `error` |
+| is_active | boolean | Admin bấm "Ẩn" → `false` |
+| expires_at | timestamptz NULL | NULL = không hết hạn; quá hạn thì tự ẩn |
+| created_by | uuid FK NULL → users | ON DELETE SET NULL |
+| created_at / updated_at | timestamptz | |
+
+Ràng buộc/index:
+
+- `INDEX (is_active, created_at DESC)`
+
 ## Migration
 
 Đặt file SQL trong `backend/src/database/migrations/` theo thứ tự `001_...sql`, `002_...sql`.

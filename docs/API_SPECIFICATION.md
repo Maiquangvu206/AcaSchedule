@@ -53,6 +53,19 @@ Yêu cầu role `admin`.
 | POST | `/api/admin/enrollments` | Thêm môn vào kỳ cho sinh viên; kèm điểm hoặc chờ điểm. |
 | PATCH | `/api/admin/enrollments/:id?studentId=` | Cập nhật điểm một lượt học. |
 | DELETE | `/api/admin/enrollments/:id?studentId=` | Xoá một lượt học. |
+| GET | `/api/admin/notifications` | Toàn bộ thông báo hệ thống (kể cả đã ẩn / quá hạn). |
+| POST | `/api/admin/notifications` | Tạo thông báo: `{ title, message, level?, isActive?, expiresAt? }`. |
+| PATCH | `/api/admin/notifications/:id` | Sửa / bật / ẩn / đặt hạn dùng. |
+| DELETE | `/api/admin/notifications/:id` | Xoá thông báo. |
+| GET | `/api/admin/data/export/transcript.csv` | Xuất bảng điểm (CSV, lọc `?semester=&majorId=&studentId=`). |
+| POST | `/api/admin/data/import/transcript` | Nhập bảng điểm: `{ csv, dryRun? }`. |
+| GET | `/api/admin/data/export/curriculum.csv` | Xuất chương trình đào tạo (lọc `?majorId=`). |
+| POST | `/api/admin/data/import/curriculum` | Nhập chương trình đào tạo. |
+| GET | `/api/admin/data/export/sections.csv` | Xuất cấu hình lịch học (lọc `?semester=`). |
+| POST | `/api/admin/data/import/sections` | Nhập cấu hình lịch học: `{ csv, dryRun? }`. |
+| GET | `/api/admin/data/template/:kind` | File mẫu CSV (`transcript` \| `curriculum` \| `sections`). |
+
+Chi tiết cột và quy tắc: [`docs/data-import-export.md`](data-import-export.md).
 
 `grade_scales` body:
 
@@ -248,6 +261,16 @@ Body lịch cá nhân:
 
 `PATCH` nhận một phần các trường trên. `POST/PATCH` trả thêm `conflicts` liên quan trực tiếp
 đến mục vừa thao tác. Mọi thao tác lịch cá nhân chỉ áp dụng cho chính sinh viên đang đăng nhập.
+
+## Notifications
+
+Yêu cầu đăng nhập.
+
+| Method | Path | Mô tả |
+| --- | --- | --- |
+| GET | `/api/notifications` | Thông báo còn hiệu lực cho người dùng (đang bật + chưa quá hạn). Không trả `createdByEmail`. |
+
+Chi tiết cách dùng: [`docs/notifications.md`](notifications.md).
 
 ## Documents
 

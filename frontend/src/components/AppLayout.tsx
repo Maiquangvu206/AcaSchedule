@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppFooter } from './AppFooter';
 import { BrandLogo } from './BrandLogo';
+import { NotificationLayer } from './NotificationLayer';
 
 const PUBLIC_NAV_ITEMS = [
   { to: '/', label: 'Tổng quan', end: true, protected: false },
@@ -105,6 +106,9 @@ export function AppLayout() {
       </main>
 
       <AppFooter />
+
+      {/* Lớp thông báo hệ thống: hiện mỗi lần vào trang, đóng bằng nút X. */}
+      <NotificationLayer />
     </div>
   );
 }

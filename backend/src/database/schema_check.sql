@@ -74,7 +74,13 @@ WITH expected(tbl, col) AS (
     -- 025
     ('majors', 'minimum_credits'),
     -- 027
-    ('course_sections', 'skipped_weeks')
+    ('course_sections', 'skipped_weeks'),
+    -- 028
+    ('system_notifications', 'title'),
+    ('system_notifications', 'message'),
+    ('system_notifications', 'level'),
+    ('system_notifications', 'is_active'),
+    ('system_notifications', 'expires_at')
 )
 SELECT e.tbl AS table_name, e.col AS missing_column
   FROM expected e

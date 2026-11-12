@@ -885,6 +885,20 @@ export async function importCurriculumCsv(
   return result.report;
 }
 
+/** Nhập cấu hình lịch học (lớp học phần) từ CSV. */
+export async function importSectionsCsv(
+  token: string,
+  csv: string,
+  dryRun = false,
+): Promise<ImportReport> {
+  const result = await apiRequest<{ report: ImportReport }>('/admin/data/import/sections', {
+    method: 'POST',
+    token,
+    body: { csv, dryRun },
+  });
+  return result.report;
+}
+
 export async function presignDocumentUpload(
   token: string,
   input: { subjectId: string; fileName: string; mimeType: string; sizeBytes: number },
@@ -1488,4 +1502,78 @@ export async function setAdminAiUserLimit(
 
 export async function fetchAiHealth(token: string): Promise<AiHealth> {
   return apiRequest<AiHealth>('/ai/status', { token });
+}
+
+/* ── Thông báo hệ thống ─────────────────────────────────────────────── */
+
+export type NotificationLevel = 'info' | 'success' | 'warning' | 'error';
+
+export interface SystemNotification {
+  id: string;
+  title: string;
+  message: string;
+  level: NotificationLevel;
+  isActive: boolean;
+  /** ISO string; null = không hết hạn. */
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Bản đầy đủ cho trang quản trị (có thêm email người tạo). */
+export interface AdminNotification extends SystemNotification {
+  createdByEmail: string | null;
+}
+
+export interface NotificationInput {
+  title: string;
+  message: string;
+  level: NotificationLevel;
+  isActive: boolean;
+  /** ISO string; null = không hết hạn. */
+  expiresAt: string | null;
+}
+
+/** Thông báo đang hiện với người dùng (dùng cho lớp thông báo). */
+export async function fetchNotifications(token: string): Promise<SystemNotification[]> {
+  const result = await apiRequest<{ notifications: SystemNotification[] }>('/notifications', {
+    token,
+  });
+  return result.notifications;
+}
+
+/** Toàn bộ thông báo gồm cả đã ẩn / quá hạn (dành cho trang quản trị). */
+export async function fetchAdminNotifications(token: string): Promise<AdminNotification[]> {
+  const result = await apiRequest<{ notifications: AdminNotification[] }>('/admin/notifications', {
+    token,
+  });
+  return result.notifications;
+}
+
+export async function createAdminNotification(
+  token: string,
+  input: NotificationInput,
+): Promise<AdminNotification> {
+  const result = await apiRequest<{ notification: AdminNotification }>('/admin/notifications', {
+    method: 'POST',
+    token,
+    body: input,
+  });
+  return result.notification;
+}
+
+export async function updateAdminNotification(
+  token: string,
+  id: string,
+  input: Partial<NotificationInput>,
+): Promise<AdminNotification> {
+  const result = await apiRequest<{ notification: AdminNotification }>(
+    `/admin/notifications/${id}`,
+    { method: 'PATCH', token, body: input },
+  );
+  return result.notification;
+}
+
+export async function deleteAdminNotification(token: string, id: string): Promise<void> {
+  await apiRequest(`/admin/notifications/${id}`, { method: 'DELETE', token });
 }

@@ -81,7 +81,39 @@ Cùng quy trình: **Kiểm tra trước** → xem báo cáo → **Nhập thật*
 
 ---
 
-## 3. Gợi ý nhanh
+## 3. Cấu hình lịch học
+
+### Xuất
+
+Bấm **"Tải file mẫu (CSV)"** (có thể lọc theo từng học kỳ).
+
+| Cột | Bắt buộc | Ý nghĩa |
+|---|---|---|
+| `Học kỳ` | ✔ | Mã học kỳ dùng chung, ví dụ `HK1-2026` |
+| `Mã môn` | ✔ | Môn **phải có sẵn** — không tự tạo môn; hãy nhập Chương trình đào tạo trước |
+| `Mã lớp` | ✔ | Mã lớp học phần; cùng học kỳ + mã lớp = **cập nhật** thay vì báo trùng |
+| `Số buổi` | | `1` hoặc `2` (mặc định 1) |
+| `Thứ` | ✔ | `2`–`7` (2 = Thứ 2); nhận cả chữ `Thứ 2` |
+| `Tiết bắt đầu`, `Tiết kết thúc` | ✔ | 1–12; kết thúc ≥ bắt đầu |
+| `Loại lớp` | | `LT` (lý thuyết) / `TH` (thực hành) |
+| `Ngày bắt đầu`, `Ngày kết thúc` | | `yyyy-mm-dd` hoặc `dd/mm/yyyy` |
+| `Thứ buổi 2`, `Tiết buổi 2` | ✔ nếu lớp 2 buổi | Lịch 2 buổi chỉ nhận cặp **2-5, 3-6 hoặc 4-7** |
+| `Phòng`, `Giảng viên`, `Sĩ số` | | Tuỳ chọn |
+| `Tuần nghỉ` | | Danh sách số tuần (tính từ tuần đầu học kỳ), ví dụ `2;3` |
+| `Bị huỷ` | | `Có` / `Không` |
+
+### Nhập
+
+Cùng quy trình: **Kiểm tra trước** → xem báo cáo → **Nhập thật**.
+
+- Dòng lỗi (thứ không hợp lệ, lớp 2 buổi sai cặp, môn chưa tồn tại…) bị **bỏ qua
+  nguyên dòng** — không để lại dữ liệu mồ côi.
+- `linked_section_id` (liên kết lớp thực hành với lớp lý thuyết) **không nằm
+  trong file**: cập nhật lớp hiện có giữ nguyên liên kết cũ.
+
+---
+
+## 4. Gợi ý nhanh
 
 | Nhu cầu | Làm gì |
 |---|---|
@@ -89,6 +121,8 @@ Cùng quy trình: **Kiểm tra trước** → xem báo cáo → **Nhập thật*
 | Nhập môn học mới kèm chương trình | Xuất chương trình đào tạo → điền `Mã ngành`, `Mã môn`, `Tín chỉ` → Kiểm tra trước → Nhập |
 | Sửa điểm của một nhóm | Xuất bảng điểm → lọc/sửa trong Excel → Kiểm tra trước → Nhập |
 | Đổi cấu hình môn trong chương trình | Xuất chương trình → sửa `Tính điểm` / `Tỉ lệ` → Kiểm tra trước → Nhập |
+| Sắp lịch cả học kỳ một lúc | Xuất cấu hình lịch học → điền `Học kỳ`, `Mã môn`, `Mã lớp`, `Thứ`, tiết → Kiểm tra trước → Nhập |
+| Dời phòng / đổi giảng viên hàng loạt | Xuất lịch học → sửa cột `Phòng` / `Giảng viên` → Kiểm tra trước → Nhập |
 
 ### Lưu ý kỹ thuật
 

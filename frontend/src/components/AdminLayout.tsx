@@ -26,6 +26,7 @@ const ADMIN_NAV_ITEMS = [
   { to: '/admin/documents', label: 'Tài liệu' },
   { to: '/admin/data', label: 'Nhập & xuất' },
   { to: '/admin/ai', label: 'AI & API' },
+  { to: '/admin/notifications', label: 'Thông báo' },
   { to: '/admin/activity', label: 'Hoạt động' },
 ];
 

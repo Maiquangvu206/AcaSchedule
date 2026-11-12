@@ -18,6 +18,7 @@ import { authenticate, requireRole } from './modules/auth/auth.middleware';
 import { documentRouter } from './modules/document';
 import { gpaRouter } from './modules/gpa';
 import { healthRouter } from './modules/health/health.routes';
+import { notificationsRouter } from './modules/notifications/notifications.routes';
 import { scheduleRouter } from './modules/schedule';
 import { studentRouter } from './modules/student';
 import { tuitionFeesRouter } from './modules/tuition_fees';
@@ -121,6 +122,7 @@ export function createApp() {
   app.use('/api/gpa', authenticate, auditRequest, gpaRouter);
   app.use('/api/schedule', authenticate, auditRequest, scheduleRouter);
   app.use('/api/documents', authenticate, auditRequest, documentRouter);
+  app.use('/api/notifications', authenticate, auditRequest, notificationsRouter);
   app.use('/api/ai', authenticate, auditRequest, aiRouter);
   app.use('/api/tuition-fees', authenticate, auditRequest, tuitionFeesRouter);
 

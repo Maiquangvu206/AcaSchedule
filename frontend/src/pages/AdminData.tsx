@@ -4,14 +4,17 @@ import { Combobox } from '../components/Combobox';
 import {
   downloadCsv,
   fetchAdminMajors,
+  fetchAdminSemesters,
   importCurriculumCsv,
+  importSectionsCsv,
   importTranscriptCsv,
   type AdminMajor,
   type ImportReport,
+  type SemesterConfig,
 } from '../lib/api';
 import { AdminListPage } from './AdminUsers';
 
-type Dataset = 'transcript' | 'curriculum';
+type Dataset = 'transcript' | 'curriculum' | 'schedule';
 
 interface DatasetConfig {
   title: string;
@@ -66,6 +69,34 @@ const DATASETS: Record<Dataset, DatasetConfig> = {
     ],
     hint:
       'Bắt buộc: Mã ngành, Mã môn. Tỉ lệ Process + Final phải bằng 1 (ví dụ 0.4 và 0.6).',
+  },
+  schedule: {
+    title: 'Cấu hình lịch học',
+    description:
+      'Nhập hàng loạt lớp học phần (thứ, tiết, phòng, giảng viên, tuần nghỉ…). Lớp đã có (cùng học kỳ + mã lớp) sẽ được cập nhật thay vì báo trùng. Môn phải có sẵn — hãy nhập Chương trình đào tạo trước.',
+    exportPath: '/admin/data/export/sections.csv',
+    exportName: 'lich-hoc.csv',
+    columns: [
+      'Học kỳ',
+      'Mã môn',
+      'Mã lớp',
+      'Số buổi',
+      'Thứ',
+      'Tiết bắt đầu',
+      'Tiết kết thúc',
+      'Loại lớp',
+      'Ngày bắt đầu',
+      'Ngày kết thúc',
+      'Thứ buổi 2',
+      'Tiết buổi 2',
+      'Phòng',
+      'Giảng viên',
+      'Sĩ số',
+      'Tuần nghỉ',
+      'Bị huỷ',
+    ],
+    hint:
+      'Bắt buộc: Học kỳ, Mã môn, Mã lớp, Thứ, Tiết bắt đầu, Tiết kết thúc. Thứ điền 2..7 (2 = Thứ 2). Lớp 2 buổi chỉ nhận cặp 2-5, 3-6 hoặc 4-7. Tuần nghỉ điền ví dụ 2;3.',
   },
 };
 
@@ -124,6 +155,8 @@ export function AdminDataPage() {
   const [dataset, setDataset] = useState<Dataset>('transcript');
   const [majors, setMajors] = useState<AdminMajor[]>([]);
   const [majorId, setMajorId] = useState('');
+  const [semesters, setSemesters] = useState<SemesterConfig[]>([]);
+  const [semester, setSemester] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -133,10 +166,12 @@ export function AdminDataPage() {
 
   const config = DATASETS[dataset];
 
-  // Danh sách ngành để lọc khi xuất chương trình đào tạo.
+  // Danh sách ngành (lọc khi xuất chương trình đào tạo) và học kỳ (lọc khi
+  // xuất cấu hình lịch học).
   useEffect(() => {
     if (!token) return;
     fetchAdminMajors(token).then(setMajors).catch(() => setMajors([]));
+    fetchAdminSemesters(token).then(setSemesters).catch(() => setSemesters([]));
   }, [token]);
 
   const majorOptions = majors.map((major) => ({
@@ -146,13 +181,24 @@ export function AdminDataPage() {
     hint: `${major.subjectCount} môn`,
   }));
 
+  const semesterOptions = semesters.map((item) => ({
+    value: item.code,
+    label: `${item.code}${item.name ? ` - ${item.name}` : ''}`,
+    keywords: `${item.code} ${item.name}`,
+  }));
+
   const handleExport = async () => {
     if (!token) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      const query = dataset === 'curriculum' && majorId ? `?majorId=${majorId}` : '';
+      const query =
+        dataset === 'curriculum' && majorId
+          ? `?majorId=${majorId}`
+          : dataset === 'schedule' && semester
+            ? `?semester=${encodeURIComponent(semester)}`
+            : '';
       await downloadCsv(token, `${config.exportPath}${query}`, config.exportName);
       setNotice('Đã tải file CSV. Mở bằng Excel để chỉnh sửa rồi nhập lại.');
     } catch (caught) {
@@ -179,7 +225,9 @@ export function AdminDataPage() {
       const result =
         dataset === 'transcript'
           ? await importTranscriptCsv(token, csv, dryRun)
-          : await importCurriculumCsv(token, csv, dryRun);
+          : dataset === 'schedule'
+            ? await importSectionsCsv(token, csv, dryRun)
+            : await importCurriculumCsv(token, csv, dryRun);
       setReport(result);
       setNotice(
         dryRun
@@ -222,6 +270,7 @@ export function AdminDataPage() {
             >
               <option value="transcript">Bảng điểm</option>
               <option value="curriculum">Chương trình đào tạo</option>
+              <option value="schedule">Cấu hình lịch học</option>
             </select>
           </label>
 
@@ -234,6 +283,20 @@ export function AdminDataPage() {
                 onChange={setMajorId}
                 placeholder="Tất cả ngành"
                 emptyLabel="— Tất cả ngành —"
+                className="mt-1 w-full sm:w-64"
+              />
+            </label>
+          ) : null}
+
+          {dataset === 'schedule' ? (
+            <label className="text-sm font-medium text-slate-700">
+              Chỉ xuất học kỳ
+              <Combobox
+                options={semesterOptions}
+                value={semester}
+                onChange={setSemester}
+                placeholder="Tất cả học kỳ"
+                emptyLabel="— Tất cả học kỳ —"
                 className="mt-1 w-full sm:w-64"
               />
             </label>
