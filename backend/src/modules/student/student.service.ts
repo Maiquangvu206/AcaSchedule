@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import { pool } from '../../database/pool';
 import { AppError } from '../../lib/errors';
+import { compareSemestersDesc } from '../../lib/semester-sort';
 import { calculateGpa, compositeScore, scoreToGrade } from '../gpa/gpa.engine';
 import {
   listGradeScales,
@@ -544,7 +545,7 @@ function buildSemesterViews(calculation: GpaCalculation): TranscriptSemester[] {
         attempts: group.map(toView),
       };
     })
-    .sort((a, b) => b.semester.localeCompare(a.semester));
+    .sort((a, b) => compareSemestersDesc(a.semester, b.semester));
 }
 
 /**

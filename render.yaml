@@ -24,9 +24,10 @@ services:
     # The app is TypeScript: it must be compiled to dist/ before `npm start`.
     buildCommand: npm install --include=dev && npm run build
     # Migrations/seeds use the compiled JS so no dev-only tooling (tsx) is required at runtime.
-    # Một lỗi migrate/seed KHÔNG được làm sập API: nếu không app sẽ crash-loop
-    # (Render restart liên tục) và mất cả những endpoint không cần database.
-    startCommand: (npm run migrate:compiled || echo "MIGRATE FAILED - check DATABASE_URL") && (npm run seed:compiled || echo "SEED FAILED - starting API anyway") && npm start
+    # Migration là BẮT BUỘC (thiếu cột thì mọi API đọc DB sẽ lỗi) nên thất bại thì
+    # deploy dừng, log rõ lỗi. Seed chỉ tạo dữ liệu tham chiếu + tài khoản admin
+    # nên lỗi seed KHÔNG được làm sập API.
+    startCommand: npm run migrate:compiled && (npm run seed:compiled || echo "SEED FAILED - starting API anyway") && npm start
     # Liveness probe (Redis/MinIO are optional on Render, so do not require them).
     healthCheckPath: /api/health/live
     envVars:
@@ -44,6 +45,10 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
+      # Redis là tuỳ chọn (cache + quota AI). Bỏ trống = app chạy ở chế độ
+      # degraded, không cache và không giới hạn lượt/ngày.
+      - key: REDIS_URL
+        sync: false
       - key: SEED_ADMIN_EMAIL
         value: itacaschedule@gmail.com
       # Set this in the Render dashboard. A generated value would be unknown to
@@ -122,6 +127,10 @@ services:
         value: 3.11.9
       - key: GEMINI_API_KEY
         sync: false
+      # Model Gemini trực tiếp. Để trống thì AI service dùng mặc định
+      # gemini-3.5-flash (xem ai/app/config.py).
+      - key: GEMINI_MODEL
+        sync: false
       # Xoay vòng nhiều key (mỗi key một project AI Studio → quota riêng).
       # Cách nhau bằng dấu phẩy, ví dụ: key1,key2,key3
       - key: GEMINI_API_KEYS
@@ -132,7 +141,7 @@ services:
       - key: OPENROUTER_API_KEYS
         sync: false
       - key: OPENROUTER_MODEL
-        value: google/gemini-2.0-flash-001
+        value: google/gemini-3.5-flash
       # Thứ tự ưu tiên, xoay vòng mỗi request: gemini,openrouter
       - key: AI_PROVIDER_ORDER
         value: gemini,openrouter
@@ -143,6 +152,8 @@ services:
         value: https://acaschedule-backend-dbos.onrender.com/api/internal/ai/config
 
 databases:
+  # Giữ lại để Blueprint không báo "thiếu tài nguyên"; backend thực tế dùng
+  # DATABASE_URL đặt tay trong dashboard (Supabase hoặc DB này).
   - name: acaschedule-db
     plan: free
     databaseName: acaschedule

@@ -1,10 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler, AppError } from '../../lib/errors';
 import { authenticate, requireRole } from '../auth/auth.middleware';
-import {
-  tuitionFeeSchema,
-  type TuitionFeeInput,
-} from './tuition_fees.schemas';
+import { tuitionFeeSchema } from './tuition_fees.schemas';
 import * as tuitionFeesService from './tuition_fees.service';
 
 export const tuitionFeesRouter = Router();

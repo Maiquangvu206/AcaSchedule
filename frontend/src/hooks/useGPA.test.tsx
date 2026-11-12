@@ -6,6 +6,17 @@ import { useGPA } from './useGPA';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+// useGPA đọc token từ useAuth nên mock module này thay vì bọc AuthProvider.
+vi.mock('../auth/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: '1', email: 'test@test.com', fullName: 'Test User', role: 'student' },
+    token: 'test-access-token',
+    login: vi.fn(),
+    logout: vi.fn(),
+    updateUser: vi.fn(),
+  }),
+}));
+
 const mockTranscript = {
   student: { id: '1', email: 'test@test.com', fullName: 'Test User' },
   summary: {
@@ -22,6 +33,10 @@ const mockTranscript = {
   ],
 };
 
+function renderGPA() {
+  return renderHook(() => useGPA());
+}
+
 describe('useGPA', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -32,7 +47,7 @@ describe('useGPA', () => {
       new Response(JSON.stringify(mockTranscript), { status: 200 })
     );
 
-    const { result } = renderHook(() => useGPA());
+    const { result } = renderGPA();
 
     expect(result.current.loading).toBe(true);
     await act(async () => {
@@ -44,15 +59,20 @@ describe('useGPA', () => {
   });
 
   it('handles fetch error', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    // safeFetch thử lại 3 lần (800ms + 1600ms) nên phải tua timer.
+    vi.useFakeTimers();
+    mockFetch.mockRejectedValue(new Error('Network error'));
 
-    const { result } = renderHook(() => useGPA());
+    const { result } = renderGPA();
 
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await vi.advanceTimersByTimeAsync(5000);
     });
+    vi.useRealTimers();
 
-    expect(result.current.error).toBe('Network error');
+    // apiRequest bọc lỗi mạng thành ApiError với message tiếng Việt.
+    expect(result.current.error).toBeTruthy();
+    expect(result.current.transcript).toBeNull();
     expect(result.current.loading).toBe(false);
   });
 
@@ -61,7 +81,7 @@ describe('useGPA', () => {
       new Response(JSON.stringify(mockTranscript), { status: 200 })
     );
 
-    const { result } = renderHook(() => useGPA());
+    const { result } = renderGPA();
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));

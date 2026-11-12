@@ -2,8 +2,6 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler, AppError } from '../../lib/errors';
 import { pool } from '../../database/pool';
-import * as repository from '../schedule/schedule.repository';
-import type { RegistrationConfig } from '../schedule/schedule.types';
 
 const sectionSchema = z.object({
   subjectId: z.string().uuid(),

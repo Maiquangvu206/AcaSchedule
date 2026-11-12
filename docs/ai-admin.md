@@ -103,6 +103,14 @@ Với service **đã tồn tại**, phải thêm tay trong Render → Environmen
 - Nếu backend/feed không truy cập được, AI service dùng cấu hình tốt nhất gần nhất;
   nếu chưa từng có, dùng biến môi trường (không downtime).
 
+> ⚠️ Ô model chỉ nhận **tên model** (`gemini-3.5-flash`,
+> `google/gemini-3.5-flash`), không nhận API key. Backend sẽ báo lỗi nếu phát
+> hiện giá trị bắt đầu bằng `AIza`, `AQ.`, `sk-` hoặc `sk-or-`.
+>
+> Model đã bị Google/OpenRouter ngừng hỗ trợ (`gemini-1.5-flash`,
+> `google/gemini-2.0-flash-001`) sẽ trả 404; AI service tự bỏ qua các model
+> này và dùng model trong biến môi trường.
+
 ### Lượt truy vấn & hạn mức
 
 - Mỗi request `/advice`, `/documents/summarize`, `/qa` ghi 1 dòng vào

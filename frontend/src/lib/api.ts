@@ -92,7 +92,7 @@ export interface Transcript {
     /** Accumulated credits: passed subjects counted for CPA. */
     creditsEarned: number;
     /** Credits of every attempt taken, failed subjects and retakes included. */
-    creditsStudied: number;
+    creditsStudied?: number;
     countedSubjects: number;
     totalAttempts: number;
   };
@@ -136,13 +136,13 @@ export interface MajorStatistics {
   isPrimary: boolean;
   summary: Transcript['summary'];
   /** Tiến độ so với số tín chỉ tối thiểu của ngành (chỉ tính môn tính điểm). */
-  progress: {
+  progress?: {
     requiredCredits: number;
     earnedCredits: number;
     programCredits: number;
     percent: number;
     isComplete: boolean;
-  };
+  } | null;
   semesters: TranscriptSemester[];
   tuition: TuitionRow[];
   tuitionTotal: number;
@@ -171,13 +171,17 @@ export interface PeriodSlot {
 /**
  * Sort key for a semester string so semesters are ordered chronologically
  * instead of lexicographically (e.g. HK2 2024-2025 must come before HK1 2025-2026).
- * Accepts both "HK1 2024-2025" and "2024-2025-1" shapes.
+ * Accepts the "HK1 2024-2025", "2024-2025-1" and "2024-1" shapes.
  */
 export function semesterSortKey(semester: string): [number, number] {
   const hk = semester.match(/HK(\d)\s+(\d{4})/);
   if (hk) return [Number(hk[2]), Number(hk[1])];
+  // "2024-2025-1" → [2024, 1]
   const plain = semester.match(/(\d{4})-\d{4}(?:-(\d+))?/);
   if (plain) return [Number(plain[1]), plain[2] ? Number(plain[2]) : 1];
+  // "2024-1" / "2025-10" → [2024, 1] / [2025, 10]
+  const short = semester.match(/(\d{4})-(\d{1,2})(?![\d-])/);
+  if (short) return [Number(short[1]), Number(short[2])];
   return [0, 0];
 }
 

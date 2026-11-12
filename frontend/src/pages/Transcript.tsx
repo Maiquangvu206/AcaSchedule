@@ -129,7 +129,7 @@ export function TranscriptPage() {
             />
             <SummaryCard
               label="Tín chỉ đã học"
-              value={String(transcript.summary.creditsStudied)}
+              value={String(transcript.summary.creditsStudied ?? transcript.summary.creditsAttempted)}
               suffix="tín chỉ"
             />
             <SummaryCard
@@ -419,6 +419,8 @@ function SummaryCard({
 
 /** Independent statistics for one training programme of a dual-major student. */
 function MajorStatsCard({ stats }: { stats: MajorStatistics }) {
+  // Backend cũ chưa có trường progress → không hiện thanh tiến độ.
+  const progress = stats.progress ?? null;
   const plannedCredits =
     stats.curriculum?.semesters.reduce((sum, semester) => sum + semester.plannedCredits, 0) ?? 0;
   const completedCredits =
@@ -453,7 +455,9 @@ function MajorStatsCard({ stats }: { stats: MajorStatistics }) {
         </div>
         <div className="rounded-xl border border-gray-200 px-3 py-2">
           <dt className="text-xs text-slate-500">Tín chỉ đã học</dt>
-          <dd className="text-lg font-semibold text-slate-900">{stats.summary.creditsStudied}</dd>
+          <dd className="text-lg font-semibold text-slate-900">
+            {stats.summary.creditsStudied ?? stats.summary.creditsAttempted}
+          </dd>
         </div>
         <div className="rounded-xl border border-gray-200 px-3 py-2">
           <dt className="text-xs text-slate-500">Môn tính CPA</dt>
@@ -467,25 +471,24 @@ function MajorStatsCard({ stats }: { stats: MajorStatistics }) {
         </div>
       </dl>
 
-      {stats.progress.requiredCredits > 0 ? (
+      {progress && progress.requiredCredits > 0 ? (
         <div>
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span>Tiến độ so với mốc tối thiểu</span>
             <span>
-              {stats.progress.earnedCredits}/{stats.progress.requiredCredits} tín chỉ (
-              {stats.progress.percent}%)
+              {progress.earnedCredits}/{progress.requiredCredits} tín chỉ ({progress.percent}%)
             </span>
           </div>
           <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
             <div
-              className={`h-full rounded-full ${stats.progress.isComplete ? 'bg-emerald-500' : 'bg-brand-500'}`}
-              style={{ width: `${Math.min(100, stats.progress.percent)}%` }}
+              className={`h-full rounded-full ${progress.isComplete ? 'bg-emerald-500' : 'bg-brand-500'}`}
+              style={{ width: `${Math.min(100, progress.percent)}%` }}
             />
           </div>
           <p className="mt-1 text-[11px] text-slate-500">
-            {stats.progress.isComplete
-              ? `Đã đạt mốc tối thiểu${stats.progress.earnedCredits > stats.progress.requiredCredits ? ` (vượt ${stats.progress.earnedCredits - stats.progress.requiredCredits} tín chỉ)` : ''}.`
-              : `Còn thiếu ${stats.progress.requiredCredits - stats.progress.earnedCredits} tín chỉ.`}
+            {progress.isComplete
+              ? `Đã đạt mốc tối thiểu${progress.earnedCredits > progress.requiredCredits ? ` (vượt ${progress.earnedCredits - progress.requiredCredits} tín chỉ)` : ''}.`
+              : `Còn thiếu ${progress.requiredCredits - progress.earnedCredits} tín chỉ.`}
           </p>
         </div>
       ) : null}

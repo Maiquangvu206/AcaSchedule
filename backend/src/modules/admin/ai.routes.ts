@@ -21,6 +21,20 @@ const PROVIDERS = ['gemini', 'openrouter'] as const;
 
 const providerSchema = z.enum(PROVIDERS);
 
+/**
+ * Tên model, không phải API key. Chặn sẵn các tiền tố key để admin không
+ * dán nhầm key vào ô model (khi đó mọi lượt gọi AI sẽ trả 404).
+ */
+const modelSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(160)
+  .refine(
+    (value) => !/^(AIza|AQ\.|sk-|sk-or-)/i.test(value),
+    'Đây là API key, không phải tên model (ví dụ: gemini-3.5-flash)',
+  );
+
 const settingsSchema = z
   .object({
     isEnabled: z.boolean(),
@@ -28,8 +42,8 @@ const settingsSchema = z
       .string()
       .trim()
       .regex(/^(gemini|openrouter)(,(gemini|openrouter))*$/, 'Thứ tự provider không hợp lệ'),
-    geminiModel: z.string().trim().min(1).max(120),
-    openrouterModel: z.string().trim().min(1).max(160),
+    geminiModel: modelSchema,
+    openrouterModel: modelSchema,
     dailyLimit: z.coerce.number().int().min(0).max(100_000),
   })
   .partial()

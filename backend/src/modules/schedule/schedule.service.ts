@@ -9,7 +9,6 @@ import type {
   ScheduleMeeting,
 } from './schedule.types';
 import type { CreateScheduleItemInput, UpdateScheduleItemInput } from './schedule.schemas';
-import type { RegistrationConfig } from './schedule.types';
 
 export async function listPeriods() {
   return repository.listPeriodSlots();

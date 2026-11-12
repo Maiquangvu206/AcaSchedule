@@ -1,4 +1,4 @@
-import { Router, Request } from 'express';
+import { Router } from 'express';
 import { env } from '../../config/env';
 import { pool } from '../../database/pool';
 import { asyncHandler, AppError } from '../../lib/errors';
@@ -235,7 +235,7 @@ aiRouter.post(
       const safeQuestion = question ? redactPii(question) : undefined;
 
       const cacheKey = `ai:advice:${sha256(
-        `${CACHE_VERSION}|${studentId}|${stableGradesKey(grades)}|${targetCpa ?? ''}|${safeQuestion ?? ''}`,
+        `${CACHE_VERSION}|${studentId}|${stableGradesKey(grades)}|${summary.cpa}|${summary.credits_earned}|${targetCpa ?? ''}|${safeQuestion ?? ''}`,
       )}`;
 
       const cached = await getCached<{ advice: string; model: string; used_fallback: boolean }>(

@@ -144,8 +144,12 @@ export function Dashboard() {
       majorCode: major.majorCode,
       majorName: major.majorName,
       isPrimary: major.isPrimary,
-      ...major.progress,
-    }));
+      requiredCredits: major.progress?.requiredCredits ?? 0,
+      earnedCredits: major.progress?.earnedCredits ?? 0,
+      percent: major.progress?.percent ?? 0,
+      isComplete: major.progress?.isComplete ?? false,
+    }))
+    .filter((card) => card.requiredCredits > 0);
 
   const majorOptions = majors.map((major) => ({
     value: major.majorId,

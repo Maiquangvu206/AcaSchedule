@@ -127,3 +127,20 @@ def test_partial_payload_keeps_env_defaults(monkeypatch):
     assert config.provider_order[0] == "gemini"
     assert config.gemini_model == "env-gemini-model"
     assert config.openrouter_model == "env-openrouter-model"
+
+
+def test_retired_model_from_db_falls_back_to_env(monkeypatch):
+    # DB chưa chạy migration hoặc được khôi phục từ bản sao cũ.
+    remote(monkeypatch, {"gemini_model": "gemini-1.5-flash", "gemini_keys": ["db-gemini"]})
+
+    config = asyncio.run(runtime_config.get_runtime_config())
+
+    assert config.gemini_model == "env-gemini-model"
+
+
+def test_valid_model_from_db_is_used(monkeypatch):
+    remote(monkeypatch, {"gemini_model": "gemini-3.5-flash"})
+
+    config = asyncio.run(runtime_config.get_runtime_config())
+
+    assert config.gemini_model == "gemini-3.5-flash"

@@ -32,7 +32,7 @@ Mở http://localhost:8001/docs để xem OpenAPI.
 | Biến | Mặc định | Ghi chú |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | rỗng | Bật Gemini; để trống dùng fallback. |
-| `GEMINI_MODEL` | `gemini-1.5-flash` | Model sinh văn bản. |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | Model sinh văn bản. |
 | `GEMINI_TIMEOUT_SECONDS` | `30` | Timeout gọi Gemini. |
 
 ## Cấu trúc

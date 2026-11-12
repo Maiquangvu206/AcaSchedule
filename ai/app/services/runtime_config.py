@@ -26,6 +26,20 @@ logger = logging.getLogger(__name__)
 CACHE_TTL_SECONDS = 30.0
 KNOWN_PROVIDERS = ("gemini", "openrouter")
 
+# Model đã bị Google ngừng hỗ trợ — gọi sẽ trả 404. Nếu DB trả về model này
+# (chưa chạy migration, hoặc DB được khôi phục từ bản sao cũ) thì bỏ qua và
+# dùng model trong biến môi trường.
+RETIRED_MODELS = frozenset(
+    {
+        "gemini-1.0-pro",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+        "gemini-2.0-flash",
+        "google/gemini-2.0-flash-001",
+    }
+)
+
 
 @dataclass(frozen=True)
 class RuntimeConfig:
@@ -107,6 +121,12 @@ def parse_remote(settings: Settings, payload: dict[str, object]) -> RuntimeConfi
     gemini_model = payload.get("gemini_model")
     openrouter_model = payload.get("openrouter_model")
     enabled = payload.get("enabled")
+
+    # Model đã ngừng hỗ trợ từ DB không được dùng — fallback về biến môi trường.
+    if isinstance(gemini_model, str) and gemini_model.strip().lower() in RETIRED_MODELS:
+        gemini_model = None
+    if isinstance(openrouter_model, str) and openrouter_model.strip().lower() in RETIRED_MODELS:
+        openrouter_model = None
 
     return RuntimeConfig(
         enabled=enabled if isinstance(enabled, bool) else True,

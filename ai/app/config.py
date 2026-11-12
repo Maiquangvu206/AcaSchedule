@@ -31,7 +31,8 @@ class Settings(BaseSettings):
     # its own quota; the client rotates between them.
     gemini_api_keys: str = ""
 
-    gemini_model: str = "gemini-1.5-flash"
+    # Gemini 1.5/2.0 Flash đã bị ngừng hỗ trợ — dùng 3.5 Flash làm mặc định.
+    gemini_model: str = "gemini-3.5-flash"
     gemini_timeout_seconds: float = 30.0
 
     # ── OpenRouter ────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ class Settings(BaseSettings):
     # … or a pool: OPENROUTER_API_KEYS=key1,key2,key3,key4,key5
     openrouter_api_keys: str = ""
 
-    openrouter_model: str = "google/gemini-2.0-flash-001"
+    openrouter_model: str = "google/gemini-3.5-flash"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     # Free OpenRouter models can queue for a while, so allow a generous timeout.
     openrouter_timeout_seconds: float = 60.0

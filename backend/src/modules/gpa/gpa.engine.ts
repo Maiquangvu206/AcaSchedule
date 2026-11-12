@@ -8,6 +8,7 @@ import type {
   SemesterCalculation,
   SubjectCalculation,
 } from './gpa.types';
+import { compareSemesters } from '../../lib/semester-sort';
 
 const EPSILON = 1e-9;
 
@@ -236,7 +237,7 @@ function buildSemesterSummaries(attempts: CalculatedAttempt[]): SemesterCalculat
           .reduce((sum, attempt) => sum + attempt.credits, 0),
       };
     })
-    .sort((a, b) => a.semester.localeCompare(b.semester));
+    .sort((a, b) => compareSemesters(a.semester, b.semester));
 }
 
 /**

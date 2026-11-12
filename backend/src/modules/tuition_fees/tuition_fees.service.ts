@@ -1,4 +1,3 @@
-import { AppError } from '../../lib/errors';
 import * as repository from './tuition_fees.repository';
 import type { TuitionFee } from './tuition_fees.types';
 import type { TuitionFeeInput } from './tuition_fees.schemas';

@@ -663,8 +663,29 @@ ALTER TABLE majors
     ADD CONSTRAINT majors_minimum_credits_check
     CHECK (minimum_credits IS NULL OR minimum_credits >= 0);
 
+-- >>>>>>>>>>>>>>>>>>>> 026_update_default_gemini_model.sql <<<<<<<<<<<<<<<<<<<<
+-- 026_update_default_gemini_model.sql — cập nhật model AI mặc định.
+--
+-- `gemini-1.5-flash` (Google) và `google/gemini-2.0-flash-001` (OpenRouter) đã
+-- bị ngừng hỗ trợ nên mọi lượt gọi sẽ trả 404.
+-- Khi bật cấu hình từ xa (AI service lấy model trong DB), giá trị này sẽ ghi đè
+-- model đang chạy tốt trong biến môi trường nên cần sửa.
+--
+-- Chỉ những dòng còn giữ model mặc định cũ mới được đổi; model do admin chọn
+-- trong trang quản trị được giữ nguyên.
+
+UPDATE ai_settings
+   SET gemini_model = 'gemini-3.5-flash',
+       updated_at = now()
+ WHERE gemini_model IN ('gemini-1.5-flash', 'gemini-2.0-flash');
+
+UPDATE ai_settings
+   SET openrouter_model = 'google/gemini-3.5-flash',
+       updated_at = now()
+ WHERE openrouter_model = 'google/gemini-2.0-flash-001';
+
 -- =====================================================================
--- Danh dau da chay migration de buoc migrate cua backend khong chay lai.
+-- Danh mau da chay migration de buoc migrate cua backend khong chay lai.
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS schema_migrations (
   name text PRIMARY KEY,
@@ -697,3 +718,4 @@ INSERT INTO schema_migrations (name, checksum) VALUES ('022_semesters.sql', '5b8
 INSERT INTO schema_migrations (name, checksum) VALUES ('023_curriculum_subject_weights.sql', 'db9b03d81d6cfac47c5b4a947b7404d9cdff5725563b1c13c1aca8eb95ccc505') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
 INSERT INTO schema_migrations (name, checksum) VALUES ('024_ai_admin.sql', 'f46396c36853c88344492ce0300e1a90d1477d3d90f42833c89895a18b58b5b9') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
 INSERT INTO schema_migrations (name, checksum) VALUES ('025_major_minimum_credits.sql', '36c334c2a118b04794337c8b8d37d729fd66427981d603f7b5fa94d1cacf2099') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;
+INSERT INTO schema_migrations (name, checksum) VALUES ('026_update_default_gemini_model.sql', '54c4837df7334d6912f24f86685cabcfe8d6b3d86ecb94050badeb2b7c876789') ON CONFLICT (name) DO UPDATE SET checksum = EXCLUDED.checksum;

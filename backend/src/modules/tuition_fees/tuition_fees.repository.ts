@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import { pool } from '../../database/pool';
+import { compareSemestersDesc } from '../../lib/semester-sort';
 import type { TuitionFee } from './tuition_fees.types';
 
 export type Queryable = Pool | PoolClient;
@@ -37,11 +38,17 @@ export async function listTuitionFees(userId?: string, db: Queryable = pool): Pr
        LEFT JOIN majors m ON m.id = tf.major_id
       ${userId ? `WHERE tf.major_id IS NULL
           OR NOT EXISTS (SELECT 1 FROM user_majors WHERE user_id = $1)
-          OR tf.major_id IN (SELECT major_id FROM user_majors WHERE user_id = $1)` : ''}
-      ORDER BY tf.semester DESC, m.code NULLS FIRST`,
+          OR tf.major_id IN (SELECT major_id FROM user_majors WHERE user_id = $1)` : ''}`,
     userId ? [userId] : [],
   );
-  return result.rows.map(mapTuitionFee);
+  // Sắp xếp theo thứ tự thời gian thật (không phải lexicographic).
+  return result.rows
+    .map(mapTuitionFee)
+    .sort(
+      (a, b) =>
+        compareSemestersDesc(a.semester, b.semester) ||
+        (a.majorCode ?? '').localeCompare(b.majorCode ?? ''),
+    );
 }
 
 export async function getTuitionFee(
