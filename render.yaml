@@ -62,10 +62,15 @@ services:
       # Host của kho lưu trữ: KHÔNG kèm /bucket, KHÔNG có https://
       # (đã có trong MINIO_ENDPOINT ở trên — giữ cho MINIO_PUBLIC_ENDPOINT
       #  trỏ đúng host mà trình duyệt dùng để PUT file).
-      # Mail — Render free chặn cổng SMTP (25/465/587) nên ưu tiên HTTP API của
-      # Resend. Chỉ cần 2 key: RESEND_API_KEY + SMTP_FROM (địa chỉ người gửi,
-      # dùng onboarding@resend.dev khi chưa verify domain).
+      # Mail — Render free chặn cổng SMTP (25/465/587) nên ưu tiên HTTP API.
+      # Chọn MỘT trong hai dịch vụ (Resend hoặc Brevo), kèm SMTP_FROM:
+      #   - Resend: cần domain đã verify; chưa verify chỉ dùng
+      #     onboarding@resend.dev (gửi được tới email của tài khoản Resend).
+      #   - Brevo: chỉ cần verify 1 địa chỉ người gửi (Gmail được) — dùng
+      #     được khi chưa có domain. Free 300 email/ngày.
       - key: RESEND_API_KEY
+        sync: false
+      - key: BREVO_API_KEY
         sync: false
       - key: SMTP_HOST
         sync: false

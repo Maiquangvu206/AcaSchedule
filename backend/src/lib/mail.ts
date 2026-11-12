@@ -11,7 +11,7 @@ const transporter = env.SMTP_HOST
   : null;
 
 export function isMailConfigured(): boolean {
-  return Boolean(env.RESEND_API_KEY || (env.SMTP_HOST && env.SMTP_FROM));
+  return Boolean(env.RESEND_API_KEY || env.BREVO_API_KEY || (env.SMTP_HOST && env.SMTP_FROM));
 }
 
 export interface TemporaryPasswordEmail {
@@ -36,8 +36,12 @@ function bodyText(input: TemporaryPasswordEmail): string {
 }
 
 /**
- * Render's free instances block raw SMTP (25/465/587), so prefer Resend's
- * HTTPS API when a key is configured and only fall back to SMTP.
+ * Render's free instances block raw SMTP (25/465/587), so prefer HTTPS APIs
+ * when a key is configured and only fall back to SMTP.
+ *
+ * Thứ tự ưu tiên: Resend → Brevo → SMTP.
+ * - Resend: cần domain đã verify để gửi tới mọi địa chỉ.
+ * - Brevo: chỉ cần verify 1 địa chỉ người gửi (dùng được khi chưa có domain).
  */
 async function sendViaResend(input: TemporaryPasswordEmail): Promise<void> {
   if (!env.RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY');
@@ -62,11 +66,40 @@ async function sendViaResend(input: TemporaryPasswordEmail): Promise<void> {
   }
 }
 
+async function sendViaBrevo(input: TemporaryPasswordEmail): Promise<void> {
+  if (!env.BREVO_API_KEY) throw new Error('Missing BREVO_API_KEY');
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': env.BREVO_API_KEY,
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { email: env.SMTP_FROM },
+      to: [{ email: input.recipient }],
+      subject: input.reset
+        ? 'Mật khẩu AcaSchedule đã được đặt lại'
+        : 'Tài khoản AcaSchedule của bạn',
+      textContent: bodyText(input),
+    }),
+  });
+  if (!response.ok) {
+    const snippet = (await response.text().catch(() => '')).slice(0, 200);
+    throw new Error(`Brevo returned ${response.status}: ${snippet}`);
+  }
+}
+
 export async function sendTemporaryPasswordEmail(
   input: TemporaryPasswordEmail,
 ): Promise<void> {
   if (env.RESEND_API_KEY) {
     await sendViaResend(input);
+    return;
+  }
+
+  if (env.BREVO_API_KEY) {
+    await sendViaBrevo(input);
     return;
   }
 

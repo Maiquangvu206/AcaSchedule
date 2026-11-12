@@ -17,6 +17,7 @@ Nền tảng quản trị học tập cho sinh viên và quản trị viên: tí
 - **Nhập & xuất CSV:** nhập/xuất hàng loạt **bảng điểm**, **chương trình đào tạo** và **cấu hình lịch học** từ trang Nhập & xuất — có nút "Kiểm tra trước (không ghi)". Xem [docs/data-import-export.md](docs/data-import-export.md).
 - **Tài liệu:** upload qua presigned URL lên MinIO, vote, tìm kiếm.
 - **Thông báo hệ thống:** admin gửi thông báo tới toàn bộ sinh viên; mỗi lần sinh viên đăng nhập sẽ hiện lớp thông báo (đóng bằng nút X), không hiện lại khi chuyển trang. Xem [docs/notifications.md](docs/notifications.md).
+- **Email mật khẩu tạm thời:** gửi qua HTTP API (Brevo hoặc Resend — Render free chặn SMTP). Hướng dẫn cấu hình từng bước: [docs/mail-setup.md](docs/mail-setup.md).
 - **AI:** tư vấn định hướng, tóm tắt tài liệu, Q&A — **không giới hạn lượt hỏi**, câu trả lời không bị cắt giữa câu (tự nối khi chạm giới hạn token).
 
 ## Chạy thử (local, Docker)

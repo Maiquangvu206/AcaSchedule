@@ -94,6 +94,9 @@ const envSchema = z.object({
   SMTP_PASSWORD: z.string().optional(),
   // Resend HTTPS API key (Render blocks SMTP on free plans — preferred).
   RESEND_API_KEY: z.string().optional().default(''),
+  // Brevo HTTPS API key — alternative to Resend that verifies a single sender
+  // email instead of a whole domain (useful without an owned domain).
+  BREVO_API_KEY: z.string().optional().default(''),
   SMTP_FROM: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z.string().email().optional(),

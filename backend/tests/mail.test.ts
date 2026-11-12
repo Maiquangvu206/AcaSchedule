@@ -18,6 +18,7 @@ const envState = vi.hoisted(() => ({
   SMTP_PASSWORD: 'secret',
   SMTP_FROM: undefined as string | undefined,
   RESEND_API_KEY: '',
+  BREVO_API_KEY: '',
 }));
 
 const sendMail = vi.fn(async () => ({ messageId: 'test-message-id' }));
@@ -45,6 +46,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   sendMail.mockClear();
   envState.RESEND_API_KEY = '';
+  envState.BREVO_API_KEY = '';
   envState.SMTP_FROM = undefined;
 });
 
@@ -55,6 +57,16 @@ afterEach(() => {
 describe('isMailConfigured', () => {
   it('đủ khi chỉ có Resend key', () => {
     envState.RESEND_API_KEY = 're_test_key';
+    envState.BREVO_API_KEY = '';
+    envState.SMTP_FROM = undefined;
+    envState.SMTP_HOST = '';
+
+    expect(isMailConfigured()).toBe(true);
+  });
+
+  it('đủ khi chỉ có Brevo key', () => {
+    envState.RESEND_API_KEY = '';
+    envState.BREVO_API_KEY = 'xkeysib-test';
     envState.SMTP_FROM = undefined;
     envState.SMTP_HOST = '';
 
@@ -79,6 +91,7 @@ describe('isMailConfigured', () => {
 
   it('SMTP_HOST mà thiếu SMTP_FROM → chưa đủ', () => {
     envState.RESEND_API_KEY = '';
+    envState.BREVO_API_KEY = '';
     envState.SMTP_HOST = 'smtp.example.com';
     envState.SMTP_FROM = undefined;
 
@@ -151,6 +164,73 @@ describe('sendTemporaryPasswordEmail', () => {
       }),
     ).rejects.toThrow(/Resend returned 422/);
     expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it('có Brevo key mà thiếu Resend key → dùng Brevo HTTP API', async () => {
+    envState.RESEND_API_KEY = '';
+    envState.BREVO_API_KEY = 'xkeysib-test';
+    envState.SMTP_FROM = 'verified.sender@gmail.com';
+    fetchMock.mockResolvedValue(resendResponse(true, 201, '{"messageId":"brevo-1"}'));
+
+    await sendTemporaryPasswordEmail({
+      recipient: 'sv@example.com',
+      fullName: 'Nguyễn Văn A',
+      password: 'temp-pass-b1',
+      reset: false,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.brevo.com/v3/smtp/email');
+    expect((init.headers as Record<string, string>)['api-key']).toBe('xkeysib-test');
+
+    const payload = JSON.parse(String(init.body)) as {
+      sender: { email: string };
+      to: { email: string }[];
+      subject: string;
+      textContent: string;
+    };
+    expect(payload.sender.email).toBe('verified.sender@gmail.com');
+    expect(payload.to).toEqual([{ email: 'sv@example.com' }]);
+    expect(payload.textContent).toContain('Mật khẩu tạm thời: temp-pass-b1');
+
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it('Brevo trả lỗi HTTP → ném lỗi kèm status', async () => {
+    envState.RESEND_API_KEY = '';
+    envState.BREVO_API_KEY = 'xkeysib-test';
+    envState.SMTP_FROM = 'verified.sender@gmail.com';
+    fetchMock.mockResolvedValue(
+      resendResponse(false, 401, '{"message":"Invalid sender"}'),
+    );
+
+    await expect(
+      sendTemporaryPasswordEmail({
+        recipient: 'sv@example.com',
+        fullName: 'Nguyễn Văn A',
+        password: 'temp-pass-b2',
+        reset: false,
+      }),
+    ).rejects.toThrow(/Brevo returned 401/);
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it('có cả Resend và Brevo key → Resend thắng (thứ tự ưu tiên)', async () => {
+    envState.RESEND_API_KEY = 're_test_key';
+    envState.BREVO_API_KEY = 'xkeysib-test';
+    envState.SMTP_FROM = 'no-reply@acaschedule.local';
+    fetchMock.mockResolvedValue(resendResponse(true, 200));
+
+    await sendTemporaryPasswordEmail({
+      recipient: 'sv@example.com',
+      fullName: 'Nguyễn Văn A',
+      password: 'temp-pass-b3',
+      reset: false,
+    });
+
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe('https://api.resend.com/emails');
   });
 
   it('không có Resend key → dùng SMTP (nodemailer), không gọi HTTP', async () => {
