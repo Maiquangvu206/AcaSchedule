@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg';
 import { env } from '../../config/env';
 import { pool } from '../../database/pool';
 import { AppError } from '../../lib/errors';
+import { logger } from '../../lib/logger';
 import { minioClient, minioPublicClient } from '../../lib/minio';
 import { validateUploadMetadata } from './document.engine';
 import * as repository from './document.repository';
@@ -65,7 +66,12 @@ async function removeObjectQuietly(objectKey: string): Promise<void> {
   }
 }
 
-/** Create a direct-to-MinIO upload ticket after checking ownership and file rules. */
+/**
+ * Tạo URL upload có thời hạn để trình duyệt PUT trực tiếp lên object storage.
+ *
+ * Presign chỉ là ký URL (không gọi mạng), nhưng vẫn log lỗi gốc nếu thư viện
+ * ném ngoại lệ để dễ truy vết cấu hình sai (endpoint/region/key).
+ */
 export async function presignUpload(
   studentId: string,
   input: PresignUploadInput,
@@ -82,7 +88,17 @@ export async function presignUpload(
       objectKey,
       UPLOAD_URL_TTL_SECONDS,
     );
-  } catch {
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        bucket: env.MINIO_BUCKET,
+        objectKey,
+        studentId,
+        endpoint: env.MINIO_PUBLIC_ENDPOINT ?? env.MINIO_ENDPOINT,
+      },
+      'Presign upload URL failed (object storage)',
+    );
     throw AppError.serviceUnavailable('Object storage is unavailable');
   }
 
@@ -127,11 +143,42 @@ export async function createDocument(
 
   let stat;
   try {
-    stat = await minioClient.statObject(env.MINIO_BUCKET, input.objectKey);
+    // Backend kiểm tra file thật sự đã nằm trên storage trước khi ghi DB.
+    // Dùng client nội bộ trước; nếu môi trường cloud cấu hình endpoint nội bộ
+    // không tới được (trong khi endpoint public hoạt động — presign/PUT đã OK),
+    // thử lại bằng public client rồi mới báo lỗi.
+    try {
+      stat = await minioClient.statObject(env.MINIO_BUCKET, input.objectKey);
+    } catch (primaryError) {
+      if (isNotFoundError(primaryError)) throw primaryError;
+      logger.warn(
+        {
+          err: primaryError,
+          bucket: env.MINIO_BUCKET,
+          objectKey: input.objectKey,
+          studentId,
+          endpoint: env.MINIO_ENDPOINT,
+          client: 'internal',
+        },
+        'statObject failed on internal storage client, retrying with public client',
+      );
+      stat = await minioPublicClient.statObject(env.MINIO_BUCKET, input.objectKey);
+    }
   } catch (error) {
     if (isNotFoundError(error)) {
       throw AppError.badRequest('Uploaded object was not found in storage');
     }
+    logger.error(
+      {
+        err: error,
+        bucket: env.MINIO_BUCKET,
+        objectKey: input.objectKey,
+        studentId,
+        endpoint: env.MINIO_ENDPOINT,
+        publicEndpoint: env.MINIO_PUBLIC_ENDPOINT ?? env.MINIO_ENDPOINT,
+      },
+      'Confirm upload failed: cannot stat object in storage',
+    );
     throw AppError.serviceUnavailable('Object storage is unavailable');
   }
 
@@ -232,7 +279,18 @@ export async function getDownload(
         'response-content-disposition': contentDisposition,
       },
     );
-  } catch {
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        bucket: env.MINIO_BUCKET,
+        objectKey,
+        documentId,
+        studentId,
+        endpoint: env.MINIO_PUBLIC_ENDPOINT ?? env.MINIO_ENDPOINT,
+      },
+      'Presign download URL failed (object storage)',
+    );
     throw AppError.serviceUnavailable('Object storage is unavailable');
   }
 

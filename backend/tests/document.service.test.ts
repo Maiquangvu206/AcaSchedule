@@ -12,9 +12,13 @@ vi.mock('../src/database/pool', () => ({
   pool: { connect: vi.fn(async () => ({ query: vi.fn(), release: vi.fn() })) },
 }));
 
+vi.mock('../src/lib/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 vi.mock('../src/lib/minio', () => ({
   minioClient: { statObject: vi.fn(), removeObject: vi.fn() },
-  minioPublicClient: { presignedPutObject: vi.fn(), presignedGetObject: vi.fn() },
+  minioPublicClient: { presignedPutObject: vi.fn(), presignedGetObject: vi.fn(), statObject: vi.fn() },
 }));
 
 vi.mock('../src/modules/document/document.repository', () => ({
