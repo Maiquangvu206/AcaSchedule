@@ -15,7 +15,7 @@ services:
   # 2. Backend (Express / Node.js)
   # Tên phải khớp với service đang chạy thật (frontend trỏ tới *-dbos).
   - type: web
-    name: acaschedule-backend-dbos
+    name: acaschedule-backend
     env: node
     plan: free
     rootDir: backend
@@ -149,7 +149,7 @@ services:
       - key: AI_INTERNAL_TOKEN
         sync: false
       - key: BACKEND_CONFIG_URL
-        value: https://acaschedule-backend-dbos.onrender.com/api/internal/ai/config
+        value: https://acaschedule-backend.onrender.com/api/internal/ai/config
 
 databases:
   # Giữ lại để Blueprint không báo "thiếu tài nguyên"; backend thực tế dùng
