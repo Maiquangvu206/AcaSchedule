@@ -85,7 +85,10 @@ WITH expected(tbl, col) AS (
     ('password_reset_codes', 'code_hash'),
     ('password_reset_codes', 'expires_at'),
     ('password_reset_codes', 'attempts'),
-    ('password_reset_codes', 'used_at')
+    ('password_reset_codes', 'used_at'),
+    -- 030
+    ('subject_documents', 'is_hidden'),
+    ('subject_documents', 'is_locked')
 )
 SELECT e.tbl AS table_name, e.col AS missing_column
   FROM expected e

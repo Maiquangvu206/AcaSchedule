@@ -23,6 +23,10 @@ export interface DocumentView {
   uploaderName: string;
   createdAt: string;
   updatedAt: string;
+  /** Bị ẩn khỏi sinh viên (chỉ admin thấy/quản lý). */
+  isHidden: boolean;
+  /** Bị khóa: sinh viên không thể xem/tải/bình chọn. */
+  isLocked: boolean;
 }
 
 export interface UploadTicket {

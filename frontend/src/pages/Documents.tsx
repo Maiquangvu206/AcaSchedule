@@ -306,6 +306,10 @@ export function DocumentsPage() {
 
   const handleVote = async (document: DocumentItem, value: 1 | -1) => {
     if (!token || votingId) return;
+    if (document.isLocked) {
+      setError('Tài liệu đã bị khóa, không thể bình chọn.');
+      return;
+    }
     const nextValue = document.myVote === value ? 0 : value;
 
     setVotingId(document.id);
@@ -324,6 +328,10 @@ export function DocumentsPage() {
 
   const handleView = async (document: DocumentItem) => {
     if (!token) return;
+    if (document.isLocked) {
+      setError('Tài liệu đã bị khóa, không thể xem.');
+      return;
+    }
     setViewer({ document, url: null });
     setViewerError(null);
     try {
@@ -336,6 +344,10 @@ export function DocumentsPage() {
 
   const handleDownload = async (document: DocumentItem) => {
     if (!token || downloadingId) return;
+    if (document.isLocked) {
+      setError('Tài liệu đã bị khóa, không thể tải xuống.');
+      return;
+    }
     setDownloadingId(document.id);
     setError(null);
     try {
@@ -447,6 +459,11 @@ export function DocumentsPage() {
                           {fileLabel(document.mimeType, document.originalName)}
                         </span>
                         <span className="text-[11px] text-slate-500">{formatBytes(document.sizeBytes)}</span>
+                        {document.isLocked ? (
+                          <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                            Đã khóa
+                          </span>
+                        ) : null}
                       </div>
                       <h2 className="mt-2 truncate text-lg font-semibold text-slate-900">{document.title}</h2>
                       <p className="mt-1 text-xs text-slate-500">
@@ -459,14 +476,14 @@ export function DocumentsPage() {
                         direction="up"
                         count={document.upvotes}
                         active={document.myVote === 1}
-                        disabled={votingId === document.id}
+                        disabled={votingId === document.id || document.isLocked}
                         onClick={() => void handleVote(document, 1)}
                       />
                       <VoteButton
                         direction="down"
                         count={document.downvotes}
                         active={document.myVote === -1}
-                        disabled={votingId === document.id}
+                        disabled={votingId === document.id || document.isLocked}
                         onClick={() => void handleVote(document, -1)}
                       />
                     </div>
@@ -477,23 +494,29 @@ export function DocumentsPage() {
                       Điểm xếp hạng <span className="font-semibold text-slate-700">{document.score.toFixed(2)}</span>
                     </p>
                     <div className="flex items-center gap-2">
-                      {isPdf(document) ? (
-                        <button
-                          type="button"
-                          onClick={() => void handleView(document)}
-                          className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-gray-300 hover:text-slate-900"
-                        >
-                          Xem PDF
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => void handleDownload(document)}
-                        disabled={downloadingId === document.id}
-                        className="rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {downloadingId === document.id ? 'Đang tạo link…' : 'Tải xuống'}
-                      </button>
+                      {document.isLocked ? (
+                        <span className="text-[11px] font-medium text-amber-700">Tài liệu đã bị khóa bởi quản trị viên</span>
+                      ) : (
+                        <>
+                          {isPdf(document) ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleView(document)}
+                              className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-gray-300 hover:text-slate-900"
+                            >
+                              Xem PDF
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => void handleDownload(document)}
+                            disabled={downloadingId === document.id}
+                            className="rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {downloadingId === document.id ? 'Đang tạo link…' : 'Tải xuống'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </article>

@@ -228,6 +228,9 @@ export async function voteDocument(studentId: string, documentId: string, value:
   return withTransaction(async (client) => {
     const document = await repository.findAccessibleDocument(studentId, documentId, client);
     if (!document) throw AppError.notFound('Document not found');
+    if (document.isLocked) {
+      throw AppError.forbidden('Tài liệu đã bị khóa, không thể bình chọn');
+    }
 
     if (value === 0) {
       await repository.deleteVote(studentId, documentId, client);
@@ -259,6 +262,9 @@ export async function getDownload(
 ): Promise<DocumentDownload> {
   const document = await repository.findAccessibleDocument(studentId, documentId);
   if (!document) throw AppError.notFound('Document not found');
+  if (document.isLocked) {
+    throw AppError.forbidden('Tài liệu đã bị khóa, không thể xem hoặc tải xuống');
+  }
 
   const objectKey = await repository.findAccessibleDocumentObjectKey(studentId, documentId);
   if (!objectKey) throw AppError.notFound('Document not found');
@@ -300,4 +306,30 @@ export async function getDownload(
     disposition,
     document,
   };
+}
+
+/* ── Quản trị (admin) ─────────────────────────────────────────────────── */
+
+export async function adminUpdateDocumentFlags(
+  documentId: string,
+  flags: { isHidden?: boolean; isLocked?: boolean },
+): Promise<DocumentView> {
+  const updated = await repository.updateDocumentFlags(documentId, flags);
+  if (!updated) throw AppError.notFound('Document not found');
+  return updated;
+}
+
+export async function adminDeleteDocument(documentId: string): Promise<void> {
+  const removed = await repository.deleteDocumentById(documentId);
+  if (!removed) throw AppError.notFound('Document not found');
+  // Xóa file trên storage (best-effort: metadata đã xóa, object mồ côi không
+  // ảnh hưởng hiển thị; log nếu lỗi để dọn thủ công nếu cần).
+  try {
+    await minioClient.removeObject(env.MINIO_BUCKET, removed.objectKey);
+  } catch (error) {
+    logger.warn(
+      { err: error, bucket: env.MINIO_BUCKET, objectKey: removed.objectKey, documentId },
+      'Document metadata deleted but failed to remove object from storage',
+    );
+  }
 }

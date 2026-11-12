@@ -22,6 +22,8 @@ interface DocumentRow {
   uploader_name: string;
   created_at: Date;
   updated_at: Date;
+  is_hidden: boolean;
+  is_locked: boolean;
 }
 
 interface SubjectRow {
@@ -53,6 +55,8 @@ function mapDocument(row: DocumentRow): DocumentView {
     uploaderName: row.uploader_name,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
+    isHidden: row.is_hidden,
+    isLocked: row.is_locked,
   };
 }
 
@@ -84,7 +88,7 @@ export async function listEnrolledSubjects(
             s.code,
             s.name,
             s.credits,
-            (SELECT count(*) FROM subject_documents d WHERE d.subject_id = s.id) AS document_count
+            (SELECT count(*) FROM subject_documents d WHERE d.subject_id = s.id AND d.is_hidden = false) AS document_count
        FROM subjects s
       WHERE EXISTS (
         SELECT 1 FROM student_enrollments e
@@ -118,7 +122,9 @@ const DOCUMENT_SELECT = `
          d.uploader_id,
          u.full_name AS uploader_name,
          d.created_at,
-         d.updated_at
+         d.updated_at,
+         d.is_hidden,
+         d.is_locked
     FROM subject_documents d
     JOIN subjects s ON s.id = d.subject_id
     JOIN users u ON u.id = d.uploader_id
@@ -131,6 +137,9 @@ const ENROLLMENT_FILTER = `
      WHERE e.student_id = $1 AND e.subject_id = d.subject_id
   )
 `;
+
+/** Tài liệu hiển thị cho sinh viên: đã đăng ký môn và chưa bị ẩn. */
+const STUDENT_VISIBLE_FILTER = `${ENROLLMENT_FILTER} AND d.is_hidden = false`;
 
 const ORDER_BY: Record<'rank' | 'newest', string> = {
   rank:
@@ -149,7 +158,7 @@ export async function listDocuments(
   filters: ListDocumentFilters,
   db: Queryable = pool,
 ): Promise<DocumentView[]> {
-  const conditions = [ENROLLMENT_FILTER];
+  const conditions = [STUDENT_VISIBLE_FILTER];
   const values: unknown[] = [studentId];
 
   if (filters.subjectId) {
@@ -221,7 +230,7 @@ export async function findAccessibleDocument(
 ): Promise<DocumentView | null> {
   const result = await db.query<DocumentRow>(
     `${DOCUMENT_SELECT}
-      WHERE d.id = $2 AND ${ENROLLMENT_FILTER}`,
+      WHERE d.id = $2 AND ${STUDENT_VISIBLE_FILTER}`,
     [studentId, documentId],
   );
 
@@ -237,7 +246,7 @@ export async function findAccessibleDocumentObjectKey(
   const result = await db.query<{ object_key: string }>(
     `SELECT d.object_key
        FROM subject_documents d
-      WHERE d.id = $2 AND ${ENROLLMENT_FILTER}`,
+      WHERE d.id = $2 AND ${STUDENT_VISIBLE_FILTER}`,
     [studentId, documentId],
   );
 
@@ -251,7 +260,7 @@ export async function findOwnedDocumentByObjectKey(
 ): Promise<DocumentView | null> {
   const result = await db.query<DocumentRow>(
     `${DOCUMENT_SELECT}
-      WHERE d.object_key = $2 AND d.uploader_id = $1 AND ${ENROLLMENT_FILTER}`,
+      WHERE d.object_key = $2 AND d.uploader_id = $1 AND ${STUDENT_VISIBLE_FILTER}`,
     [studentId, objectKey],
   );
 
@@ -352,4 +361,60 @@ export async function recalculateVoteCounts(
       WHERE id = $1`,
     [documentId],
   );
+}
+
+/* ── Quản trị (admin, không giới hạn theo môn đã đăng ký) ─────────────── */
+
+export async function findDocumentById(
+  documentId: string,
+  db: Queryable = pool,
+): Promise<DocumentView | null> {
+  const result = await db.query<DocumentRow>(
+    `${DOCUMENT_SELECT}
+      WHERE d.id = $2`,
+    [null, documentId],
+  );
+  const row = result.rows[0];
+  return row ? mapDocument(row) : null;
+}
+
+export async function findDocumentObjectKeyById(
+  documentId: string,
+  db: Queryable = pool,
+): Promise<string | null> {
+  const result = await db.query<{ object_key: string }>(
+    'SELECT object_key FROM subject_documents WHERE id = $1',
+    [documentId],
+  );
+  return result.rows[0]?.object_key ?? null;
+}
+
+export async function updateDocumentFlags(
+  documentId: string,
+  flags: { isHidden?: boolean; isLocked?: boolean },
+  db: Queryable = pool,
+): Promise<DocumentView | null> {
+  const updated = await db.query<{ id: string }>(
+    `UPDATE subject_documents
+        SET is_hidden = COALESCE($2, is_hidden),
+            is_locked = COALESCE($3, is_locked),
+            updated_at = now()
+      WHERE id = $1
+      RETURNING id`,
+    [documentId, flags.isHidden ?? null, flags.isLocked ?? null],
+  );
+  if (!updated.rows[0]) return null;
+  return findDocumentById(documentId, db);
+}
+
+export async function deleteDocumentById(
+  documentId: string,
+  db: Queryable = pool,
+): Promise<{ objectKey: string } | null> {
+  const result = await db.query<{ object_key: string }>(
+    'DELETE FROM subject_documents WHERE id = $1 RETURNING object_key',
+    [documentId],
+  );
+  const row = result.rows[0];
+  return row ? { objectKey: row.object_key } : null;
 }

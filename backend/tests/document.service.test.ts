@@ -62,6 +62,8 @@ const documentView = {
   uploaderName: 'Sinh viên demo',
   createdAt: '2025-01-01T00:00:00.000Z',
   updatedAt: '2025-01-01T00:00:00.000Z',
+  isHidden: false,
+  isLocked: false,
 };
 
 const enrolledSubject = { id: SUBJECT_ID, code: 'IT101', name: 'Nhập môn lập trình', credits: 3 };

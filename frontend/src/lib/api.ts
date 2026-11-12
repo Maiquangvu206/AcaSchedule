@@ -237,6 +237,8 @@ export interface DocumentItem {
   uploaderName: string;
   createdAt: string;
   updatedAt: string;
+  isHidden: boolean;
+  isLocked: boolean;
 }
 
 export interface DocumentUploadTicket {
@@ -816,6 +818,25 @@ export async function fetchAdminDocuments(
   const suffix = query.toString() ? `?${query.toString()}` : '';
   const result = await apiRequest<{ documents: DocumentItem[] }>(`/admin/documents${suffix}`, { token });
   return result.documents;
+}
+
+/** Ẩn/hiện hoặc khóa/mở khóa tài liệu (admin). */
+export async function updateAdminDocument(
+  token: string,
+  id: string,
+  input: { isHidden?: boolean; isLocked?: boolean },
+): Promise<DocumentItem> {
+  const result = await apiRequest<{ document: DocumentItem }>(`/admin/documents/${id}`, {
+    method: 'PATCH',
+    token,
+    body: input,
+  });
+  return result.document;
+}
+
+/** Xóa hẳn tài liệu (admin). */
+export async function deleteAdminDocument(token: string, id: string): Promise<void> {
+  await apiRequest(`/admin/documents/${id}`, { method: 'DELETE', token });
 }
 
 /* ── Nhập / xuất dữ liệu hàng loạt ─────────────────────────────────── */
