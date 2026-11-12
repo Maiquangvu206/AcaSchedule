@@ -46,7 +46,9 @@ const selectSection = `
          s.name AS "subjectName", s.credits, cs.semester,
          cs.section_code AS "sectionCode", cs.day_of_week AS "dayOfWeek",
          cs.start_period AS "startPeriod", cs.end_period AS "endPeriod",
-         cs.class_type AS "classType", cs.start_date AS "startDate", cs.end_date AS "endDate",
+         cs.class_type AS "classType",
+         to_char(cs.start_date, 'YYYY-MM-DD') AS "startDate",
+         to_char(cs.end_date, 'YYYY-MM-DD') AS "endDate",
          cs.meeting_count AS "meetingCount", cs.linked_section_id AS "linkedSectionId",
          cs.second_day_of_week AS "secondDayOfWeek",
          cs.second_start_period AS "secondStartPeriod", cs.second_end_period AS "secondEndPeriod",
@@ -57,6 +59,21 @@ const selectSection = `
 `;
 
 export const adminScheduleRouter = Router();
+
+/**
+ * Dọn dữ liệu buổi 2: lớp 1 buổi mà vẫn còn gửi `secondDayOfWeek` (form cũ
+ * đổi "2 buổi" → "1 buổi" không xoá giá trị) sẽ lưu `null` thay vì để lại
+ * lịch buổi 2 rác làm lịch sinh viên hiển thị trùng dòng "Thứ 7" hai lần.
+ */
+function normalizeSectionInput(input: z.infer<typeof sectionSchema>): z.infer<typeof sectionSchema> {
+  if (input.meetingCount !== 1) return input;
+  return {
+    ...input,
+    secondDayOfWeek: null,
+    secondStartPeriod: null,
+    secondEndPeriod: null,
+  };
+}
 
 adminScheduleRouter.get('/sections', asyncHandler(async (req, res) => {
   const semester = typeof req.query.semester === 'string' ? req.query.semester : undefined;
@@ -129,7 +146,7 @@ adminScheduleRouter.patch('/periods/:period', asyncHandler(async (req, res) => {
 }));
 
 adminScheduleRouter.post('/sections', asyncHandler(async (req, res) => {
-  const input = sectionSchema.parse(req.body);
+  const input = normalizeSectionInput(sectionSchema.parse(req.body));
   try {
     const result = await pool.query(
       `INSERT INTO course_sections
@@ -158,7 +175,7 @@ adminScheduleRouter.post('/sections', asyncHandler(async (req, res) => {
 }));
 
 adminScheduleRouter.patch('/sections/:id', asyncHandler(async (req, res) => {
-  const input = sectionSchema.parse(req.body);
+  const input = normalizeSectionInput(sectionSchema.parse(req.body));
   const result = await pool.query(
     `UPDATE course_sections
         SET subject_id=$2, semester=$3, section_code=$4, day_of_week=$5,

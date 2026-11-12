@@ -160,8 +160,10 @@ export function AdminLayout() {
           </div>
         ) : null}
 
-        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <Outlet />
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+          <div className="flex-1">
+            <Outlet />
+          </div>
           <AppFooter />
         </main>
       </div>

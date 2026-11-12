@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import { AppError, asyncHandler } from '../../lib/errors';
 import { authenticate } from './auth.middleware';
-import { changePasswordSchema, forgotPasswordSchema, loginSchema, logoutSchema, refreshSchema, registerSchema } from './auth.schemas';
+import { changePasswordSchema, forgotPasswordSchema, loginSchema, logoutSchema, refreshSchema, registerSchema, resetPasswordSchema } from './auth.schemas';
 import { pool } from '../../database/pool';
 import { hashPassword, verifyPassword } from '../../lib/password';
-import { sendTemporaryPasswordEmail, isMailConfigured } from '../../lib/mail';
-import { randomBytes } from 'node:crypto';
+import { isMailConfigured } from '../../lib/mail';
 import * as authService from './auth.service';
 import { authRateLimit } from '../../lib/rate-limit';
 
@@ -24,28 +23,28 @@ authRouter.post(
 
 authRouter.post('/forgot-password', authRateLimit, asyncHandler(async (req, res) => {
   const { email } = forgotPasswordSchema.parse(req.body);
-  // Without a configured SMTP server we cannot deliver a temporary password —
-  // do not lock the user out by changing it first. Ask them to contact an admin instead.
+  // Without a configured mail provider we cannot deliver the confirmation code —
+  // do not lock the user out. Ask them to contact an admin instead.
   if (!isMailConfigured()) {
     throw AppError.badRequest('Hệ thống chưa cấu hình máy chủ gửi thư. Vui lòng liên hệ quản trị viên để đặt lại mật khẩu.');
   }
-  const result = await pool.query<{ id: string; email: string; full_name: string }>(
-    'SELECT id, email, full_name FROM users WHERE email = $1 AND is_active = true',
-    [email.trim().toLowerCase()],
-  );
-  if (result.rows[0]) {
-    const password = randomBytes(12).toString('base64url');
-    await pool.query('UPDATE users SET password_hash = $1, must_change_password = true, updated_at = now() WHERE id = $2', [
-      await hashPassword(password),
-      result.rows[0].id,
-    ]);
-    await sendTemporaryPasswordEmail({
-      recipient: result.rows[0].email,
-      fullName: result.rows[0].full_name,
-      password,
-      reset: true,
-    });
+  // Bước 1: chỉ sinh mã 6 số gửi qua email — KHÔNG đổi mật khẩu ở đây.
+  // Email không tồn tại → response vẫn 204 (không tiết lộ tài khoản nào có thật).
+  try {
+    await authService.requestPasswordResetCode(email);
+  } catch (sendError) {
+    // Lỗi nhà cung cấp mail (hết quota, key sai…) → 503 rõ ràng thay vì 500 chung.
+    throw AppError.serviceUnavailable(
+      `Không gửi được email mã xác nhận: ${sendError instanceof Error ? sendError.message : String(sendError)}`,
+    );
   }
+  res.status(204).send();
+}));
+
+authRouter.post('/reset-password', authRateLimit, asyncHandler(async (req, res) => {
+  const input = resetPasswordSchema.parse(req.body);
+  // Bước 2: mã xác nhận (6 số) + mật khẩu mới → đổi mật khẩu, thu hồi mọi phiên.
+  await authService.resetPasswordWithCode(input);
   res.status(204).send();
 }));
 

@@ -27,6 +27,7 @@ import { AdminPeriodsPage } from './pages/AdminPeriods';
 import { AdminGradeScalesPage } from './pages/AdminGradeScales';
 import { AdminNotificationsPage } from './pages/AdminNotifications';
 import { ChangePasswordPage } from './pages/ChangePassword';
+import { ForgotPassword } from './pages/ForgotPassword';
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="login" element={<Login />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="change-password" element={<ProtectedRoute />} >
             <Route index element={<ChangePasswordPage />} />
           </Route>

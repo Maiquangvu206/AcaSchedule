@@ -1,6 +1,6 @@
 import { AppError } from '../../lib/errors';
 import { simulateSchedule } from './schedule.engine';
-import { isSectionActiveInWeek, formatDateOnly, parseDateOnly, weekRangeFor } from './schedule.range';
+import { isSectionActiveInWeek, formatDateOnly, parseDateOnly, toDateString, weekRangeFor } from './schedule.range';
 import * as repository from './schedule.repository';
 import type {
   CourseSection,
@@ -61,7 +61,8 @@ function semesterStartMonday(
   startDate: string | null | undefined,
   fallback?: string | null,
 ): Date | null {
-  const raw = startDate ?? fallback ?? null;
+  // Giá trị từ Postgres có thể là Date object (cột `date`) — chuẩn hoá trước.
+  const raw = toDateString(startDate) ?? toDateString(fallback) ?? null;
   if (!raw) return null;
   const date = new Date(`${raw}T00:00:00`);
   if (Number.isNaN(date.getTime())) return null;

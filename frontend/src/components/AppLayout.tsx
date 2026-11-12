@@ -27,7 +27,7 @@ export function AppLayout() {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.10),_transparent_60%)]">
+    <div className="flex min-h-screen flex-col bg-[radial-gradient(ellipse_at_top,_rgba(51,102,255,0.10),_transparent_60%)]">
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6 lg:grid lg:grid-cols-[auto_1fr_auto] lg:gap-6">
           <Link to="/" className="flex shrink-0 items-center gap-3">
@@ -95,7 +95,7 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main id="main-content">
+      <main id="main-content" className="flex-1">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-brand-500 focus:text-white focus:rounded-lg"

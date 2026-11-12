@@ -12,6 +12,21 @@ export function parseDateOnly(value: string): Date {
   return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
 }
 
+/**
+ * Postgres cột `date` trả về **Date object** (node-pg tự parse) và API cũ có
+ * thể trả chuỗi ISO đầy đủ (`2026-11-09T00:00:00.000Z`). Chuẩn hoá về chuỗi
+ * `yyyy-mm-dd` ngay tại ranh giới repository — nếu để Date object lọt vào
+ * `parseDateOnly` (`value.split`) sẽ nổ TypeError → HTTP 500.
+ *
+ * Date object từ node-pg cho cột `date` là nửa đêm **giờ local**, nên dùng
+ * getter local (không `toISOString` — lệch múi giờ về ngày trước ở UTC+7).
+ */
+export function toDateString(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  if (typeof value === 'string') return value.slice(0, 10);
+  return formatDateOnly(value);
+}
+
 export interface DateRangedSection {
   startDate?: string | null;
   endDate?: string | null;
@@ -29,12 +44,14 @@ export function isSectionActiveInWeek(
   weekStart: Date,
   weekEnd: Date,
 ): boolean {
-  if (section.startDate) {
-    const starts = parseDateOnly(section.startDate);
+  const startDate = toDateString(section.startDate);
+  if (startDate) {
+    const starts = parseDateOnly(startDate);
     if (weekEnd.getTime() < starts.getTime()) return false;
   }
-  if (section.endDate) {
-    const ends = parseDateOnly(section.endDate);
+  const endDate = toDateString(section.endDate);
+  if (endDate) {
+    const ends = parseDateOnly(endDate);
     if (weekStart.getTime() > ends.getTime()) return false;
   }
   return true;

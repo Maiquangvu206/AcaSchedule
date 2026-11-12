@@ -577,6 +577,11 @@ export async function requestPasswordReset(email: string): Promise<void> {
   await apiRequest('/auth/forgot-password', { method: 'POST', body: { email } });
 }
 
+/** Bước 2 của luồng quên mật khẩu: mã xác nhận 6 số + mật khẩu mới. */
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  await apiRequest('/auth/reset-password', { method: 'POST', body: { email, code, newPassword } });
+}
+
 export async function changePassword(
   token: string,
   currentPassword: string,

@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { ApiError, requestPasswordReset } from '../lib/api';
+import { ApiError } from '../lib/api';
 import { BrandLogo } from '../components/BrandLogo';
 
 interface LocationState {
   from?: string;
+  /** Thông báo từ trang Quên mật khẩu (đã đặt lại mật khẩu thành công). */
+  notice?: string;
 }
 
 export function Login() {
@@ -15,9 +17,8 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>((location.state as LocationState | null)?.notice ?? null);
   const [submitting, setSubmitting] = useState(false);
-  const [resetting, setResetting] = useState(false);
 
   const requestedPath = (location.state as LocationState | null)?.from;
   const loggedInPath = user?.role === 'admin' ? '/admin' : '/transcript';
@@ -114,25 +115,12 @@ export function Login() {
             {submitting ? 'Đang đăng nhập…' : 'Đăng nhập'}
           </button>
 
-          <button type="button" disabled={resetting} onClick={async () => {
-            if (!email.trim()) {
-              setError('Vui lòng nhập email để lấy lại mật khẩu.');
-              return;
-            }
-            setError(null);
-            setNotice(null);
-            setResetting(true);
-            try {
-              await requestPasswordReset(email.trim());
-              setNotice('Nếu email tồn tại, mật khẩu mới sẽ được gửi về hộp thư của bạn.');
-            } catch (resetError) {
-              setError(resetError instanceof ApiError ? resetError.message : 'Không thể gửi yêu cầu lấy lại mật khẩu.');
-            } finally {
-              setResetting(false);
-            }
-          }} className="w-full text-center text-sm font-medium text-brand-600 hover:text-brand-500 disabled:opacity-60">
-            {resetting ? 'Đang gửi yêu cầu…' : 'Quên mật khẩu?'}
-          </button>
+          <Link
+            to="/forgot-password"
+            className="block text-center text-sm font-medium text-brand-600 hover:text-brand-500"
+          >
+            Quên mật khẩu?
+          </Link>
         </form>
       </div>
     </main>

@@ -105,11 +105,71 @@ export async function revokeAllUserTokens(userId: string): Promise<void> {
 }
 
 /** Housekeeping for expired/revoked tokens (called by a future cron job). */
-export async function deleteExpiredRefreshTokens(): Promise<number> {
-  const result = await pool.query(
+export async function deleteExpiredRefreshTokens(): Promise<number> {  const result = await pool.query(
     `DELETE FROM refresh_tokens
       WHERE expires_at < now() - interval '30 days'
          OR revoked_at < now() - interval '30 days'`,
   );
   return result.rowCount ?? 0;
+}
+
+/* ─────────────────── Mã xác nhận quên mật khẩu ─────────────────── */
+
+export interface PasswordResetCodeRecord {
+  id: string;
+  user_id: string;
+  code_hash: string;
+  expires_at: Date;
+  attempts: number;
+}
+
+export async function deleteUserPasswordResetCodes(userId: string): Promise<void> {
+  await pool.query('DELETE FROM password_reset_codes WHERE user_id = $1', [userId]);
+}
+
+export async function createPasswordResetCode(input: {
+  userId: string;
+  codeHash: string;
+  expiresAt: Date;
+}): Promise<void> {
+  // Yêu cầu mới vô hiệu mã cũ — luôn chỉ có tối đa 1 mã hiệu lực cho mỗi user.
+  await pool.query(
+    `INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
+     VALUES ($1, $2, $3)`,
+    [input.userId, input.codeHash, input.expiresAt],
+  );
+}
+
+export async function findLatestPasswordResetCode(
+  userId: string,
+): Promise<PasswordResetCodeRecord | null> {
+  const result = await pool.query<PasswordResetCodeRecord>(
+    `SELECT id, user_id, code_hash, expires_at, attempts
+       FROM password_reset_codes
+      WHERE user_id = $1 AND used_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT 1`,
+    [userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function bumpPasswordResetCodeAttempts(id: string): Promise<number> {
+  const result = await pool.query<{ attempts: number }>(
+    `UPDATE password_reset_codes
+        SET attempts = attempts + 1
+      WHERE id = $1
+      RETURNING attempts`,
+    [id],
+  );
+  return result.rows[0]?.attempts ?? 0;
+}
+
+/** Mã sai quá nhiều lần → thu hồi (xoá) để buộc xin mã mới. */
+export async function revokePasswordResetCode(id: string): Promise<void> {
+  await pool.query('DELETE FROM password_reset_codes WHERE id = $1', [id]);
+}
+
+export async function markPasswordResetCodeUsed(id: string): Promise<void> {
+  await pool.query('UPDATE password_reset_codes SET used_at = now() WHERE id = $1', [id]);
 }

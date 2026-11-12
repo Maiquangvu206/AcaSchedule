@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import { pool } from '../../database/pool';
+import { toDateString } from './schedule.range';
 import type { CourseSection, PeriodSlot, RegistrationConfig, ScheduleItem } from './schedule.types';
 
 export type Queryable = Pool | PoolClient;
@@ -25,8 +26,9 @@ interface CourseSectionRow {
   class_type: 'lecture' | 'practical';
   meeting_count: number;
   linked_section_id: string | null;
-  start_date: string | null;
-  end_date: string | null;
+  /** Cột `date` của Postgres — node-pg trả về Date object, chuẩn hoá qua toDateString. */
+  start_date: string | Date | null;
+  end_date: string | Date | null;
   second_day_of_week: number | null;
   second_start_period: number | null;
   second_end_period: number | null;
@@ -81,8 +83,8 @@ function mapSection(row: CourseSectionRow): CourseSection {
     classType: row.class_type,
     meetingCount: row.meeting_count,
     linkedSectionId: row.linked_section_id,
-    startDate: row.start_date,
-    endDate: row.end_date,
+    startDate: toDateString(row.start_date),
+    endDate: toDateString(row.end_date),
     secondDayOfWeek: row.second_day_of_week,
     secondStartPeriod: row.second_start_period,
     secondEndPeriod: row.second_end_period,
@@ -255,12 +257,12 @@ export async function listSemesterStartDates(
   const result = new Map<string, string | null>();
   if (!semesters.length) return result;
 
-  const rows = await db.query<{ code: string; start_date: string | null }>(
+  const rows = await db.query<{ code: string; start_date: string | Date | null }>(
     `SELECT code, start_date FROM semesters WHERE code = ANY($1::varchar[])`,
     [semesters],
   );
   for (const semester of semesters) result.set(semester, null);
-  for (const row of rows.rows) result.set(row.code, row.start_date);
+  for (const row of rows.rows) result.set(row.code, toDateString(row.start_date));
   return result;
 }
 

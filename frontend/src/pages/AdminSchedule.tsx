@@ -89,14 +89,52 @@ export function AdminSchedulePage() {
     [semesters, form.semester, form.startDate],
   );
 
+  /** Ngày kết thúc học kỳ — chặn dải tuần theo đúng thời lượng của kỳ. */
+  const semesterEnd = useMemo(
+    () => semesters.find((item) => item.code === form.semester)?.endDate ?? null,
+    [semesters, form.semester],
+  );
+
   /**
-   * Danh sách tuần có thể chọn nghỉ. Tuần 1 là tuần chứa ngày bắt đầu học kỳ
-   * (nếu chưa có thì dùng ngày bắt đầu của lớp).
+   * Danh sách tuần có thể chọn nghỉ, tính theo thời gian thực của học kỳ:
+   * tuần 1 = tuần (bắt đầu Thứ 2) chứa ngày bắt đầu học kỳ, tuần cuối =
+   * tuần chứa ngày kết thúc — khớp quy tắc đánh số tuần của backend
+   * (schedule.service.ts → semesterStartMonday). Backend chấp nhận tối đa
+   * tuần 60; nếu học kỳ chưa có ngày kết thúc thì dùng 20 tuần như cũ.
+   *
+   * Lưu ý: API có thể trả ngày dạng ISO đầy đủ (`2024-09-01T00:00:00.000Z`)
+   * nên luôn cắt 10 ký tự đầu để parse — ghép `T00:00:00` vào chuỗi đầy đủ
+   * sẽ cho Invalid Date.
    */
   const weekOptions = useMemo(() => {
-    const total = 20;
-    return Array.from({ length: total }, (_, index) => index + 1);
-  }, [semesterStart]);
+    const FALLBACK_WEEKS = 20;
+    const MAX_WEEKS = 60;
+    const mondayOf = (isoDate: string): Date | null => {
+      const date = new Date(`${isoDate.slice(0, 10)}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return null;
+      const day = date.getDay();
+      date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
+      return date;
+    };
+    const startMonday = semesterStart ? mondayOf(semesterStart) : null;
+    if (!startMonday) return Array.from({ length: FALLBACK_WEEKS }, (_, i) => i + 1);
+
+    const endMonday = semesterEnd ? mondayOf(semesterEnd) : null;
+    const total = endMonday
+      ? Math.floor((endMonday.getTime() - startMonday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1
+      : FALLBACK_WEEKS;
+    const count = Math.min(Math.max(total, 1), MAX_WEEKS);
+    return Array.from({ length: count }, (_, i) => i + 1);
+  }, [semesterStart, semesterEnd]);
+
+  // Học kỳ đổi → dải tuần co lại → bỏ các tuần đã chọn vượt quá thời lượng.
+  useEffect(() => {
+    setSkippedWeeks((current) => {
+      const max = weekOptions.length;
+      const next = current.filter((week) => week >= 1 && week <= max);
+      return next.length === current.length ? current : next;
+    });
+  }, [weekOptions]);
 
   const setField = <K extends keyof AdminCourseSectionInput>(key: K, value: AdminCourseSectionInput[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -195,7 +233,8 @@ export function AdminSchedulePage() {
         <label className="text-sm font-medium text-slate-700">Học kỳ<Combobox options={semesterOptions} value={form.semester} onChange={(value) => { setField('semester', value); setSemester(value); }} placeholder="Chọn học kỳ" emptyLabel="— Chọn học kỳ —" className="mt-1" /></label>
         <label className="text-sm font-medium text-slate-700">Môn học<Combobox options={subjectOptions} value={form.subjectId} onChange={(value) => setField('subjectId', value)} placeholder="Nhập mã hoặc tên môn…" emptyLabel="— Chọn môn học —" className="mt-1" /></label>
         <label className="text-sm font-medium text-slate-700">Mã lớp<input value={form.sectionCode} onChange={(e) => setField('sectionCode', e.target.value)} placeholder="INT2208-01" required className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
-        <label className="text-sm font-medium text-slate-700">Số buổi / tuần<select value={form.meetingCount} onChange={(e) => { const count = Number(e.target.value); setField('meetingCount', count); if (count === 2) setField('secondDayOfWeek', pairedDay[form.dayOfWeek] ?? 5); }} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value={1}>1 buổi</option><option value={2}>2 buổi</option></select></label>
+        <label className="text-sm font-medium text-slate-700">Số buổi / tuần<select value={form.meetingCount} onChange={(e) => { const count = Number(e.target.value); setField('meetingCount', count); if (count === 2) { setField('secondDayOfWeek', pairedDay[form.dayOfWeek] ?? 5); } else { // Về 1 buổi → xoá giá trị buổi 2 để không lưu dữ liệu rác.
+ setField('secondDayOfWeek', null); setField('secondStartPeriod', null); setField('secondEndPeriod', null); } }} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value={1}>1 buổi</option><option value={2}>2 buổi</option></select></label>
         <label className="text-sm font-medium text-slate-700">Thứ<select value={form.dayOfWeek} onChange={(e) => { const day = Number(e.target.value); setField('dayOfWeek', day); if (form.meetingCount === 2) setField('secondDayOfWeek', pairedDay[day] ?? 5); }} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">{(form.meetingCount === 2 ? [2, 3, 4] : [2, 3, 4, 5, 6, 7]).map((day) => <option key={day} value={day}>{days[day]}</option>)}</select></label>
         <label className="text-sm font-medium text-slate-700">Tiết bắt đầu<input type="number" min="1" max="12" value={form.startPeriod} onChange={(e) => setField('startPeriod', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
         <label className="text-sm font-medium text-slate-700">Tiết kết thúc<input type="number" min="1" max="12" value={form.endPeriod} onChange={(e) => setField('endPeriod', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
@@ -265,7 +304,8 @@ export function AdminSchedulePage() {
           <p className="text-sm font-medium text-slate-700">Tuần nghỉ (không học)</p>
           <p className="mt-0.5 text-[11px] text-slate-500">
             Tuần được đánh số từ tuần đầu của học kỳ
-            {semesterStart ? ` (bắt đầu ${semesterStart})` : ''}. Không chọn tuần nào nghĩa là học đều mọi tuần.
+            {semesterStart ? ` (bắt đầu ${semesterStart.slice(0, 10)})` : ''}
+            {semesterEnd ? ` đến ${semesterEnd.slice(0, 10)} — ${weekOptions.length} tuần` : ' (học kỳ chưa có ngày kết thúc, mặc định 20 tuần)'}. Không chọn tuần nào nghĩa là học đều mọi tuần.
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {weekOptions.map((week) => {

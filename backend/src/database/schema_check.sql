@@ -80,7 +80,12 @@ WITH expected(tbl, col) AS (
     ('system_notifications', 'message'),
     ('system_notifications', 'level'),
     ('system_notifications', 'is_active'),
-    ('system_notifications', 'expires_at')
+    ('system_notifications', 'expires_at'),
+    -- 029
+    ('password_reset_codes', 'code_hash'),
+    ('password_reset_codes', 'expires_at'),
+    ('password_reset_codes', 'attempts'),
+    ('password_reset_codes', 'used_at')
 )
 SELECT e.tbl AS table_name, e.col AS missing_column
   FROM expected e
