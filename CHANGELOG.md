@@ -8,25 +8,28 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- **Auth — Quên mật khẩu 2 bước (xác nhận email):** migration `029_password_reset_codes.sql`, trang `/forgot-password`, `POST /api/auth/forgot-password` (gửi mã 6 số, TTL 15 phút, hash SHA-256, 1 mã hiệu lực/user) và `POST /api/auth/reset-password` (xác nhận mã + đặt mật khẩu mới, thu hồi toàn bộ phiên, giới hạn 5 lần sai/thu hồi mã). Không đổi mật khẩu ở bước 1 và không lộ sự tồn tại/trạng thái tài khoản.
+- **Auth — Thông báo tài khoản bị khóa:** đăng nhập đúng mật khẩu nhưng `is_active=false` trả `403` với thông báo rõ; sai mật khẩu/không tồn tại vẫn trả `401` chung.
+- **Mail:** ưu tiên gửi qua HTTP API (Brevo/Resend, cổng 443) rồi fallback SMTP; dùng chung cho mã xác nhận quên mật khẩu và mật khẩu tạm do admin.
+- **Quản trị tài liệu cộng đồng:** migration `030_document_moderation.sql` thêm `subject_documents.is_hidden`, `is_locked`; admin `GET/PATCH/DELETE /api/admin/documents` (ẩn/khóa/xóa, xóa object storage best-effort). Sinh viên không thấy/không truy cập tài liệu ẩn; tài liệu bị khóa vẫn hiển thị nhưng không xem/tải/bình chọn.
 - **Sprint 4: AI Advisor & RAG**
   - `POST /api/ai/advice` - tư vấn học tập từ dữ liệu điểm thật của sinh viên
   - `POST /api/ai/documents/summarize` - tóm tắt nội dung tài liệu
   - `POST /api/ai/qa` - trả lời câu hỏi dựa trên ngữ cảnh tài liệu
   - `GET /api/ai/status` - tình trạng dịch vụ AI
-  - PII redaction (email, SĐT, UUID, họ tên) trước khi gửi Gemini
-  - Quota per-user (20 lần/giờ qua Redis)
+  - PII redaction (email, SĐT, UUID, họ tên) trước khi gửi mô hình AI
   - Cache câu trả lời theo hash (TTL 10 phút)
-  - Fallback cục bộ khi Gemini không khả dụng
+  - Fallback cục bộ khi dịch vụ AI không khả dụng
 
 - **Sprint 3: Crowdsourced Document Hub**
-  - `POST /api/documents/uploads/presign` - cấp URL presigned PUT lên MinIO
+  - `POST /api/documents/uploads/presign` - cấp URL presigned PUT lên object storage
   - `POST /api/documents` - lưu metadata tài liệu
   - `GET /api/documents` - danh sách tài liệu (filter, search, sort)
   - `POST /api/documents/:id/vote` - upvote/downvote (1 user 1 vote)
   - `GET /api/documents/:id/download` - presigned download URL
   - `GET /api/documents/subjects` - danh sách môn học có thể đóng góp
   - Migration `004_documents.sql`: bảng `subject_documents` mở rộng, bảng `document_votes`
-  - Validation file: MIME, extension, kích thước (20 MB), chặn executable
+  - Validation file: MIME, extension, kích thước, chặn executable
 
 - **Sprint 2: Schedule Planner**
   - `POST /api/schedule/simulate` - mô phỏng đăng ký, phát hiện xung đột
@@ -51,10 +54,12 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Health endpoints: `/api/health`, `/api/health/live`
   - Swagger/OpenAPI (`/api/docs`)
   - Chuẩn hóa lỗi + request logging + X-Request-Id
-  - MinIO bucket initialization, Redis client
+  - MinIO/R2-compatible bucket initialization, Redis client
   - Docker Compose 7 services
 
 ### Changed
+- AI: không giới hạn lượt hỏi; tự nối câu trả lời khi chạm giới hạn token (không cắt giữa câu).
+- Frontend: trang admin tài liệu có bộ lọc/căn chỉnh bảng; layout/footer căn đáy trang ngắn.
 - Frontend: chuyển giao diện từ dark mode sang light mode
 - Frontend: tách data layer thành hooks (`useGPA`, `useSchedule`, `useDocuments`, `useAI`, `useTranslation`)
 - Frontend: thêm i18n (vi/en) với `LanguageToggle` component
@@ -64,6 +69,8 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Backend: thêm rate limiting (`backend/src/lib/rate-limit.ts`)
 
 ### Fixed
+- **Object storage:** sửa lỗi xác nhận upload tài liệu trả 503 `Object storage is unavailable` — ghi log lỗi gốc và `statObject` fallback thử public client khi cần; cải thiện chẩn đoán (presign 201, PUT 200 nhưng confirm 503).
+- **Schedule/GPA range:** chuẩn hoá cột `date` (node-pg trả Date) tại ranh giới repository/range, tính tuần nghỉ/tuần theo thời gian học kỳ; sửa lỗi 500 mô phỏng đăng ký khi `value.split is not a function` và chuẩn hoá buổi học 1 lần/tuần.
 - Frontend: sửa lỗi import `useState` trong Transcript.tsx
 - Backend: sửa type errors trong `schedule.repository.ts`
 
@@ -74,9 +81,10 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Không có
 
 ### Security
-- PII redaction trước khi gửi Gemini
-- Rate limiting trên auth (login/register), document upload, AI advice
-- File upload validation (MIME, extension, kích thước, chặn executable)
+- Quên mật khẩu: mã 6 số lưu hash, hiệu lực ngắn, giới hạn lần sai, dùng 1 lần, thu hồi phiên sau khi đổi mật khẩu; phản hồi không tiết lộ tài khoản.
+- PII redaction trước khi gửi mô hình AI
+- Rate limiting trên auth (login/register), document upload
+- File upload validation (MIME, extension, kích thước, chặn executable) và xác minh object trên storage
 - Presigned URL thay vì upload trực tiếp qua backend
 
 ## [0.1.0] - 2026-11-05

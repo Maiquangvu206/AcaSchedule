@@ -15,9 +15,9 @@ Nền tảng quản trị học tập cho sinh viên và quản trị viên: tí
 - **Bộ môn quản lý:** mỗi môn học có bộ môn phụ trách, cấu hình ở tab **Ngành & khoa** (và show trên Chương trình đào tạo/Lộ trình học).
 - **Admin – Môn học theo kỳ:** thêm môn vào học kỳ cho từng sinh viên (có hoặc không kèm điểm), sửa điểm, xóa lượt học — tự đồng bộ CPA.
 - **Nhập & xuất CSV:** nhập/xuất hàng loạt **bảng điểm**, **chương trình đào tạo** và **cấu hình lịch học** từ trang Nhập & xuất — có nút "Kiểm tra trước (không ghi)". Xem [docs/data-import-export.md](docs/data-import-export.md).
-- **Tài liệu:** upload qua presigned URL lên MinIO, vote, tìm kiếm.
+- **Tài liệu:** upload qua presigned URL lên object storage (MinIO/R2/S3), vote, tìm kiếm; **admin** có thể **ẩn / khóa xem-tải-bình chọn / xóa** tài liệu vi phạm.
+- **Xác thực & tài khoản:** đăng nhập/đăng ký JWT; **quên mật khẩu 2 bước** (gửi mã xác nhận 6 số qua email, hiệu lực 15 phút, rồi đặt mật khẩu mới — không đổi mật khẩu chỉ bằng một lần yêu cầu); báo rõ khi tài khoản bị khóa (chỉ khi nhập đúng mật khẩu). Email gửi qua HTTP API (Brevo/Resend, SMTP local). Xem [docs/mail-setup.md](docs/mail-setup.md).
 - **Thông báo hệ thống:** admin gửi thông báo tới toàn bộ sinh viên; mỗi lần sinh viên đăng nhập sẽ hiện lớp thông báo (đóng bằng nút X), không hiện lại khi chuyển trang. Xem [docs/notifications.md](docs/notifications.md).
-- **Email mật khẩu tạm thời:** gửi qua HTTP API (Brevo hoặc Resend — Render free chặn SMTP). Hướng dẫn cấu hình từng bước: [docs/mail-setup.md](docs/mail-setup.md).
 - **AI:** tư vấn định hướng, tóm tắt tài liệu, Q&A — **không giới hạn lượt hỏi**, câu trả lời không bị cắt giữa câu (tự nối khi chạm giới hạn token).
 
 ## Chạy thử (local, Docker)
@@ -72,11 +72,12 @@ Chi tiết kiến trúc/API/CSDL: [`docs/`](docs/) — [SRS](docs/SRS_BUSINESS_A
 ## Bảo mật
 
 - Mật khẩu băm **bcrypt (12 rounds)**; JWT access (15 phút) + refresh rotation (7 ngày) lưu hash trong DB.
+- **Quên mật khẩu:** luồng 2 bước với mã 6 số gửi email (hash SHA-256, TTL 15 phút, giới hạn số lần sai, dùng 1 lần); đổi mật khẩu thành công sẽ thu hồi toàn bộ phiên đăng nhập. Không lộ sự tồn tại/trạng thái tài khoản ở bước yêu cầu mã.
 - **Production fail-fast:** backend từ chối khởi động nếu dùng secret mặc định (`dev-*`) hoặc mật khẩu admin mặc định.
 - Helmet (CSP), CORS whitelist theo `CORS_ORIGIN`, JSON body giới hạn 1MB.
 - Rate-limit: đăng nhập 10 lần/15 phút/IP (chống brute-force); upload tài liệu 60 lần/giờ. AI **không** giới hạn lượt hỏi.
 - PII (email/sđt/họ tên/UUID) được redact trước khi gửi cho AI và khi ghi log.
-- SQL dùng tham số hóa (parameterized queries); upload tệp qua presigned URL, kiểm tra MIME/kích thước (≤ 20MB), chặn tệp thực thi.
+- SQL dùng tham số hóa (parameterized queries); upload tệp qua presigned URL, kiểm tra MIME/kích thước và chặn tệp thực thi; backend xác minh object trên storage sau khi upload.
 - File `.env` nằm trong `.gitignore` (không commit); chỉ commit `.env.example`.
 
 ## Kiểm thử

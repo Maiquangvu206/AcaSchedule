@@ -21,15 +21,15 @@ Tài liệu này mô tả phạm vi nghiệp vụ ở mức khung; đặc tả c
 
 ### BR-DOCS — Document Hub
 
-- Sinh viên chỉ được upload tài liệu cho môn đã/đang đăng ký (`student_enrollments`).
+- Sinh viên chỉ được upload/xem/bình chọn tài liệu cho môn đã/đang đăng ký (`student_enrollments`); tài liệu **bị ẩn** không hiển thị với sinh viên, tài liệu **bị khóa** vẫn hiển thị nhưng không xem/tải/bình chọn.
+- Admin có thể **ẩn / khóa / xóa** tài liệu (xóa metadata và object storage best-effort).
 - Tài liệu được xếp hạng theo `upvotes - downvotes`, sau đó theo thời gian tạo.
-- File lưu ở MinIO; PostgreSQL chỉ lưu metadata và đường dẫn object.
+- File lưu trên object storage (MinIO/R2/S3, presigned URL); PostgreSQL chỉ lưu metadata và đường dẫn object.
 
 ### BR-AI — AI Advisor
 
-- Phân tích điểm thành phần theo khối kiến thức, gợi ý điểm thi mục tiêu.
-- RAG: trích xuất text PDF/DOCX từ MinIO, chunk, embed, truy vấn và trả lời kèm nguồn.
-- Không gửi dữ liệu cá nhân ngoài phạm vi cần thiết tới Gemini API.
+- Phân tích điểm thành phần theo khối kiến thức, gợi ý điểm thi mục tiêu; hỗ trợ tóm tắt/Q&A theo ngữ cảnh.
+- Không gửi dữ liệu cá nhân ngoài phạm vi cần thiết tới mô hình AI (PII redaction). AI không giới hạn lượt hỏi; khi dịch vụ không khả dụng trả fallback cục bộ.
 
 ## 3. Out of Scope (v1)
 

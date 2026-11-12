@@ -1,7 +1,9 @@
 # Cấu hình gửi email (Brevo / Resend / SMTP)
 
-Hệ thống gửi email cho **một tính năng duy nhất**: thông báo **mật khẩu tạm thời**
-khi admin tạo tài khoản sinh viên mới hoặc sinh viên tự đặt lại mật khẩu quên.
+Hệ thống gửi email phục vụ các luồng xác thực/tài khoản:
+
+- **Mã xác nhận 6 số (quên mật khẩu 2 bước):** sinh viên yêu cầu đặt lại mật khẩu tại `/forgot-password` → hệ thống gửi mã (hiệu lực 15 phút). Mã đúng mới cho phép đặt mật khẩu mới; luồng này **không** đổi mật khẩu khi chưa xác nhận.
+- **Mật khẩu tạm thời:** khi **admin** tạo tài khoản sinh viên mới hoặc admin cấp lại mật khẩu.
 
 Vì Render free **chặn cổng SMTP** (25/465/587), hệ thống ưu tiên gửi qua **HTTP API**
 (cổng 443 — luôn mở). Thứ tự ưu tiên:
@@ -13,11 +15,12 @@ Brevo (nếu có BREVO_API_KEY)
    ↓ thiếu key
 SMTP (local — cần SMTP_HOST + SMTP_FROM)
    ↓ không cấu hình gì
-Báo lỗi "SMTP chưa được cấu hình" — sinh viên liên hệ admin để lấy mật khẩu
+Báo lỗi: chưa cấu hình máy chủ gửi thư — không gửi được
 ```
 
-**Email là best-effort:** gửi thất bại **không làm mất tài khoản** — admin vẫn
-nhận được mật khẩu tạm hiển thị trên giao diện để chuyển tay cho sinh viên.
+**Lưu ý:**
+- **Quên mật khẩu (bước 1):** nếu chưa cấu hình mail hoặc gửi thất bại, API trả lỗi tương ứng (400/503) và **không** đặt lại mật khẩu (tránh khóa truy cập). Cấu hình mail là bắt buộc để dùng luồng này.
+- **Mật khẩu tạm do admin:** gửi thất bại là **best-effort** — không làm mất tài khoản, admin vẫn có thể nhận mật khẩu tạm hiển thị trên giao diện để chuyển tay cho sinh viên.
 
 ---
 

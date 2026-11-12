@@ -166,10 +166,11 @@ Sau khi đổi endpoint, dữ liệu cũ **không tự chuyển** — cần copy
 
 ## 9. Lỗi thường gặp
 
-| Triệu chứng | Nguyên nhân |
+| Triệu chứng | Nguyên nhân / Cách xử lý |
 |---|---|
-| `storage: down` | Sai endpoint/key/bucket, hoặc token thiếu quyền |
-| `Failed to fetch` khi upload | Bucket thiếu CORS (bước 3) |
+| `storage: down` (health) | Sai endpoint/key/bucket, hoặc token thiếu quyền |
+| `Failed to fetch` khi upload | Bucket thiếu CORS (bước 3) — PUT trực tiếp từ trình duyệt lên storage |
 | `SignatureDoesNotMatch` | `MINIO_SECRET_KEY` sai, hoặc `MINIO_REGION` khác `auto` |
 | `Tải tệp lên kho thất bại (HTTP 403)` | Token chỉ Read, thiếu Write |
-| Upload xong nhưng không hiện tài liệu | Bước `POST /api/documents` thất bại — xem Network tab |
+| Presign `201`, PUT storage `200` nhưng `POST /api/documents` trả **503** `Object storage is unavailable` | Backend không xác minh được object sau upload (`statObject`). Kiểm tra: endpoint nội bộ backend tới storage (`MINIO_ENDPOINT/PORT/USE_SSL`, với R2: host thuần `<account>.r2.cloudflarestorage.com`, port `443`, SSL `true`, `MINIO_REGION=auto`), bucket/key đúng, và cấu hình public `MINIO_PUBLIC_*` khớp. Xem log backend: `Confirm upload failed: storage stat error` (hoặc `Presign upload failed`/`Get document download URL failed`) kèm `requestId` để biết lỗi gốc. |
+| Upload xong nhưng không hiện tài liệu | Bước xác nhận `POST /api/documents` thất bại — xem Network tab và log backend theo `requestId` |

@@ -35,7 +35,28 @@ Tài khoản đăng nhập, phân quyền bằng `role`.
 | password_hash | text | bcrypt, 12 rounds |
 | full_name | varchar(120) | |
 | role | varchar(20) | `student` hoặc `admin` |
+| is_active | boolean | `false` = tài khoản bị khóa (đăng nhập đúng mật khẩu → 403) |
+| must_change_password | boolean | Yêu cầu đổi mật khẩu (đặt lại quên mật khẩu thành công → `false`) |
 | created_at / updated_at | timestamptz | Trigger cập nhật `updated_at` |
+
+### `password_reset_codes`
+
+Mã xác nhận 6 số cho luồng **quên mật khẩu 2 bước** (migration `029_password_reset_codes.sql`). Chỉ lưu hash, không lưu mã thô.
+
+| Cột | Kiểu | Ghi chú |
+| --- | --- | --- |
+| id | uuid PK | |
+| user_id | uuid FK → users | ON DELETE CASCADE |
+| code_hash | char(64) | SHA-256 của mã 6 số |
+| expires_at | timestamptz | Hết hạn sau 15 phút |
+| attempts | integer | Số lần nhập sai (thu hồi mã khi ≥ 5) |
+| used_at | timestamptz | NULL nếu chưa dùng; dùng 1 lần |
+| created_at | timestamptz | |
+
+Ràng buộc/index:
+
+- Tối đa **1 mã hiệu lực**/user tại một thời điểm (partial unique trên `user_id` khi `used_at IS NULL`)
+- `INDEX (user_id, expires_at)`
 
 ### `refresh_tokens`
 
@@ -154,7 +175,7 @@ Khi đọc CPA, backend luôn tính lại từ dữ liệu gốc và ghi lại c
 
 ### `subject_documents`
 
-Metadata tài liệu cộng đồng; file thật nằm trên MinIO.
+Metadata tài liệu cộng đồng; file thật nằm trên object storage (MinIO/R2/S3).
 
 | Cột | Kiểu | Ghi chú |
 | --- | --- | --- |
@@ -168,6 +189,8 @@ Metadata tài liệu cộng đồng; file thật nằm trên MinIO.
 | size_bytes | bigint | |
 | upvotes | integer DEFAULT 0 | |
 | downvotes | integer DEFAULT 0 | |
+| is_hidden | boolean DEFAULT false | Ẩn khỏi sinh viên (admin vẫn thấy/quản trị) — migration `030_document_moderation.sql` |
+| is_locked | boolean DEFAULT false | Khóa xem/tải/bình chọn phía sinh viên (vẫn hiển thị) — migration `030_document_moderation.sql` |
 | created_at / updated_at | timestamptz | Trigger cập nhật `updated_at` |
 ### `document_votes`
 

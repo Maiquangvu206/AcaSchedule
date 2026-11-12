@@ -24,7 +24,30 @@ Base URL: `/api` (qua Nginx) · Backend nội bộ: `http://backend:8000`
 | POST | `/api/auth/login` | Đăng nhập bằng email/mật khẩu. |
 | POST | `/api/auth/refresh` | Rotation: thu hồi refresh token cũ, cấp cặp token mới. |
 | POST | `/api/auth/logout` | Thu hồi refresh token (idempotent). |
+| POST | `/api/auth/forgot-password` | **Bước 1 quên mật khẩu:** gửi mã xác nhận 6 số qua email (hiệu lực 15 phút). **Không** đổi mật khẩu ở bước này. |
+| POST | `/api/auth/reset-password` | **Bước 2 quên mật khẩu:** xác nhận mã 6 số + đặt mật khẩu mới. |
+| POST | `/api/auth/change-password` | Đổi mật khẩu (đang đăng nhập, Bearer token). |
 | GET | `/api/auth/me` | Thông tin user hiện tại (Bearer token). |
+
+### Đăng nhập & tài khoản bị khóa
+
+- Email không tồn tại **hoặc** sai mật khẩu → `401 Unauthorized`, thông báo chung `Email hoặc mật khẩu không đúng` (không lộ tài khoản có tồn tại hay không).
+- **Mật khẩu đúng** nhưng tài khoản bị khóa (`is_active=false`) → `403 Forbidden`, thông báo `Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để mở khóa.` (chỉ người biết mật khẩu mới nhận thông báo này).
+
+### Quên mật khẩu (2 bước, xác nhận qua email)
+
+Luồng này thay thế việc đổi mật khẩu ngay khi yêu cầu: chỉ người truy cập được hộp thư mới đặt lại được mật khẩu.
+
+1. `POST /api/auth/forgot-password` body `{ "email": "..." }`
+   - Nếu hệ thống **chưa cấu hình** gửi mail → `400` với thông báo yêu cầu liên hệ quản trị viên (không đổi/khóa tài khoản).
+   - Nếu cấu hình mail hợp lệ: sinh mã 6 số (lưu **hash SHA-256**, hết hạn **15 phút**, tối đa **1 mã hiệu lực**/user, thay thế mã cũ), gửi mã qua email và trả **`204`**.
+   - Email không tồn tại hoặc tài khoản không hoạt động → vẫn trả **`204`** như nhau (không lộ sự tồn tại của tài khoản).
+2. `POST /api/auth/reset-password` body `{ "email": "...", "code": "123456", "newPassword": "..." }`
+   - Mã đúng (trong hạn, chưa dùng, chưa vượt số lần sai) → đổi mật khẩu, đặt `must_change_password=false`, đánh dấu mã đã dùng, **thu hồi toàn bộ phiên đăng nhập**; trả **`204`**.
+   - Mã sai / hết hạn / đã dùng / không khớp / email không tồn tại hoặc bị khóa → `400` với **cùng một thông báo chung** `Mã xác nhận không đúng hoặc đã hết hạn. Vui lòng thử lại hoặc yêu cầu mã mới.` (không lộ lý do/tài khoản).
+   - Nhập sai tích lũy **≥ 5 lần** → mã bị thu hồi, phải yêu cầu mã mới (kể cả sau đó nhập đúng mã cũ).
+
+> Mật khẩu tạm do **admin** tạo/cấp lại cho tài khoản vẫn được gửi qua email như trước (best-effort). Xem [docs/mail-setup.md](mail-setup.md).
 
 Mọi route dưới `/api/admin`, `/api/student`, `/api/gpa`, `/api/schedule`,
 `/api/documents`, `/api/ai` yêu cầu `Authorization: Bearer <accessToken>`.
@@ -274,6 +297,25 @@ Chi tiết cách dùng: [`docs/notifications.md`](notifications.md).
 
 ## Documents
 
+### Sinh viên (`/api/documents`, yêu cầu đăng nhập)
+
+| Method | Path | Mô tả |
+| --- | --- | --- |
+| GET | `/api/documents/subjects` | Các môn sinh viên đã đăng ký (để đóng góp/xem tài liệu). |
+| POST | `/api/documents/uploads/presign` | Cấp URL presigned PUT để trình duyệt tải trực tiếp lên storage. |
+| POST | `/api/documents` | Xác nhận upload và lưu metadata (kiểm tra lại object/size/MIME thật trên storage). |
+| GET | `/api/documents?subjectId=&q=&sort=` | Danh sách tài liệu theo môn, tìm kiếm, sắp xếp (`rank`/`newest`). Chỉ trả tài liệu **chưa bị ẩn** của các môn đã đăng ký. |
+| POST | `/api/documents/:id/vote` | Bình chọn (1: upvote, -1: downvote, 0: hủy); 1 user 1 vote. |
+| GET | `/api/documents/:id/download?inline=true` | URL presigned tải xuống/xem trực tiếp tài liệu. |
+
+### Admin (`/api/admin/documents`, yêu cầu role `admin`)
+
+| Method | Path | Mô tả |
+| --- | --- | --- |
+| GET | `/api/admin/documents?subjectId=&q=&sort=` | Toàn bộ tài liệu (kể cả **đã ẩn**), không giới hạn theo môn đăng ký. |
+| PATCH | `/api/admin/documents/:id` | Cập nhật trạng thái: `{ "isHidden"?: boolean, "isLocked"?: boolean }`. |
+| DELETE | `/api/admin/documents/:id` | Xóa hẳn tài liệu (metadata + votes cascade) và xóa object trên storage (best-effort). Trả `204`. |
+
 Body presign upload:
 
 ```json
@@ -289,79 +331,107 @@ Response presign upload:
 
 ```json
 {
-  "uploadUrl": "http://localhost:9000/documents/subjects/bd2f958d-.../f4636ebb-.../a66bc6d2-aba5-460d-a4c1-bef1ee8c052e.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20261105%2Fus-east-1%2Fs3%2Faws4_request&...",
-  "objectKey": "subjects/bd2f958d-0aea-4b18-8782-a9fc93ec7ffa/f4636ebb-4186-46c9-aa28-022ca21d134d/a66bc6d2-aba5-460d-a4c1-bef1ee8c052e.pdf",
+  "uploadUrl": "https://...presigned...",
+  "objectKey": "subjects/<subjectId>/<userId>/<uuid>.pdf",
   "method": "PUT",
   "expiresIn": 600,
   "requiredHeaders": { "Content-Type": "application/pdf" }
 }
 ```
 
-Response tạo document:
+`document` (response của tạo/list/vote/download, và admin):
 
 ```json
 {
-  "document": {
-    "id": "uuid",
-    "subjectId": "bd2f958d-0aea-4b18-8782-a9fc93ec7ffa",
-    "subjectCode": "INT2204",
-    "subjectName": "Lập trình hướng đối tượng",
-    "title": "Đề thi giữa kỳ",
-    "originalName": "de-thi-giua-ky.pdf",
-    "mimeType": "application/pdf",
-    "sizeBytes": 1024,
-    "upvotes": 0,
-    "downvotes": 0,
-    "score": 0.0,
-    "myVote": 0,
-    "uploaderId": "f4636ebb-4186-46c9-aa28-022ca21d134d",
-    "uploaderName": "Nguyen Van A",
-    "createdAt": "2026-11-05T08:13:47.000Z",
-    "updatedAt": "2026-11-05T08:13:47.000Z"
-  }
+  "id": "uuid",
+  "subjectId": "uuid",
+  "subjectCode": "INT2204",
+  "subjectName": "Lập trình hướng đối tượng",
+  "title": "Đề thi giữa kỳ",
+  "originalName": "de-thi-giua-ky.pdf",
+  "mimeType": "application/pdf",
+  "sizeBytes": 1024,
+  "upvotes": 0,
+  "downvotes": 0,
+  "score": 0.0,
+  "myVote": 0,
+  "uploaderId": "uuid",
+  "uploaderName": "Nguyen Van A",
+  "createdAt": "2026-11-05T08:13:47.000Z",
+  "updatedAt": "2026-11-05T08:13:47.000Z",
+  "isHidden": false,
+  "isLocked": false
 }
 ```
 
-Response vote:
+- `POST /api/documents` → `201 { "document": ... }`
+- `POST /api/documents/:id/vote` → `200 { "document": ... }`
+- `GET /api/documents/:id/download` → `200 { "url", "expiresIn", "disposition": "inline"|"attachment", "document" }`
+- `PATCH /api/admin/documents/:id` → `200 { "document": ... }`
+
+Quy tắc tải lên & truy cập tài liệu (BR-DOCS):
+
+1. Sinh viên chỉ thao tác với tài liệu của môn đang có trong `student_enrollments`; tài liệu **bị ẩn** (`isHidden=true`) không xuất hiện và không truy cập được qua API sinh viên.
+2. Tài liệu **bị khóa** (`isLocked=true`) vẫn hiển thị cho sinh viên nhưng **không** cho xem/tải (`GET .../download`) và **không** cho bình chọn (`POST .../vote`) — trả `403`.
+3. Tệp upload qua presigned PUT trực tiếp tới object storage; backend không đọc nội dung tệp.
+4. Validate trước khi ký URL và **sau khi object đã có trên storage** (server `statObject`): kích thước khớp khai báo, MIME/định dạng hợp lệ (PDF, Office, văn bản, ảnh), chặn tệp thực thi; object key do backend sinh `subjects/{subjectId}/{studentId}/{uuid}.{ext}`.
+5. Metadata (`subject_documents`): tiêu đề, tên gốc, MIME, kích thước, object key, người tải lên, thời gian, `is_hidden`, `is_locked`. Counters `upvotes`/`downvotes` tính lại từ `document_votes` (một user một vote).
+6. Xem/tải yêu cầu quyền truy cập môn học và tài liệu không bị khóa; không lộ bucket public. Lỗi storage phía backend trả `503 "Object storage is unavailable"` kèm log lỗi gốc (xem [docs/r2-setup.md](r2-setup.md)).
+
+## Auth (tham khảo body/response)
+
+Body register:
 
 ```json
 {
-  "document": {
-    "id": "uuid",
-    "subjectId": "bd2f958d-0aea-4b18-8782-a9fc93ec7ffa",
-    "subjectCode": "INT2204",
-    "subjectName": "Lập trình hướng đối tượng",
-    "title": "Đề thi giữa kỳ",
-    "originalName": "de-thi-giua-ky.pdf",
-    "mimeType": "application/pdf",
-    "sizeBytes": 1024,
-    "upvotes": 1,
-    "downvotes": 0,
-    "score": 0.5,
-    "myVote": 1,
-    "uploaderId": "f4636ebb-4186-46c9-aa28-022ca21d134d",
-    "uploaderName": "Nguyen Van A",
-    "createdAt": "2026-11-05T08:13:47.000Z",
-    "updatedAt": "2026-11-05T08:13:47.000Z"
-  }
+  "email": "student@example.com",
+  "password": "Student@123",
+  "fullName": "Sinh viên"
 }
 ```
 
-Response download:
+Response register/login/refresh:
 
 ```json
 {
-  "url": "http://localhost:9000/documents/subjects/bd2f958d-.../a66bc6d2-...pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&...",
-  "expiresIn": 600,
-  "disposition": "inline",
-  "document": { ... }
+  "user": {
+    "id": "uuid",
+    "email": "student@example.com",
+    "fullName": "Sinh viên",
+    "role": "student",
+    "createdAt": "2026-11-05T08:00:00.000Z"
+  },
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+Response me:
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "student@example.com",
+    "fullName": "Sinh viên",
+    "role": "student",
+    "createdAt": "2026-11-05T08:00:00.000Z"
+  }
 }
 ```
 
 ## AI Advisor
 
-Không giới hạn lượt hỏi (AI không có quota); cache Redis 10 phút cho cùng nội dung.
-Câu trả lời tự nối phần còn thiếu khi chạm giới hạn token nên không bị cắt giữa câu.
+| Method | Path | Mô tả |
+| --- | --- | --- |
+| GET | `/api/ai/status` | Tình trạng dịch vụ AI (proxy tới AI service). |
+| POST | `/api/ai/advice` | Tư vấn học tập từ dữ liệu điểm thật của sinh viên (lấy từ bảng điểm, không tin client). |
+| POST | `/api/ai/documents/summarize` | Tóm tắt nội dung tài liệu. |
+| POST | `/api/ai/qa` | Trả lời câu hỏi dựa trên ngữ cảnh tài liệu, kèm `sources`. |
+
+- **Không giới hạn lượt hỏi**; cache Redis 10 phút cho cùng nội dung. Câu trả lời tự nối phần còn thiếu khi chạm giới hạn token nên không bị cắt giữa câu.
+- `POST /api/ai/advice` lấy điểm thật từ bảng điểm của sinh viên đang đăng nhập; client chỉ gửi `targetCpa` và `question` tùy chọn. Dữ liệu được loại bỏ thông tin nhận dạng cá nhân trước khi gửi đến mô hình AI; log chỉ ghi siêu dữ liệu.
+- Nếu dịch vụ/model không khả dụng hoặc lỗi, backend trả kết quả **fallback** cục bộ (`used_fallback: true`), không trả `500`. Backend proxy `/api/ai/*` tới service Python (`ai/`) qua `AI_SERVICE_URL`.
 
 Body advice:
 
@@ -372,23 +442,13 @@ Body advice:
 }
 ```
 
-Response advice:
+Response (ví dụ, có thể `used_fallback: true`, `model: "fallback"`):
 
 ```json
 {
   "advice": "CPA của bạn đang ổn định. Nên ưu tiên học lại môn có điểm thấp nhất.",
   "model": "gemini",
   "used_fallback": false
-}
-```
-
-Response advice (fallback mode):
-
-```json
-{
-  "advice": "CPA hiện tại ước tính: 2.50/4.0 trên 30 tín chỉ được tính.\n\nMôn nên ưu tiên cải thiện: Giải tích 2 (2.00/4).",
-  "model": "fallback",
-  "used_fallback": true
 }
 ```
 
@@ -434,96 +494,3 @@ Response QA:
   "used_fallback": false
 }
 ```
-
-## Auth
-
-Body register:
-
-```json
-{
-  "email": "student@example.com",
-  "password": "Student@123",
-  "fullName": "Sinh viên"
-}
-```
-
-Response register/login:
-
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "student@example.com",
-    "fullName": "Sinh viên",
-    "role": "student",
-    "createdAt": "2026-11-05T08:00:00.000Z"
-  },
-  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
-}
-```
-
-Response refresh:
-
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "student@example.com",
-    "fullName": "Sinh viên",
-    "role": "student",
-    "createdAt": "2026-11-05T08:00:00.000Z"
-  },
-  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
-}
-```
-
-Response me:
-
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "student@example.com",
-    "fullName": "Sinh viên",
-    "role": "student",
-    "createdAt": "2026-11-05T08:00:00.000Z"
-  }
-}
-```
-
-## Documents
-
-| Method | Path | Mô tả |
-| --- | --- | --- |
-| GET | `/api/documents/subjects` | Các môn sinh viên đã đăng ký (để đóng góp/xem tài liệu). |
-| POST | `/api/documents/uploads/presign` | Cấp URL presigned PUT để trình duyệt tải trực tiếp lên MinIO. |
-| POST | `/api/documents` | Xác nhận upload và lưu metadata (kèm kiểm tra lại kích thước/MIME thật). |
-| GET | `/api/documents?subjectId=&q=&sort=` | Danh sách tài liệu theo môn, tìm kiếm, sắp xếp (nổi bật/mới nhất). |
-| POST | `/api/documents/:id/vote` | Bình chọn (1: upvote, -1: downvote, 0: hủy); 1 user 1 vote. |
-| GET | `/api/documents/:id/download?inline=true` | URL presigned tải xuống/xem trực tiếp tài liệu. |
-
-Quy tắc tải lên tài liệu (BR-DOCS):
-
-1. Chỉ được tải tài liệu cho môn mà sinh viên hiện tại đang có trong `student_enrollments`.
-2. Tệp thực qua presigned PUT trực tiếp tới MinIO; backend không đọc nội dung tệp.
-3. Validate trước khi ký URL và lại sau khi object đã về MinIO:
-   - Kích thước tối đa 20 MB, không rỗng.
-   - MIME type và phần mở rộng phải khớp (PDF, Office, văn bản, ảnh).
-   - Chặn các tệp thực thi (exe, bat, sh, js, php, py, ...).
-4. Object key được sinh bởi backend theo mẫu `subjects/{subjectId}/{studentId}/{uuid}.{ext}`.
-5. Metadata (`subject_documents`): tiêu đề, tên gốc, MIME, kích thước, object key, người tải lên, thời gian.
-6. Counters `upvotes`/`downvotes` được tính lại từ bảng `document_votes` (một user một vote).
-7. Xem/tải xuống yêu cầu quyền truy cập môn học; không lộ bucket public.
-
-## AI Advisor
-
-| Method | Path | Mô tả |
-| --- | --- | --- |
-| GET | `/api/ai/status` | Tình trạng dịch vụ AI (proxy tới AI service). |
-| POST | `/api/ai/advice` | Tư vấn học tập từ dữ liệu điểm thật của sinh viên (lấy từ bảng điểm, không tin client). |
-| POST | `/api/ai/documents/summarize` | Tóm tắt nội dung tài liệu (Gemini hoặc fallback cục bộ). |
-| POST | `/api/ai/qa` | Trả lời câu hỏi dựa trên ngữ cảnh tài liệu, kèm `sources`. |
-
-Quy tắc tư vấn (BR-AI): `POST /api/ai/advice` lấy điểm thật từ bảng điểm của sinh viên đang đăng ký qua PostgreSQL; client chỉ gửi `targetCpa` và `question` tùy chọn. Dữ liệu được loại bỏ thông tin nhận dạng cá nhân trước khi gửi đến mô hình AI; log chỉ ghi siêu dữ liệu. Áp dụng quota mỗi người dùng (20 lần/giờ qua Redis); vượt hạn trả `429`. Cache câu trả lời theo hash (TTL 10 phút). Nếu `GEMINI_API_KEY` chưa cấu hình hoặc Gemini lỗi/timeout/429, trả kết quả fallback cục bộ (`used_fallback: true`), không trả `500`. Backend proxy `/api/ai/*` tới service Python (`ai/`) qua `AI_SERVICE_URL`.
